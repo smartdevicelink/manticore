@@ -1,5 +1,8 @@
 {
 	"Authors": ["Christopher Rokita"],
 	"navigation": [
+		{
+			"name": "API"
+		}
 	]
 }
