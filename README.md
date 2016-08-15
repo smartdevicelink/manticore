@@ -1,0 +1,1 @@
+This is an example for Manticore's API documentation. Nothing in the docs folder is final.
