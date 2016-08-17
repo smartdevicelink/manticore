@@ -14,4 +14,4 @@ Manticore does the following:
    * Continue working when machines fail, thanks to Manticore's distributed architecture
    * Directs the user to their core and HMI setup, giving information on how to connect their app to it.
 
-Check out the [API Documentation](../API) for more information
+Check out the [API Documentation](../api) for more information
