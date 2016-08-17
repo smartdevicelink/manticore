@@ -2,6 +2,9 @@
 	"Authors": ["Christopher Rokita"],
 	"navigation": [
 		{
+			"name": "Overview"
+		},
+		{
 			"name": "API"
 		}
 	]
