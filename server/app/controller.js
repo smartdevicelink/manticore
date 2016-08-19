@@ -1,15 +1,11 @@
 //the client needs an agent to connect to so that it may access consul services
-//supply a host IP address in the options array
-var options = {
-	host: "192.168.1.144"
-};
-var consuler = require('consul-helper')(options); //start a consul client
+//supply a host IP address
+var consuler = require('consul-helper')("192.168.1.144"); //start a consul client
 var nomader = require('nomad-helper');
 var fs = require('fs');
 
 module.exports = function (app) {
 	app.post('/cores', function (req, res) {
-		console.log("wat");
 		startWatches();
 		createCoreJob().submitJob("192.168.1.142:4646");
 		res.sendStatus(200);
