@@ -3,8 +3,7 @@
 var options = {
 	host: "192.168.1.144"
 };
-var consul = require('consul')(options); //start a consul client
-var consuler = require('consul-helper');
+var consuler = require('consul-helper')(options); //start a consul client
 var nomader = require('nomad-helper');
 var replace = require('replace');
 var needle = require('needle');
