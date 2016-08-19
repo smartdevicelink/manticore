@@ -5,12 +5,11 @@ var options = {
 };
 var consuler = require('consul-helper')(options); //start a consul client
 var nomader = require('nomad-helper');
-var replace = require('replace');
-var needle = require('needle');
 var fs = require('fs');
 
 module.exports = function (app) {
 	app.post('/cores', function (req, res) {
+		console.log("wat");
 		startWatches();
 		createCoreJob().submitJob("192.168.1.142:4646");
 		res.sendStatus(200);
