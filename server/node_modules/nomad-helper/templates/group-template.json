@@ -1,0 +1,13 @@
+{
+    "Name": "",
+    "Count": 1,
+    "Constraints": null,
+    "Tasks": [],
+    "RestartPolicy": {
+        "Interval": 300000000000,
+        "Attempts": 10,
+        "Delay": 25000000000,
+        "Mode": "fail"
+    },
+    "Meta": null
+}

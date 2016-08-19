@@ -1,0 +1,124 @@
+{
+    "Job": {
+        "Region": "global",
+        "ID": "core",
+        "Name": "core",
+        "Type": "service",
+        "Priority": 50,
+        "AllAtOnce": false,
+        "Datacenters": [
+            "dc1"
+        ],
+        "Constraints": [
+            {
+                "LTarget": "${attr.kernel.name}",
+                "RTarget": "linux",
+                "Operand": "="
+            }
+        ],
+        "TaskGroups": [
+            {
+                "Name": "core-master",
+                "Count": 1,
+                "Constraints": null,
+                "Tasks": [
+                    {
+                        "Name": "core-master",
+                        "Driver": "docker",
+                        "User": "",
+                        "Config": {
+                            "image": "crokita/discovery-core:master",
+                            "port_map": [
+                                {
+                                    "hmi": 8087,
+                                    "tcp": 12345
+                                }
+                            ]
+                        },
+                        "Constraints": null,
+                        "Env": {
+                            "DOCKER_IP": "${NOMAD_IP_hmi}"
+                        },
+                        "Services": [
+                            {
+                                "Id": "",
+                                "Name": "core-master",
+                                "Tags": [
+                                    "global",
+                                    "cache",
+                                    "${NOMAD_PORT_tcp}"
+                                ],
+                                "PortLabel": "hmi",
+                                "Checks": [
+                                    {
+                                        "Id": "",
+                                        "Name": "alive",
+                                        "Type": "script",
+                                        "Command": "/bin/bash health.sh",
+                                        "Args": null,
+                                        "Path": "",
+                                        "Protocol": "",
+                                        "Interval": 2000000000,
+                                        "Timeout": 1000000000
+                                    }
+                                ]
+                            }
+                        ],
+                        "Resources": {
+                            "CPU": 500,
+                            "MemoryMB": 256,
+                            "DiskMB": 300,
+                            "IOPS": 0,
+                            "Networks": [
+                                {
+                                    "Public": false,
+                                    "CIDR": "",
+                                    "ReservedPorts": null,
+                                    "DynamicPorts": [
+                                        {
+                                            "Label": "tcp",
+                                            "Value": 0
+                                        },
+                                        {
+                                            "Label": "hmi",
+                                            "Value": 0
+                                        }
+                                    ],
+                                    "IP": "",
+                                    "MBits": 10
+                                }
+                            ]
+                        },
+                        "Meta": null,
+                        "KillTimeout": 5000000000,
+                        "LogConfig": {
+                            "MaxFiles": 10,
+                            "MaxFileSizeMB": 10
+                        },
+                        "Artifacts": null
+                    }
+                ],
+                "RestartPolicy": {
+                    "Interval": 300000000000,
+                    "Attempts": 10,
+                    "Delay": 25000000000,
+                    "Mode": "fail"
+                },
+                "Meta": null
+            }
+        ],
+        "Update": {
+            "Stagger": 10000000000,
+            "MaxParallel": 1
+        },
+        "Periodic": null,
+        "Meta": null,
+        "Status": "",
+        "StatusDescription": "",
+        "CreateIndex": 0,
+        "ModifyIndex": 0,
+        "JobModifyIndex": 0
+    },
+    "EnforceIndex": false,
+    "JobModifyIndex": 0
+}

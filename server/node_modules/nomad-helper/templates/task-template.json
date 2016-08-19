@@ -1,0 +1,32 @@
+{
+    "Name": "",
+    "Driver": "docker",
+    "User": "",
+    "Config": {},
+    "Constraints": null,
+    "Env": {},
+    "Services": [],
+    "Resources": {
+        "CPU": 500,
+        "MemoryMB": 256,
+        "DiskMB": 300,
+        "IOPS": 0,
+        "Networks": [
+            {
+                "Public": false,
+                "CIDR": "",
+                "ReservedPorts": [],
+                "DynamicPorts": [],
+                "IP": "",
+                "MBits": 10
+            }
+        ]
+    },
+    "Meta": null,
+    "KillTimeout": 5000000000,
+    "LogConfig": {
+        "MaxFiles": 10,
+        "MaxFileSizeMB": 10
+    },
+    "Artifacts": null
+}

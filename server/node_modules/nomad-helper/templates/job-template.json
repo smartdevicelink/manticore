@@ -1,0 +1,34 @@
+{
+    "Job": {
+        "Region": "global",
+        "ID": "",
+        "Name": "",
+        "Type": "service",
+        "Priority": 50,
+        "AllAtOnce": false,
+        "Datacenters": [
+            "dc1"
+        ],
+        "Constraints": [
+            {
+                "LTarget": "${attr.kernel.name}",
+                "RTarget": "linux",
+                "Operand": "="
+            }
+        ],
+        "TaskGroups": [],
+        "Update": {
+            "Stagger": 10000000000,
+            "MaxParallel": 1
+        },
+        "Periodic": null,
+        "Meta": null,
+        "Status": "",
+        "StatusDescription": "",
+        "CreateIndex": 0,
+        "ModifyIndex": 0,
+        "JobModifyIndex": 0
+    },
+    "EnforceIndex": false,
+    "JobModifyIndex": 0
+}
