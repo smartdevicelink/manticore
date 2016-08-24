@@ -67,6 +67,7 @@ Result: Retrieve a list of all valid HMIs and their branches
 Method: GET
 
 URL: /v1/cores/:hmiName
+-   hmiName: name associated with an HMI
 
 Body: none
 
@@ -84,13 +85,14 @@ Result: Retrieve a list of valid core branches
 Method: GET
 
 URL: /v1/builds/:coreBranchName
+-   coreBranchName: the name of the branch of sdl core to check
 
 Body: none
 
 Result: Retrieve a list of valid build configurations
 ```
 {
-    "build": [
+    "builds": [
         "TIME_TESTER",
         "BUILD_BT_SUPPORT"
     ]
