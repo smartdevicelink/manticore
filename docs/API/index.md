@@ -31,7 +31,7 @@ Second request body:
 {
     "hmiAddress": "127.0.0.1:3000", //address to point browser to in order to access HMI
     "appAddress": "127.0.0.1:12000", //address to point SDL app to in order to connect to core
-    "id": 0123456789abcdef, //a unique identifier created for core
+    "id": 0123456789abcdef //a unique identifier created for core
 }
 ```
 
