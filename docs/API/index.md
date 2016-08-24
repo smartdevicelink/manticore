@@ -21,9 +21,9 @@ Body:
 }
 ```
 
-Result: Send a 200 automatically. The waiting time for address information is expected to take a long time, so another request using the url parameter in the body from the previous request is used to send the information back
+Result: The waiting time for address information is expected to take a long time, so another request using the url parameter in the body from the previous request is used to send the information back
 ```
-200
+Status code 200
 ```
 
 Second request body:
@@ -109,7 +109,5 @@ Body: none
 
 Result: Delete existing core and HMI
 ```
-{
-    "status": "OK"
-}
+Status code 200
 ```
