@@ -70,7 +70,7 @@ URL: /v1/cores/:hmiName
 
 Body: none
 
-Result: Retrieve a list valid core branches
+Result: Retrieve a list of valid core branches
 ```
 {
     "branches": [
