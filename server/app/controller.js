@@ -1,6 +1,6 @@
 //the client needs an agent to connect to so that it may access consul services
 //supply a host IP address
-var consuler = require('consul-helper')(process.env.HOST_IP); //start a consul client
+var consuler = require('consul-helper')(process.env.CONSUL_AGENT_IP); //start a consul client
 var nomader = require('nomad-helper');
 var fs = require('fs');
 
@@ -8,7 +8,7 @@ module.exports = function (app) {
 	//start core and hmi
 	app.post('/v1/cores', function (req, res) {
 		startWatches();
-		createCoreJob().submitJob(process.env.NOMAD_SERVER_IP + ":4646");
+		createCoreJob().submitJob(process.env.NOMAD_AGENT_IP + ":5656");
 		res.sendStatus(200);
 	});
 
@@ -72,7 +72,7 @@ function startWatches () {
 		if (services.length > 0) {
 			var jobService = services[0];
 			//this creates an sdl hmi job file suitable for manticore
-			createHmiJob(jobService.Address, jobService.Port).submitJob(process.env.NOMAD_SERVER_IP + ":4646");
+			createHmiJob(jobService.Address, jobService.Port).submitJob(process.env.NOMAD_AGENT_IP + ":5656");
 		}
 	});
 
