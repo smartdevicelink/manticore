@@ -94,7 +94,7 @@ function startWatches () {
 				//make a new HMI job
 				//this creates an sdl hmi job file suitable for manticore
 				//pass in the uuid, which should be the first tag
-				createHmiJob(cores[i].Address, cores[i].Port, cores[i].Tags[0]).submitJob(process.env.NOMAD_IP_http + ":5656");
+				createHmiJob(cores[i].Address, cores[i].Port, cores[i].Tags[0]).submitJob(process.env.NOMAD_IP_http + ":4646");
 				expectChangeState = true;
 			}
 		}
@@ -176,5 +176,5 @@ function requestCore (uuid, body) {
 	console.log(body);
 	//store the uuid in the database so that the response back
 	//will be directed towards the user making the request
-	createCoreJob().submitJob(process.env.NOMAD_IP_http + ":5656");
+	createCoreJob().submitJob(process.env.NOMAD_IP_http + ":4646");
 }
