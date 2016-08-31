@@ -2,8 +2,6 @@ FROM node:6.3.1
 
 MAINTAINER Christopher Rokita version:1.0
 
-ENV EH eh
-
 # Create app directory and go to it
 RUN mkdir -p /usr/app/server/
 WORKDIR /usr/app/
