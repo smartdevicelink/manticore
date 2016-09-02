@@ -5,6 +5,7 @@ var nomader = require('nomad-helper');
 var fs = require('fs');
 var uuid = require('node-uuid');
 var needle = require('needle');
+var nomadAddress = process.env.NOMAD_IP_http + ":4646"
 
 module.exports = function (app) {
 	//set up watches one time. listen forever for changes in consul's services
@@ -65,13 +66,34 @@ module.exports = function (app) {
 	});
 }
 
+function requestCore (userId, body) {
+	//store the userId and request info in the database. wait for this app to find it
+	consuler.setKeyValue("manticore/" + userId, JSON.stringify(body));
+}
+
 function startWatches () {
-	consuler.watchKVStore("manticore", function (k) {
-		//change happened
-		console.log(k);
+	//set a watch for the KV store
+	consuler.watchKVStore("manticore", function (keys) {
+		//all the keys are users waiting for a core and hmi
+		//attempt to be the first to create the job and submit it to Nomad
+		var job = nomader.createJob("core");
+		var keysTotal = keys.length;
+		for (let i = 0; i < keys.length; i++) {
+			let key = keys[i];
+			consuler.getKeyValue(key, function (value) {
+				//the value is actually an object. extract the information
+				var request = JSON.parse(value.Value);
+				//we'll need this information eventually. but not now
+				addCoreGroup(job, parseKvUserId(key));
+				keysTotal--;
+				if (keysTotal === 0) { //no more keys to parse through
+					//submit the job
+					job.submitJob(nomadAddress, function (){});
+				}
+			});
+		}		
 	});
-	//try posting something
-	consuler.setKeyValue("manticore/testing", "123");
+
 	//set up a watch for all services
 	consuler.watchServices(function (services) {
 		//services updated. get information about core and hmi if possible
@@ -80,58 +102,42 @@ function startWatches () {
 		//variable that determines whether we should wait for consul to update its services
 		//should be true if we submit or remove or change jobs that consul sees
 		let expectChangeState = false;
-		//for every core service, ensure it has a corresponding HMI. If it doesn't have one, make one
+		//for every core service, ensure it has a corresponding HMI
+		var job = nomader.createJob("hmi");
 		for (let i = 0; i < cores.length; i++) {
-			let foundHmi = false;
-			for (let j = 0; j < hmis.length; j++) {
-				//0 index has the uuid for both jobs
-				if (cores[i].Tags[0] === hmis[j].Tags[0]) {
-					j = hmis.length; //there is a match. okay
-					foundHmi = true;
-				}
-			}
-			if (!foundHmi) {
-				//make a new HMI job
-				//this creates an sdl hmi job file suitable for manticore
-				//pass in the uuid, which should be the first tag
-				createHmiJob(cores[i].Address, cores[i].Port, cores[i].Tags[0]).submitJob(process.env.NOMAD_IP_http + ":4646");
-				expectChangeState = true;
-			}
+			//pass in the id of core, which should be the first tag
+			//also pass in the is repesenting the user in order to name the service
+			addHmiGroup(job, cores[i].Address, cores[i].Port, cores[i].Tags[1], cores[i].Tags[0]);
 		}
-		//now check all HMIs. if they don't have a paired core, destroy it
-		
-		for (let i = 0; i < hmis.length; i++) {
-			let foundCore = false;
-			for (let j = 0; j < cores.length; j++) {
-				//0 index has the uuid for both jobs
-				if (hmis[i].Tags[0] === cores[j].Tags[0]) {
-					foundCore = true; //match. okay
-					j = cores.length;
-				}
-				if (!foundCore) {
-					//remove. not done yet. sh
-				}
-			}
-		}
+		//submit the job
+		job.submitJob(nomadAddress, function () {});
 
-		//if we expect the services to be updated then we expect this function to be called again
-		//with updated info. so don't do anything
-		if (!expectChangeState) {
-			//this should be the newest info. return connection information about the instance
-			//back to the user
-			if (cores.length > 0 && hmis.length > 0) {
+		//for each HMI found, find its paired core, determine who that core belongs to, 
+		//and send the connection information to the owner
+		//we search through HMIs because HMIs depend on cores, and there could be a core
+		//but no paired HMI yet
+		for (let i = 0; i < hmis.length; i++) {
+			var corePair = undefined;
+			for (let j = 0; j < hmis.length; j++) {
+				//check if there is a pair using the internal id (not the user id in the group name)
+				if (hmis[i].Tags[0] === cores[i].Tags[0]) {
+					corePair = cores[i];
+					j = hmis.length; //break out of the loop
+				}
+			}
+			if (corePair) {
+				//parse the name of the service to get just the user id
 				var body = {
-					tcpAddress: cores[0].Address + ":" + cores[0].Tags[1],
-					hmiAddress: hmis[0].Address + ":" + hmis[0].Port
+					user: hmis[i].Tags[1],
+					tcpAddress: corePair.Address + ":" + corePair.Tags[2],
+					hmiAddress: hmis[i].Address + ":" + hmis[i].Port
 				}
 				needle.post('192.168.1.142:3000/v1/address', body, function (err, res) {
 					//nothing
 				});
 			}
-
-
-
 		}
+
 		//services updated. get information about core and hmi if possible
 		/*for (let i = 0; i < hmis.length; i++) {
 			console.log("Core " + i + " TCP Address: " + cores[i].Address + ":" + cores[i].Tags[1]);
@@ -140,41 +146,47 @@ function startWatches () {
 	});
 }
 
-function createHmiJob (address, port, uuid) {
-	var job = nomader.createJob("hmi");
-	job.addGroup("hmi");
-	job.addTask("hmi", "hmi-master");
-	job.setImage("hmi", "hmi-master", "crokita/discovery-sdl-hmi:master");
-	job.addPort("hmi", "hmi-master", true, "user", 8080);
-	job.addEnv("hmi", "hmi-master", "HMI_WEBSOCKET_ADDR", address + ":" + port);
-	job.addService("hmi", "hmi-master", "hmi-master");
-	job.setPortLabel("hmi", "hmi-master", "hmi-master", "user");
-	//give hmi the same uuid as core so we know they're together
-	job.addTag("hmi", "hmi-master", "hmi-master", uuid);
+//remove "manticore/" from key in store to get user id
+function parseKvUserId (userId) {
+	var indexOfHyphen = userId.indexOf("/");
+	return userId.substr(indexOfHyphen + 1);
+}
+
+function addHmiGroup (job, address, port, userId, coreId) {
+	//this adds a group for a user so that another hmi will be created
+	//since each group name must be different make the name based off of the user id
+	//hmi-<userId>
+	var groupName = "hmi-" + userId;
+	job.addGroup(groupName);
+	job.addTask(groupName, "hmi-master");
+	job.setImage(groupName, "hmi-master", "crokita/discovery-sdl-hmi:master");
+	job.addPort(groupName, "hmi-master", true, "user", 8080);
+	job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", address + ":" + port);
+	job.addService(groupName, "hmi-master", "hmi-master");
+	job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
+	//give hmi the same id as core so we know they're together
+	//also include the userId's tag
+	job.addTag(groupName, "hmi-master", "hmi-master", coreId);
+	job.addTag(groupName, "hmi-master", "hmi-master", userId);
 	return job;
 }
 
-function createCoreJob () {
-	//this creates an sdl core job file suitable for manticore
-	var job = nomader.createJob("core");
-	job.addGroup("core");
-	job.addTask("core", "core-master");
-	job.setImage("core", "core-master", "crokita/discovery-core:master");
-	job.addPort("core", "core-master", true, "hmi", 8087);
-	job.addPort("core", "core-master", true, "tcp", 12345);
-	job.addEnv("core", "core-master", "DOCKER_IP", "${NOMAD_IP_hmi}");
-	job.addService("core", "core-master", "core-master");
+function addCoreGroup (job, userId) {
+	//this adds a group for a user so that another core will be created
+	//since each group name must be different make the name based off of the user id
+	//core-<userId>
+	var groupName = "core-" + userId;
+	job.addGroup(groupName);
+	job.addTask(groupName, "core-master");
+	job.setImage(groupName, "core-master", "crokita/discovery-core:master");
+	job.addPort(groupName, "core-master", true, "hmi", 8087);
+	job.addPort(groupName, "core-master", true, "tcp", 12345);
+	job.addEnv(groupName, "core-master", "DOCKER_IP", "${NOMAD_IP_hmi}");
+	job.addService(groupName, "core-master", "core-master");
 	//generate a unique id for each service for pairing purposes
-	job.addTag("core", "core-master", "core-master", uuid.v4());
-	job.addTag("core", "core-master", "core-master", "${NOMAD_PORT_tcp}");
-	job.setPortLabel("core", "core-master", "core-master", "hmi");
-	return job;
-}
-
-function requestCore (uuid, body) {
-	console.log(uuid);
-	console.log(body);
-	//store the uuid in the database so that the response back
-	//will be directed towards the user making the request
-	createCoreJob().submitJob(process.env.NOMAD_IP_http + ":4646");
+	//also include the userId's tag
+	job.addTag(groupName, "core-master", "core-master", uuid.v4());
+	job.addTag(groupName, "core-master", "core-master", userId);
+	job.addTag(groupName, "core-master", "core-master", "${NOMAD_PORT_tcp}");
+	job.setPortLabel(groupName, "core-master", "core-master", "hmi");
 }
