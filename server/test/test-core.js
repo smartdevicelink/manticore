@@ -31,12 +31,12 @@ describe("#findPairs()", function () {
 	it("should return an empty array if no pairs are found", function () {
 		var cores = [{
 			Address: "127.0.0.1",
-			Tags: ["coreId", "userId", "44300"]
+			Tags: ["userId", "44300"]
 		}];
 		var hmis = [{
 			Address: "127.0.0.1",
 			Port: "8687",
-			Tags: ["coreId2", "userId"]
+			Tags: ["userId2"]
 		}];
 		var pairs = core.findPairs(cores, hmis);
 		assert(pairs.length === 0, "There are no pairs. Found " + pairs.length);
@@ -45,30 +45,30 @@ describe("#findPairs()", function () {
 	it("should return 2 pairs that are found", function () {
 		var cores = [{
 			Address: "127.0.0.1",
-			Tags: ["coreId", "userId1", "44300"]
+			Tags: ["userId1", "44300"]
 		},
 		{
 			Address: "127.0.0.2",
-			Tags: ["coreId2", "userId2", "12345"]
+			Tags: ["userId3", "12345"]
 		},
 		{
 			Address: "127.0.0.3",
-			Tags: ["coreId3", "userId3", "25252"]
+			Tags: ["userId2", "25252"]
 		}];
 		var hmis = [{
 			Address: "127.0.0.4",
 			Port: "8687",
-			Tags: ["coreId", "userId1"]
+			Tags: ["userId1"]
 		},
 		{
 			Address: "127.0.0.5",
 			Port: "1234",
-			Tags: ["coreId3", "userId2"]
+			Tags: ["userId2"]
 		},
 		{
 			Address: "127.0.0.6",
 			Port: "2345",
-			Tags: ["coreId4", "userId1"]
+			Tags: ["userId4"]
 		}];
 		var pairs = core.findPairs(cores, hmis);
 		assert(pairs.length === 2, "There are 2 pairs. Found " + pairs.length);

@@ -30,7 +30,7 @@ module.exports = {
 		for (let i = 0; i < hmis.length; i++) {
 			let corePair = undefined;
 			for (let j = 0; j < cores.length; j++) {
-				//check if there is a pair using the internal id (not the user id in the group name)
+				//check if there is a pair using the user id
 				if (hmis[i].Tags[0] === cores[j].Tags[0]) {
 					corePair = cores[j];
 					j = cores.length; //break out of the loop
@@ -38,9 +38,10 @@ module.exports = {
 			}
 			if (corePair) {
 				//parse the name of the service to get just the user id
+				//the pair should have the same userId as the first tag string
 				let body = {
-					user: hmis[i].Tags[1],
-					tcpAddress: corePair.Address + ":" + corePair.Tags[2],
+					user: hmis[i].Tags[0],
+					tcpAddress: corePair.Address + ":" + corePair.Tags[1],
 					hmiAddress: hmis[i].Address + ":" + hmis[i].Port
 				}
 				pairs.push(body);
@@ -69,15 +70,13 @@ function addCoreGroup (job, userId) {
 	job.addPort(groupName, "core-master", true, "tcp", 12345);
 	job.addEnv(groupName, "core-master", "DOCKER_IP", "${NOMAD_IP_hmi}");
 	job.addService(groupName, "core-master", "core-master");
-	//generate a unique id for each service for pairing purposes
-	//also include the userId's tag
-	job.addTag(groupName, "core-master", "core-master", uuid.v4());
+	//include the userId's tag for ID purposes
 	job.addTag(groupName, "core-master", "core-master", userId);
 	job.addTag(groupName, "core-master", "core-master", "${NOMAD_PORT_tcp}");
 	job.setPortLabel(groupName, "core-master", "core-master", "hmi");
 }
 
-function addHmiGroup (job, address, port, userId, coreId) {
+function addHmiGroup (job, address, port, userId) {
 	//this adds a group for a user so that another hmi will be created
 	//since each group name must be different make the name based off of the user id
 	//hmi-<userId>
@@ -90,8 +89,6 @@ function addHmiGroup (job, address, port, userId, coreId) {
 	job.addService(groupName, "hmi-master", "hmi-master");
 	job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
 	//give hmi the same id as core so we know they're together
-	//also include the userId's tag
-	job.addTag(groupName, "hmi-master", "hmi-master", coreId);
 	job.addTag(groupName, "hmi-master", "hmi-master", userId);
 	return job;
 }
