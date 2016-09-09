@@ -17,9 +17,6 @@ module.exports = {
 			//set up an expectation that we want the values of <keys.length> keys.
 			//send a callback function about what to do once we get all the values
 			var expecting = core.expect(keys.length, function (job) {
-				console.log(process.env.NOMAD_ALLOC_INDEX + ": " + keys.length + " keys")
-				console.log(process.env.NOMAD_ALLOC_INDEX + ": submitting a core job");
-				console.log(process.env.NOMAD_ALLOC_INDEX + ": there are " + job.getJob().Job.TaskGroups.length + " groups");
 				job.submitJob(nomadAddress, function (){});
 			});
 			for (let i = 0; i < keys.length; i++) {
@@ -33,14 +30,9 @@ module.exports = {
 
 		//set up a watch for all services
 		consuler.watchServices(function (services) {
-			console.log(process.env.NOMAD_ALLOC_INDEX + ": service update! Make HMI job");
 			//services updated. get information about core and hmi if possible
 			let cores = services.filter("core-master");
 			let hmis = services.filter("hmi-master");
-			console.log(process.env.NOMAD_ALLOC_INDEX + ": " + cores.length + " cores");
-			console.log(cores);
-			console.log(process.env.NOMAD_ALLOC_INDEX + ": " + hmis.length + " hmis");
-			console.log(hmis);
 			//for every core service, ensure it has a corresponding HMI
 			var job = nomader.createJob("hmi");
 			for (let i = 0; i < cores.length; i++) {
@@ -51,7 +43,6 @@ module.exports = {
 			//submit the job
 			job.submitJob(nomadAddress, function () {});
 			var pairs = core.findPairs(cores, hmis);
-			console.log(process.env.NOMAD_ALLOC_INDEX + ": found " + pairs.length + " pairs!");
 			pairs = {
 				pairs: pairs
 			};
