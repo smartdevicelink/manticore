@@ -8,7 +8,7 @@ module.exports = function (app) {
 	//connect to the consul agent
 	shell.init(process.env.NOMAD_IP_http);
 	//set up watches one time. listen forever for changes in consul's services
-	shell.startWatches("192.168.1.142:3000/v1/address");
+	shell.startWatches(process.env.post_conn_addr);
 	//start core and hmi
 	app.post('/v1/cores', function (req, res) {
 		//pretend we have some unique identifier for the client so that

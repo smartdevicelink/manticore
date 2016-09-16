@@ -88,6 +88,7 @@ job "job-creator" {
 			}
 
 			env {
+                                post_conn_addr = "54.167.96.209:3000/v1/address"
 			}
 
 
