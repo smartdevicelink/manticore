@@ -49,8 +49,9 @@ module.exports = {
 				pairs: pairs
 			};
 			//post all pairs at once
-			needle.post(postUrl, pairs, function (err, res) {
-			});
+			console.log(pairs);
+			//needle.post(postUrl, pairs, function (err, res) {
+			//});
 
 		});
 	},
