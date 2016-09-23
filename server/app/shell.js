@@ -50,8 +50,8 @@ module.exports = {
 			};
 			//post all pairs at once
 			console.log(pairs);
-			//needle.post(postUrl, pairs, function (err, res) {
-			//});
+			needle.post(postUrl, pairs, function (err, res) {
+			});
 
 		});
 	},

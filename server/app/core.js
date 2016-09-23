@@ -41,7 +41,7 @@ module.exports = {
 					user: hmis[i].Tags[0],
 					tcpAddressInternal: corePair.Address + ":" + corePair.Tags[1],
 					hmiAddressInternal: hmis[i].Address + ":" + hmis[i].Port,
-					userAddressInternal: corePair[i].Address + ":" + corePair.Port,
+					userAddressInternal: corePair.Address + ":" + corePair.Port,
 					userAddressExternal: corePair.Tags[2],
 					hmiAddressExternal: corePair.Tags[3],
 					tcpAddressExternal: corePair.Tags[4]

@@ -31,7 +31,7 @@ describe("#findPairs()", function () {
 	it("should return an empty array if no pairs are found", function () {
 		var cores = [{
 			Address: "127.0.0.1",
-			Tags: ["userId", "44300"]
+			Tags: ["userId", "44300", "userToHmi1", "hmiToCore1", "userToCore1"]
 		}];
 		var hmis = [{
 			Address: "127.0.0.1",
@@ -45,15 +45,18 @@ describe("#findPairs()", function () {
 	it("should return 2 pairs that are found", function () {
 		var cores = [{
 			Address: "127.0.0.1",
-			Tags: ["userId1", "44300"]
+			Port: "1211",
+			Tags: ["userId1", "44300", "userToHmi1", "hmiToCore1", "userToCore1"]
 		},
 		{
 			Address: "127.0.0.2",
-			Tags: ["userId3", "12345"]
+			Port: "1212",
+			Tags: ["userId3", "12345", "userToHmi2", "hmiToCore2", "userToCore2"]
 		},
 		{
 			Address: "127.0.0.3",
-			Tags: ["userId2", "25252"]
+			Port: "1213",
+			Tags: ["userId2", "25252", "userToHmi3", "hmiToCore3", "userToCore3"]
 		}];
 		var hmis = [{
 			Address: "127.0.0.4",
@@ -73,10 +76,19 @@ describe("#findPairs()", function () {
 		var pairs = core.findPairs(cores, hmis);
 		assert(pairs.length === 2, "There are 2 pairs. Found " + pairs.length);
 		assert(pairs[0].user === "userId1");
-		assert(pairs[0].tcpAddress === "127.0.0.1:44300");
-		assert(pairs[0].hmiAddress === "127.0.0.4:8687");
+		assert(pairs[0].tcpAddressInternal === "127.0.0.1:44300");
+		assert(pairs[0].hmiAddressInternal === "127.0.0.4:8687");
+		assert(pairs[0].userAddressInternal === "127.0.0.1:1211");
+		assert(pairs[0].userAddressExternal === "userToHmi1");
+		assert(pairs[0].hmiAddressExternal === "hmiToCore1");
+		assert(pairs[0].tcpAddressExternal === "userToCore1");
+
 		assert(pairs[1].user === "userId2");
-		assert(pairs[1].tcpAddress === "127.0.0.3:25252");
-		assert(pairs[1].hmiAddress === "127.0.0.5:1234");
+		assert(pairs[1].tcpAddressInternal === "127.0.0.3:25252");
+		assert(pairs[1].hmiAddressInternal === "127.0.0.5:1234");
+		assert(pairs[1].userAddressInternal === "127.0.0.3:1213");
+		assert(pairs[1].userAddressExternal === "userToHmi3");
+		assert(pairs[1].hmiAddressExternal === "hmiToCore3");
+		assert(pairs[1].tcpAddressExternal === "userToCore3");
 	});
 });

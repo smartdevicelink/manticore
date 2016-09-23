@@ -48,8 +48,8 @@ describe("Job Submitter", function () {
     		var data = req.body;
     		if (data.pairs && data.pairs.length === 1) {
     			assert(data.pairs[0].user === 'jimmy', "Request comes from jimmy. Found " + data.pairs[0].user);
-    			assert(data.pairs[0].tcpAddress !== undefined);
-    			assert(data.pairs[0].hmiAddress !== undefined);
+    			assert(data.pairs[0].tcpAddressInternal !== undefined);
+    			assert(data.pairs[0].hmiAddressInternal !== undefined);
     			done();
     			//request a second core and listen for another pair
     			//shell.requestCore("susan", body);
