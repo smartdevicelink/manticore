@@ -1,6 +1,5 @@
 //functionality of manticore without asynchronous behavior nor dependencies for unit testing
 var nomader = require('nomad-helper');
-var uuid = require('node-uuid');
 
 module.exports = {
 	expect: function (callbackNumber, callback) {
@@ -12,8 +11,7 @@ module.exports = {
 				count--;
 				//the value is actually an object. extract the information
 				var request = JSON.parse(value.Value);
-				//we'll need this information eventually. but not now
-				addCoreGroup(job, parseKvUserId(key));
+				addCoreGroup(job, parseKvUserId(key), request);
 				if (count === 0) { //no more keys to parse through
 					//submit the job by invoking the function passed in
 					callback(job);
@@ -41,8 +39,12 @@ module.exports = {
 				//the pair should have the same userId as the first tag string
 				let body = {
 					user: hmis[i].Tags[0],
-					tcpAddress: corePair.Address + ":" + corePair.Tags[1],
-					hmiAddress: hmis[i].Address + ":" + hmis[i].Port
+					tcpAddressInternal: corePair.Address + ":" + corePair.Tags[1],
+					hmiAddressInternal: hmis[i].Address + ":" + hmis[i].Port,
+					userAddressInternal: corePair[i].Address + ":" + corePair.Port,
+					userAddressExternal: corePair.Tags[2],
+					hmiAddressExternal: corePair.Tags[3],
+					tcpAddressExternal: corePair.Tags[4]
 				}
 				pairs.push(body);
 			}
@@ -58,7 +60,7 @@ function parseKvUserId (userId) {
 	return userId.substr(indexOfHyphen + 1);
 }
 
-function addCoreGroup (job, userId) {
+function addCoreGroup (job, userId, request) {
 	//this adds a group for a user so that another core will be created
 	//since each group name must be different make the name based off of the user id
 	//core-<userId>
@@ -71,8 +73,12 @@ function addCoreGroup (job, userId) {
 	job.addEnv(groupName, "core-master", "DOCKER_IP", "${NOMAD_IP_hmi}");
 	job.addService(groupName, "core-master", "core-master");
 	//include the userId's tag for ID purposes
+	//also include the user, hmi, and tcp external addresses for nginx
 	job.addTag(groupName, "core-master", "core-master", userId);
 	job.addTag(groupName, "core-master", "core-master", "${NOMAD_PORT_tcp}");
+	job.addTag(groupName, "core-master", "core-master", request.userToHmi);
+	job.addTag(groupName, "core-master", "core-master", request.hmiToCore);
+	job.addTag(groupName, "core-master", "core-master", request.userToCore);
 	job.setPortLabel(groupName, "core-master", "core-master", "hmi");
 }
 

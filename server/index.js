@@ -7,6 +7,7 @@ var http = require('http').Server(app);
 //custom vars and modules
 var controller = require('./app/controller.js');
 var rootLocation = __dirname + '/../client/public';
+var config = require('./config.js');
 
 app.use(bodyParser.json()); //allow json parsing
 app.use(bodyParser.urlencoded({extended: true})); //for parsing application/x-www-form-urlencoded
@@ -16,7 +17,7 @@ app.use(express.static(rootLocation));
 
 //start the server
 (function () {
-    var server = http.listen(4000, function () {
+    var server = http.listen(config.httpPort, function () {
         console.log("Server started");
         controller(app);
     });

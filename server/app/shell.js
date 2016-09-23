@@ -3,6 +3,8 @@ var consuler;
 var nomader = require('nomad-helper');
 var core = require('./core.js');
 var needle = require('needle');
+var config = require('../config.js');
+var uuid = require('node-uuid');
 var nomadAddress;
 
 module.exports = {
@@ -54,6 +56,15 @@ module.exports = {
 	},
 	requestCore: function (userId, body) {
 		//store the userId and request info in the database. wait for this app to find it
+		//also generate unique strings to append to the external IP address that will
+		//be given to users. NGINX will map those IPs to the correct internal IP addresses
+		//of core and hmi
+		const userToHmiAddress = uuid.v4() + "." + config.domainName; //userAddress
+		const hmiToCoreAddress = uuid.v4() + "." + config.domainName; //hmiAddress
+		const userToCoreAddress = uuid.v4() + "." + config.domainName; //tcpAddress
+		body.userToHmi = userToHmiAddress;
+		body.hmiToCore = hmiToCoreAddress;
+		body.userToCore = userToCoreAddress;
 		consuler.setKeyValue("manticore/" + userId, JSON.stringify(body));
 	},
 	deleteKey: function (key, callback) {

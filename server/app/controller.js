@@ -3,12 +3,13 @@
 var core = require('./core.js');
 var shell = require('./shell.js');
 var uuid = require('node-uuid');
+var config = require('../config.js')
 
 module.exports = function (app) {
 	//connect to the consul agent
 	shell.init(process.env.NOMAD_IP_http);
 	//set up watches one time. listen forever for changes in consul's services
-	shell.startWatches(process.env.post_conn_addr);
+	shell.startWatches(config.postConnectionAddr);
 	//start core and hmi
 	app.post('/v1/cores', function (req, res) {
 		//pretend we have some unique identifier for the client so that
