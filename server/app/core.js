@@ -39,9 +39,9 @@ module.exports = {
 				//the pair should have the same userId as the first tag string
 				let body = {
 					user: hmis[i].Tags[0],
+					userAddressInternal: hmis[i].Address + ":" + hmis[i].Port,
+					hmiAddressInternal: corePair.Address + ":" + corePair.Port,
 					tcpAddressInternal: corePair.Address + ":" + corePair.Tags[1],
-					hmiAddressInternal: hmis[i].Address + ":" + hmis[i].Port,
-					userAddressInternal: corePair.Address + ":" + corePair.Port,
 					userAddressExternal: corePair.Tags[2],
 					hmiAddressExternal: corePair.Tags[3],
 					tcpAddressExternal: corePair.Tags[4]
