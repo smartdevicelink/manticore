@@ -74,7 +74,7 @@ module.exports = {
 		const hmiToCoreAddress = randomString(options) + "." + config.domainName; //hmiAddress
 		//since SOME APPS have character limits (15) use a smaller random string generator for the TCP address
 		options = {
-			length: 5,
+			length: 4,
 			letters: false,
 			numeric: true,
 			special: false
