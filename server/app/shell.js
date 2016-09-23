@@ -40,7 +40,9 @@ module.exports = {
 			for (let i = 0; i < cores.length; i++) {
 				//pass in the id of core, which should be the first tag
 				//also pass in what is repesenting the user in order to name the service
-				core.addHmiGroup(job, cores[i].Address, cores[i].Port, cores[i].Tags[0]);
+				//pass in the external IP of core so that when the user tries to connect to it
+				//from outside the network nginx can route that IP address to the correct internal one
+				core.addHmiGroup(job, cores[i].Tags[3], 3000, cores[i].Tags[0]);
 			}	
 			//submit the job
 			job.submitJob(nomadAddress, function () {});
