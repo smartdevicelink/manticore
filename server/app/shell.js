@@ -63,12 +63,21 @@ module.exports = {
 		//also generate unique strings to append to the external IP address that will
 		//be given to users. NGINX will map those IPs to the correct internal IP addresses
 		//of core and hmi
-		const userToHmiAddress = uuid.v4() + "." + config.domainName; //userAddress
-		const hmiToCoreAddress = uuid.v4() + "." + config.domainName; //hmiAddress
+		//generate random letters and numbers for the user and hmi addresses
+		var options = {
+			length: 12,
+			letters: true,
+			numeric: true,
+			special: false
+		}
+		const userToHmiAddress = randomString(options) + "." + config.domainName; //userAddress
+		const hmiToCoreAddress = randomString(options) + "." + config.domainName; //hmiAddress
 		//since SOME APPS have character limits (15) use a smaller random string generator for the TCP address
-		const options = {
+		options = {
 			length: 5,
-			numeric: true
+			letters: false,
+			numeric: true,
+			special: false
 		}
 		const userToCoreAddress = randomString(options) + "." + config.domainName; //tcpAddress
 		body.userToHmi = userToHmiAddress;
