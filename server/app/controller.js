@@ -7,7 +7,7 @@ var config = require('../config.js')
 
 module.exports = function (app) {
 	//connect to the consul agent
-	shell.init(process.env.NOMAD_IP_http);
+	shell.init(config.consulIp);
 	//set up watches one time. listen forever for changes in consul's services
 	shell.startWatches(config.postConnectionAddr);
 	//start core and hmi
