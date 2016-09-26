@@ -59,10 +59,10 @@ module.exports = {
 		//TODO: COMPLETE
 		//for each pair, extract connection information and add them to nginx config file
 		var file = nginx();
+		file.server(3000, true, null, ip.address() + ":4000", false); //manticore web server of this machine
 		for (let i = 0; i < pairs.length; i++) {
 			let pair = pairs[i];
-			file.server(3000, true, null, ip.address() + ":4000", false) //manticore web server of this machine
-				.server(3000, false, pair.userAddressExternal, pair.userAddressInternal, false) //route user to hmi
+			file.server(3000, false, pair.userAddressExternal, pair.userAddressInternal, false) //route user to hmi
 				.server(3000, false, pair.hmiAddressExternal, pair.hmiAddressInternal, true) //route hmi to core (websocket)
 				.server(3000, false, pair.tcpAddressExternal, pair.tcpAddressInternal, false); //route user app to core
 		}
