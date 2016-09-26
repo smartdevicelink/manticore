@@ -56,7 +56,6 @@ module.exports = {
 	},
 	addHmiGroup: addHmiGroup,
 	generateNginxFile: function (pairs) {
-		//TODO: COMPLETE
 		//for each pair, extract connection information and add them to nginx config file
 		var file = nginx();
 		file.server(3000, true, null, ip.address() + ":4000", false); //manticore web server of this machine
