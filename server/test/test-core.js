@@ -77,18 +77,45 @@ describe("#findPairs()", function () {
 		assert(pairs.length === 2, "There are 2 pairs. Found " + pairs.length);
 		assert(pairs[0].user === "userId1");
 		assert(pairs[0].tcpAddressInternal === "127.0.0.1:44300");
-		assert(pairs[0].hmiAddressInternal === "127.0.0.4:8687");
-		assert(pairs[0].userAddressInternal === "127.0.0.1:1211");
+		assert(pairs[0].hmiAddressInternal === "127.0.0.1:1211");
+		assert(pairs[0].userAddressInternal === "127.0.0.4:8687");
 		assert(pairs[0].userAddressExternal === "userToHmi1");
 		assert(pairs[0].hmiAddressExternal === "hmiToCore1");
 		assert(pairs[0].tcpAddressExternal === "userToCore1");
 
 		assert(pairs[1].user === "userId2");
 		assert(pairs[1].tcpAddressInternal === "127.0.0.3:25252");
-		assert(pairs[1].hmiAddressInternal === "127.0.0.5:1234");
-		assert(pairs[1].userAddressInternal === "127.0.0.3:1213");
+		assert(pairs[1].hmiAddressInternal === "127.0.0.3:1213");
+		assert(pairs[1].userAddressInternal === "127.0.0.5:1234");
 		assert(pairs[1].userAddressExternal === "userToHmi3");
 		assert(pairs[1].hmiAddressExternal === "hmiToCore3");
 		assert(pairs[1].tcpAddressExternal === "userToCore3");
 	});
+});
+
+describe("#getUniqueString()", function () {
+	it("should return a four digit string", function () {
+		function randomGenerator () {
+			return "1234";
+		}
+		var string = core.getUniqueString([], randomGenerator);
+		assert(string === "1234", "string is a 4 digit string. Got " + string);
+	});
+	it("should return a new string if the first one was in the blacklist", function () {
+		var funcIndex = 1210;
+		function randomGenerator () {
+			let result = "" + funcIndex;
+			funcIndex++;
+			return result;
+		}
+		var string = core.getUniqueString(["1210", "1211"], randomGenerator);
+		assert(string === "1212", "string is 1212. Got " + string);
+	});
+});
+
+describe("#getAddressesFromUserRequests()", function () {
+	it("should ", function () {
+		var testData = {};
+	});
+
 });

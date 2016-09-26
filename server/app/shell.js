@@ -71,26 +71,34 @@ module.exports = {
 		//be given to users. NGINX will map those IPs to the correct internal IP addresses
 		//of core and hmi
 		//generate random letters and numbers for the user and hmi addresses
-		var options = {
-			length: 12,
-			letters: true,
-			numeric: true,
-			special: false
-		}
-		const userToHmiAddress = randomString(options); //userAddress prefix
-		const hmiToCoreAddress = randomString(options); //hmiAddress prefix
-		//since SOME APPS have character limits (15) use a smaller random string generator for the TCP address
-		options = {
-			length: 4,
-			letters: false,
-			numeric: true,
-			special: false
-		}
-		const userToCoreAddress = randomString(options); //tcpAddress prefix
-		body.userToHmi = userToHmiAddress;
-		body.hmiToCore = hmiToCoreAddress;
-		body.userToCore = userToCoreAddress;
-		consuler.setKeyValue("manticore/" + userId, JSON.stringify(body));
+		//get all keys in the KV store and find their external address prefixes
+		consuler.getKeyAll("manticore", function (results) {
+			var addresses = core.getAddressesFromUserRequests(results);
+			var options1 = {
+				length: 12,
+				letters: true,
+				numeric: true,
+				special: false
+			}
+			var options2 = {
+				length: 4,
+				letters: false,
+				numeric: true,
+				special: false
+			}
+
+			var func1 = randomString.bind(undefined, options);
+			const userToHmiAddress = core.getUniqueString(addresses, func1); //userAddress prefix
+			const hmiToCoreAddress = core.getUniqueString(addresses, func1); //hmiAddress prefix
+			//since SOME APPS have character limits (15) use a smaller random string generator for the TCP address
+			var func2 = randomString.bind(undefined, options2);
+			const userToCoreAddress = core.getUniqueString(addresses, func2); //tcpAddress prefix
+			body.userToHmi = userToHmiAddress;
+			body.hmiToCore = hmiToCoreAddress;
+			body.userToCore = userToCoreAddress;
+			consuler.setKeyValue("manticore/" + userId, JSON.stringify(body));
+		});
+
 	},
 	deleteKey: function (key, callback) {
 		consuler.delKey(key, function () {

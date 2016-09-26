@@ -67,6 +67,21 @@ module.exports = {
 				.server(3000, false, pair.tcpAddressExternal, pair.tcpAddressInternal, false); //route user app to core
 		}
 		return file.get();
+	},
+	getUniqueString: function (blackList, generatorFunc) {
+		//use generatorFunc to keep creating new strings until
+		//there is one that isn't part of the blackList, and return it
+		var str = generatorFunc();
+		while (blackList.find(checkList)) {
+			str = generatorFunc();
+		}
+		return str;
+		function checkList (item) {
+			return str === item;
+		}
+	},
+	getAddressesFromUserRequests: function (keys) {
+		console.log(keys);
 	}
 }
 
