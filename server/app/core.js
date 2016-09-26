@@ -81,13 +81,14 @@ module.exports = {
 	},
 	getAddressesFromUserRequests: function (keys) {
 		var addresses = [];
-		for (let i = 0; i < keys.length; i++) {
-			let value = JSON.parse(keys[i].Value);
-			addresses.push(value.userToHmi);
-			addresses.push(value.hmiToCore);
-			addresses.push(value.userToCore);
+		if (keys !== undefined) {
+			for (let i = 0; i < keys.length; i++) {
+				let value = JSON.parse(keys[i].Value);
+				addresses.push(value.userToHmi);
+				addresses.push(value.hmiToCore);
+				addresses.push(value.userToCore);
+			}
 		}
-
 		return addresses;
 	}
 }
