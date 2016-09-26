@@ -5,7 +5,7 @@ var core = require('./core.js');
 var needle = require('needle');
 var config = require('../config.js');
 var uuid = require('node-uuid');
-var randomString = require('random-string');
+var randomString = require('randomstring');
 var exec = require('child_process').exec;
 var fs = require('fs');
 var nomadAddress;
@@ -77,22 +77,19 @@ module.exports = {
 			var addresses = core.getAddressesFromUserRequests(results);
 			var options1 = {
 				length: 12,
-				letters: true,
-				numeric: true,
-				special: false
+				charset: 'alphanumeric',
+				capitalization: 'lowercase'
 			}
 			var options2 = {
 				length: 4,
-				letters: false,
-				numeric: true,
-				special: false
+				charset: 'numeric'
 			}
 
-			var func1 = randomString.bind(undefined, options1);
+			var func1 = randomString.generate.bind(undefined, options1);
 			const userToHmiAddress = core.getUniqueString(addresses, func1); //userAddress prefix
 			const hmiToCoreAddress = core.getUniqueString(addresses, func1); //hmiAddress prefix
 			//since SOME APPS have character limits (15) use a smaller random string generator for the TCP address
-			var func2 = randomString.bind(undefined, options2);
+			var func2 = randomString.generate.bind(undefined, options2);
 			const userToCoreAddress = core.getUniqueString(addresses, func2); //tcpAddress prefix
 			body.userToHmi = userToHmiAddress;
 			body.hmiToCore = hmiToCoreAddress;
