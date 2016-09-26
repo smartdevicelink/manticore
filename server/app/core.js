@@ -81,6 +81,7 @@ module.exports = {
 	},
 	getAddressesFromUserRequests: function (keys) {
 		console.log(keys);
+		return [];
 	}
 }
 
