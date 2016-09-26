@@ -6,6 +6,7 @@ var needle = require('needle');
 var config = require('../config.js');
 var uuid = require('node-uuid');
 var randomString = require('random-string');
+var exec = require('child_process').exec;
 var nomadAddress;
 
 module.exports = {
@@ -55,7 +56,13 @@ module.exports = {
 			console.log(pairs);
 			needle.post(postUrl, pairs, function (err, res) {
 			});
-
+			//create an nginx file and write it so that nginx notices it
+			//use the pairs because that has information about what addresses to use
+			var nginxFile = core.generateNginxFile(pairs);
+		    fs.writeFile("/etc/nginx/conf.d/manticore.conf", nginxFile, function(err) {
+		    	//done! restart nginx
+		    	exec("sudo service nginx reload", function () {});
+		    }); 
 		});
 	},
 	requestCore: function (userId, body) {
@@ -70,8 +77,8 @@ module.exports = {
 			numeric: true,
 			special: false
 		}
-		const userToHmiAddress = randomString(options) + "." + config.domainName; //userAddress
-		const hmiToCoreAddress = randomString(options) + "." + config.domainName; //hmiAddress
+		const userToHmiAddress = randomString(options); //userAddress prefix
+		const hmiToCoreAddress = randomString(options); //hmiAddress prefix
 		//since SOME APPS have character limits (15) use a smaller random string generator for the TCP address
 		options = {
 			length: 4,
@@ -79,7 +86,7 @@ module.exports = {
 			numeric: true,
 			special: false
 		}
-		const userToCoreAddress = randomString(options) + "." + config.domainName; //tcpAddress
+		const userToCoreAddress = randomString(options); //tcpAddress prefix
 		body.userToHmi = userToHmiAddress;
 		body.hmiToCore = hmiToCoreAddress;
 		body.userToCore = userToCoreAddress;

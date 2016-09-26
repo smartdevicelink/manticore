@@ -1,5 +1,8 @@
 //functionality of manticore without asynchronous behavior nor dependencies for unit testing
+var fs = require('fs');
+var nginx = require('./NginxTemplate.js');
 var nomader = require('nomad-helper');
+var ip = require('ip');
 
 module.exports = {
 	expect: function (callbackNumber, callback) {
@@ -51,7 +54,20 @@ module.exports = {
 		}
 		return pairs;
 	},
-	addHmiGroup: addHmiGroup
+	addHmiGroup: addHmiGroup,
+	generateNginxFile: function (pairs) {
+		//TODO: COMPLETE
+		//for each pair, extract connection information and add them to nginx config file
+		var file = nginx();
+		for (let i = 0; i < pairs.length; i++) {
+			let pair = pairs[i];
+			file.server(3000, true, null, ip.address() + ":4000", false) //manticore web server of this machine
+				.server(3000, false, pair.userAddressExternal, pair.userAddressInternal, false) //route user to hmi
+				.server(3000, false, pair.hmiAddressExternal, pair.hmiAddressInternal, true) //route hmi to core (websocket)
+				.server(3000, false, pair.tcpAddressExternal, pair.tcpAddressInternal, false); //route user app to core
+		}
+		return file.get();
+	}
 }
 
 //remove "manticore/" from key in store to get user id
