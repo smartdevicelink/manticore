@@ -7,6 +7,7 @@ var config = require('../config.js');
 var uuid = require('node-uuid');
 var randomString = require('random-string');
 var exec = require('child_process').exec;
+var fs = require('fs');
 var nomadAddress;
 
 module.exports = {
