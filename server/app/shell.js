@@ -38,7 +38,6 @@ module.exports = {
 			//services updated. get information about core and hmi if possible
 			let cores = services.filter("core-master");
 			let hmis = services.filter("hmi-master");
-			console.log(cores);
 			//for every core service, ensure it has a corresponding HMI
 			var job = nomader.createJob("hmi");
 			core.addHmisToJob(job, cores);

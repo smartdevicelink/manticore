@@ -2,6 +2,7 @@ var mocha = require('mocha');
 var assert = require('assert');
 var core = require('../app/core.js');
 var nomader = require('nomad-helper');
+var config = require('../config.js')
 
 describe("#expect()", function () {
 	it("should return an object with a send function to invoke", function () {
@@ -163,9 +164,26 @@ describe("#generateNginxFile()", function () {
 describe("#addHmisToJob()", function () {
 	it("should create an hmi job based on the core job", function () {
 		var job = nomader.createJob("hmi");
-		var cores = "";
+		var cores = [{
+			Address: "127.0.0.1",
+			Port: "1211",
+			Tags: ["userId1", "44300", "userToHmi1", "hmiToCore1", "userToCore1"]
+		},
+		{
+			Address: "127.0.0.2",
+			Port: "1212",
+			Tags: ["userId3", "12345", "userToHmi2", "hmiToCore2", "userToCore2"]
+		}];
 		core.addHmisToJob(job, cores);
-		
+		//check env and tag for each hmi task
+		var env1 = job.findTask("hmi-userId1", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
+		var env2 = job.findTask("hmi-userId3", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
+		var tag1 = job.findTask("hmi-userId1", "hmi-master").Services[0].Tags[0];
+		var tag2 = job.findTask("hmi-userId3", "hmi-master").Services[0].Tags[0];
+		assert(env1 === "hmiToCore1." + config.domainName + ":3000");
+		assert(env2 === "hmiToCore2." + config.domainName + ":3000");
+		assert(tag1 === cores[0].Tags[0]);
+		assert(tag2 === cores[1].Tags[0]);
 	});
 
 });
