@@ -136,5 +136,25 @@ describe("#getAddressesFromUserRequests()", function () {
 		assert(addresses[4] === "2juh542q5jui6");
 		assert(addresses[5] === "9372");
 	});
+});
+
+describe("#generateNginxFile()", function () {
+	it("should retrieve all address prefixes from all keys in manticore", function () {
+		var testData = {
+			pairs: [{
+				user: "3456789yduc2nj3f",
+				userAddressInternal: "127.0.0.1:4000",
+				hmiAddressInternal: "127.0.0.1:5000",
+				tcpAddressInternal: "127.0.0.1:6000",
+				userAddressExternal: "15uyh6176",
+				hmiAddressExternal: "a4a4y43yq53",
+				tcpAddressExternal: "2742"
+			}]
+		};
+		var nginxFile = core.generateNginxFile(testData);
+		//there should be 4 server blocks. check for server_name as a string
+		var matches = nginxFile.match(/server_name/g);
+		assert(matches.length === 4, "there are 4 server blocks. found " + matches.length);
+	});
 
 });
