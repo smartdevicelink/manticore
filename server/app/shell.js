@@ -91,9 +91,9 @@ module.exports = {
 			//since SOME APPS have character limits (15) use a smaller random string generator for the TCP address
 			var func2 = randomString.generate.bind(undefined, options2);
 			const userToCoreAddress = core.getUniqueString(addresses, func2); //tcpAddress prefix
-			body.userToHmi = userToHmiAddress;
-			body.hmiToCore = hmiToCoreAddress;
-			body.userToCore = userToCoreAddress;
+			body.userToHmiPrefix = userToHmiAddress;
+			body.hmiToCorePrefix = hmiToCoreAddress;
+			body.userToCorePrefix = userToCoreAddress;
 			consuler.setKeyValue("manticore/" + userId, JSON.stringify(body));
 		});
 

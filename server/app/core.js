@@ -3,6 +3,7 @@ var fs = require('fs');
 var nginx = require('./NginxTemplate.js');
 var nomader = require('nomad-helper');
 var ip = require('ip');
+var config = require('../config.js');
 
 module.exports = {
 	expect: function (callbackNumber, callback) {
@@ -85,9 +86,9 @@ module.exports = {
 		if (keys !== undefined) {
 			for (let i = 0; i < keys.length; i++) {
 				let value = JSON.parse(keys[i].Value);
-				addresses.push(value.userToHmi);
-				addresses.push(value.hmiToCore);
-				addresses.push(value.userToCore);
+				addresses.push(value.userToHmiPrefix);
+				addresses.push(value.hmiToCorePrefix);
+				addresses.push(value.userToCorePrefix);
 			}
 		}
 		return addresses;
@@ -116,9 +117,9 @@ function addCoreGroup (job, userId, request) {
 	//also include the user, hmi, and tcp external addresses for nginx
 	job.addTag(groupName, "core-master", "core-master", userId);
 	job.addTag(groupName, "core-master", "core-master", "${NOMAD_PORT_tcp}");
-	job.addTag(groupName, "core-master", "core-master", request.userToHmi);
-	job.addTag(groupName, "core-master", "core-master", request.hmiToCore);
-	job.addTag(groupName, "core-master", "core-master", request.userToCore);
+	job.addTag(groupName, "core-master", "core-master", request.userToHmiPrefix);
+	job.addTag(groupName, "core-master", "core-master", request.hmiToCorePrefix);
+	job.addTag(groupName, "core-master", "core-master", request.userToCorePrefix);
 	job.setPortLabel(groupName, "core-master", "core-master", "hmi");
 }
 
@@ -131,7 +132,9 @@ function addHmiGroup (job, address, port, userId) {
 	job.addTask(groupName, "hmi-master");
 	job.setImage(groupName, "hmi-master", "crokita/discovery-sdl-hmi:master");
 	job.addPort(groupName, "hmi-master", true, "user", 8080);
-	job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", address + ":" + port);
+	//the address from the tags is just the prefix. add the domain/subdomain name too
+	var fullAddress = address + "." + config.domainName;
+	job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddress + ":" + port);
 	job.addService(groupName, "hmi-master", "hmi-master");
 	job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
 	//give hmi the same id as core so we know they're together

@@ -119,13 +119,13 @@ describe("#getAddressesFromUserRequests()", function () {
 			LockIndex: 0,
 			Key: 'manticore/1234567890abcdef',
 			Flags: 0,
-			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmi":"fr0231rj23t","hmiToCore":"t20tg84j3t","userToCore":"5410"}'
+			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmiPrefix":"fr0231rj23t","hmiToCorePrefix":"t20tg84j3t","userToCorePrefix":"5410"}'
 		},
 		{
 			LockIndex: 0,
 			Key: 'manticore/1234567890abcdef',
 			Flags: 0,
-			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmi":"g345yg36","hmiToCore":"2juh542q5jui6","userToCore":"9372"}'
+			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmiPrefix":"g345yg36","hmiToCorePrefix":"2juh542q5jui6","userToCorePrefix":"9372"}'
 		}];
 		var addresses = core.getAddressesFromUserRequests(testData);
 		assert(addresses.length === 6, "there are 6 addresses. found " + addresses.length);
