@@ -7,6 +7,7 @@ var config = require('../config.js');
 var uuid = require('node-uuid');
 var randomString = require('random-string');
 var exec = require('child_process').exec;
+var fs = require('fs');
 var nomadAddress;
 
 module.exports = {
@@ -59,11 +60,10 @@ module.exports = {
 			//create an nginx file and write it so that nginx notices it
 			//use the pairs because that has information about what addresses to use
 			var nginxFile = core.generateNginxFile(pairs);
-			//update nginx config file
-			exec("sudo cat " + nginxFile + " > /etc/nginx/conf.d/manticore.conf", function () {
+		    fs.writeFile("/etc/nginx/conf.d/manticore.conf", nginxFile, function(err) {
 		    	//done! restart nginx
-		    	exec("sudo service nginx reload", function () {});				
-			});
+		    	exec("sudo service nginx reload", function () {});
+		    }); 
 		});
 	},
 	requestCore: function (userId, body) {
