@@ -1,6 +1,7 @@
 var mocha = require('mocha');
 var assert = require('assert');
 var core = require('../app/core.js');
+var nomader = require('nomad-helper');
 
 describe("#expect()", function () {
 	it("should return an object with a send function to invoke", function () {
@@ -155,6 +156,16 @@ describe("#generateNginxFile()", function () {
 		//there should be 4 server blocks. check for server_name as a string
 		var matches = nginxFile.match(/server_name/g);
 		assert(matches.length === 4, "there are 4 server blocks. found " + matches.length);
+	});
+
+});
+
+describe("#addHmisToJob()", function () {
+	it("should create an hmi job based on the core job", function () {
+		var job = nomader.createJob("hmi");
+		var cores = "";
+		core.addHmisToJob(job, cores);
+		
 	});
 
 });

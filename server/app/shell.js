@@ -38,15 +38,10 @@ module.exports = {
 			//services updated. get information about core and hmi if possible
 			let cores = services.filter("core-master");
 			let hmis = services.filter("hmi-master");
+			console.log(cores);
 			//for every core service, ensure it has a corresponding HMI
 			var job = nomader.createJob("hmi");
-			for (let i = 0; i < cores.length; i++) {
-				//pass in the id of core, which should be the first tag
-				//also pass in what is repesenting the user in order to name the service
-				//pass in the external IP of core so that when the user tries to connect to it
-				//from outside the network nginx can route that IP address to the correct internal one
-				core.addHmiGroup(job, cores[i].Tags[3], 3000, cores[i].Tags[0]);
-			}	
+			core.addHmisToJob(job, cores);
 			//submit the job
 			job.submitJob(nomadAddress, function () {});
 			var pairs = core.findPairs(cores, hmis);
