@@ -88,7 +88,7 @@ module.exports = {
 				special: false
 			}
 
-			var func1 = randomString.bind(undefined, options);
+			var func1 = randomString.bind(undefined, options1);
 			const userToHmiAddress = core.getUniqueString(addresses, func1); //userAddress prefix
 			const hmiToCoreAddress = core.getUniqueString(addresses, func1); //hmiAddress prefix
 			//since SOME APPS have character limits (15) use a smaller random string generator for the TCP address
