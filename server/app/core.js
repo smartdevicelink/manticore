@@ -80,8 +80,15 @@ module.exports = {
 		}
 	},
 	getAddressesFromUserRequests: function (keys) {
-		console.log(keys);
-		return [];
+		var addresses = [];
+		for (let i = 0; i < keys.length; i++) {
+			let value = JSON.parse(keys[i].Value);
+			addresses.push(value.userToHmi);
+			addresses.push(value.hmiToCore);
+			addresses.push(value.userToCore);
+		}
+
+		return addresses;
 	}
 }
 
