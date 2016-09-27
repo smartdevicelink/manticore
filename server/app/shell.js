@@ -49,6 +49,8 @@ module.exports = {
 			};
 			//post all pairs at once
 			console.log(pairs);
+			console.log(cores);
+			console.log(hmis);
 			needle.post(postUrl, pairs, function (err, res) {
 			});
 			//create an nginx file and write it so that nginx notices it
