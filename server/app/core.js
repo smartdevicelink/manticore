@@ -161,6 +161,7 @@ function addHmiGenericGroup (job, address, port, userId) {
 	job.addPort(groupName, "hmi-master", true, "user", 3000);
 	//the address from the tags is just the prefix. add the domain/subdomain name too
 	var fullAddress = address + "." + config.domainName;
+	console.log(fullAddress);
 	job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddress + ":" + port);
 	job.addService(groupName, "hmi-master", "hmi-master");
 	job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
