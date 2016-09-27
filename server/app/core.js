@@ -60,7 +60,8 @@ module.exports = {
 			//pass in what is repesenting the user in order to name the service
 			//pass in the external address prefix of core so that when the user tries to connect to it
 			//from outside the network nginx can route that IP address to the correct internal one
-			addHmiGroup(job, cores[i].Tags[3], 3000, cores[i].Tags[0]);
+			//addHmiFordGroup(job, cores[i].Tags[3], 3000, cores[i].Tags[0]);
+			addHmiGenericGroup(job, cores[i].Tags[3], 3000, cores[i].Tags[0]);
 		}	
 	},
 	generateNginxFile: function (pairs) {
@@ -130,7 +131,7 @@ function addCoreGroup (job, userId, request) {
 	job.setPortLabel(groupName, "core-master", "core-master", "hmi");
 }
 
-function addHmiGroup (job, address, port, userId) {
+function addHmiFordGroup (job, address, port, userId) {
 	//this adds a group for a user so that another hmi will be created
 	//since each group name must be different make the name based off of the user id
 	//hmi-<userId>
@@ -139,6 +140,25 @@ function addHmiGroup (job, address, port, userId) {
 	job.addTask(groupName, "hmi-master");
 	job.setImage(groupName, "hmi-master", "crokita/discovery-sdl-hmi:master");
 	job.addPort(groupName, "hmi-master", true, "user", 8080);
+	//the address from the tags is just the prefix. add the domain/subdomain name too
+	var fullAddress = address + "." + config.domainName;
+	job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddress + ":" + port);
+	job.addService(groupName, "hmi-master", "hmi-master");
+	job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
+	//give hmi the same id as core so we know they're together
+	job.addTag(groupName, "hmi-master", "hmi-master", userId);
+	return job;
+}
+
+function addHmiGenericGroup (job, address, port, userId) {
+	//this adds a group for a user so that another hmi will be created
+	//since each group name must be different make the name based off of the user id
+	//hmi-<userId>
+	var groupName = "hmi-" + userId;
+	job.addGroup(groupName);
+	job.addTask(groupName, "hmi-master");
+	job.setImage(groupName, "hmi-master", "crokita/discovery-generic-hmi:master");
+	job.addPort(groupName, "hmi-master", true, "user", 3000);
 	//the address from the tags is just the prefix. add the domain/subdomain name too
 	var fullAddress = address + "." + config.domainName;
 	job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddress + ":" + port);
