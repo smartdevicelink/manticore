@@ -107,10 +107,10 @@ module.exports = {
 		//get the core job allocations
 		needle.get('http://' + ip.address() + ':4646/v1/job/core/allocations', null, function (err, res) {
 			if (res) {
-				//get the first allocation of core
+				//get the last allocation of core
 				console.log(res.body.length);
-				console.log(res.body[0]);
-				console.log(res.body[0]["TaskStates"]["core-master"]);
+				console.log(res.body[res.body.length - 1]);
+				console.log(res.body[res.body.length - 1]["TaskStates"]["core-master"]);
 			}
 			
 		});
