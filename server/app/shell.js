@@ -23,9 +23,7 @@ module.exports = {
 			//set up an expectation that we want the values of <keys.length> keys.
 			//send a callback function about what to do once we get all the values
 			var expecting = core.expect(keys.length, function (job) {
-				job.submitJob(nomadAddress, function (result){
-					console.log(result);
-				});
+				job.submitJob(nomadAddress, function (result){});
 			});
 			for (let i = 0; i < keys.length; i++) {
 				//go through each key and get their value. send the value to expecting
