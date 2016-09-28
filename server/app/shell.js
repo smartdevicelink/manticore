@@ -20,7 +20,6 @@ module.exports = {
 	startWatches: function (postUrl) {
 		//set a watch for the KV store
 		consuler.watchKVStore("manticore", function (keys) {
-			console.log("haha i found things");
 			//set up an expectation that we want the values of <keys.length> keys.
 			//send a callback function about what to do once we get all the values
 			var expecting = core.expect(keys.length, function (job) {
