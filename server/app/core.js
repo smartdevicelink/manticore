@@ -115,6 +115,9 @@ function addCoreGroup (job, userId, request) {
 	//core-<userId>
 	var groupName = "core-" + userId;
 	job.addGroup(groupName);
+	//set the restart policy of core so that if it dies once, it's gone for good
+	//attempts number should be 0. interval and delay don't matter since task is in fail mode
+	job.setRestartPolicy(groupName, "1m", 0, "1m", "fail");
 	job.addTask(groupName, "core-master");
 	job.setImage(groupName, "core-master", "crokita/discovery-core:master");
 	job.addPort(groupName, "core-master", true, "hmi", 8087);
@@ -137,6 +140,9 @@ function addHmiFordGroup (job, address, port, userId) {
 	//hmi-<userId>
 	var groupName = "hmi-" + userId;
 	job.addGroup(groupName);
+	//set the restart policy of core so that if it dies once, it's gone for good
+	//attempts number should be 0. interval and delay don't matter since task is in fail mode
+	job.setRestartPolicy(groupName, "1m", 0, "1m", "fail");
 	job.addTask(groupName, "hmi-master");
 	job.setImage(groupName, "hmi-master", "crokita/discovery-sdl-hmi:master");
 	job.addPort(groupName, "hmi-master", true, "user", 8080);
