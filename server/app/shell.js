@@ -20,6 +20,7 @@ module.exports = {
 	startWatches: function (postUrl) {
 		//set a watch for the KV store
 		consuler.watchKVStore("manticore", function (keys) {
+			console.log("haha i found things");
 			//set up an expectation that we want the values of <keys.length> keys.
 			//send a callback function about what to do once we get all the values
 			var expecting = core.expect(keys.length, function (job) {
@@ -68,7 +69,6 @@ module.exports = {
 		//of core and hmi
 		//generate random letters and numbers for the user and hmi addresses
 		//get all keys in the KV store and find their external address prefixes
-		console.log("request core");
 		consuler.getKeyAll("manticore", function (results) {
 			var addresses = core.getAddressesFromUserRequests(results);
 			var options1 = {
@@ -90,7 +90,6 @@ module.exports = {
 			body.userToHmiPrefix = userToHmiAddress;
 			body.hmiToCorePrefix = hmiToCoreAddress;
 			body.userToCorePrefix = userToCoreAddress;
-			console.log("set those values");
 			consuler.setKeyValue("manticore/" + userId, JSON.stringify(body));
 		});
 
