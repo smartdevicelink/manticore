@@ -8,6 +8,7 @@ var uuid = require('node-uuid');
 var randomString = require('randomstring');
 var exec = require('child_process').exec;
 var fs = require('fs');
+var ip = require('ip');
 var nomadAddress;
 
 module.exports = {
@@ -100,6 +101,18 @@ module.exports = {
 	deleteJob: function (jobName, callback) {
 		nomader.deleteJob(jobName, nomadAddress, function () {
 			callback();
+		});
+	},
+	checkCore: function () {
+		//get the core job allocations
+		needle.get('http://' + ip.address() + ':4646/v1/job/core/allocations', null, function (err, res) {
+			if (res) {
+				//get the first allocation of core
+				console.log(res.body.length);
+				console.log(res.body[0]);
+				console.log(res.body[0]["TaskStates"]["core-master"]);
+			}
+			
 		});
 	}
 }

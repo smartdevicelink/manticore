@@ -18,6 +18,13 @@ module.exports = function (app) {
 		res.sendStatus(200);
 	});
 
+	app.post('/v1/check', function (req, res) {
+		//pretend we have some unique identifier for the client so that
+		//we know which client wants what core
+		shell.checkCore();
+		res.sendStatus(200);
+	});
+
 	//get a list of HMIs and their branches
 	app.get('/v1/hmis', function (req, res) {
 		let hmis = {
