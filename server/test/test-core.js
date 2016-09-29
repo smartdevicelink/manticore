@@ -93,6 +93,44 @@ describe("#findPairs()", function () {
 		assert(pairs[1].hmiAddressExternal === "hmiToCore3");
 		assert(pairs[1].tcpAddressExternal === "userToCore3");
 	});
+
+	it("should invoke callback for every HMI not paired with core", function (done) {
+		var cores = [{
+			Address: "127.0.0.1",
+			Port: "1211",
+			Tags: ["userId1", "44300", "userToHmi1", "hmiToCore1", "userToCore1"]
+		},
+		{
+			Address: "127.0.0.2",
+			Port: "1212",
+			Tags: ["userId3", "12345", "userToHmi2", "hmiToCore2", "userToCore2"]
+		},
+		{
+			Address: "127.0.0.3",
+			Port: "1213",
+			Tags: ["userId2", "25252", "userToHmi3", "hmiToCore3", "userToCore3"]
+		}];
+		var hmis = [{
+			Address: "127.0.0.4",
+			Port: "8687",
+			Tags: ["userId1"]
+		},
+		{
+			Address: "127.0.0.5",
+			Port: "1234",
+			Tags: ["userId2"]
+		},
+		{
+			Address: "127.0.0.6",
+			Port: "2345",
+			Tags: ["userId4"]
+		}];
+		var pairs = core.findPairs(cores, hmis, function (userId) {
+			assert(userId === "userId4", "userId4 has no core pair. Found " + userId);
+			done();
+		});
+
+	});
 });
 
 describe("#getUniqueString()", function () {

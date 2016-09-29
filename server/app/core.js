@@ -23,7 +23,7 @@ module.exports = {
 			}
 		}
 	},
-	findPairs: function (cores, hmis) {
+	findPairs: function (cores, hmis, callback) {
 		//for each HMI found, find its paired core, determine who that core belongs to, 
 		//and send the connection information to the owner
 		//we search through HMIs because HMIs depend on cores, and there could be a core
@@ -51,6 +51,18 @@ module.exports = {
 					tcpAddressExternal: corePair.Tags[4]
 				}
 				pairs.push(body);
+			}
+			else {
+				//an HMI doesn't have a corresponding core
+				//cores are made first, then corresponding HMIs
+				//this means that core has died while the two were connected
+				//should only happen if the user disconnected from the webpage and the
+				//shutdown signal was sent from HMI to core to kill it
+				//interpret this as the user being done with the pair and send back
+				//the id of the user from the request to be removed from the KV store
+				if (typeof callback === "function") {
+					callback(hmis[i].Tags[0]);
+				}
 			}
 		}
 		return pairs;

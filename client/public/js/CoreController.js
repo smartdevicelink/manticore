@@ -13,9 +13,3 @@ function requestInstance() {
 		console.log(data);
 	});
 }
-
-function checkCoreEvents() {
-	$.post('/v1/check', body, function (data) {
-		console.log(data);
-	});
-}

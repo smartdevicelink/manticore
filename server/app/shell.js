@@ -44,7 +44,10 @@ module.exports = {
 			core.addHmisToJob(job, cores);
 			//submit the job
 			job.submitJob(nomadAddress, function () {});
-			var pairs = core.findPairs(cores, hmis);
+			var pairs = core.findPairs(cores, hmis, function (userId) {
+				//remove user from KV store 
+				consuler.delKey("manticore/" + userId, function () {});
+			});
 			pairs = {
 				pairs: pairs
 			};
@@ -54,6 +57,7 @@ module.exports = {
 			});
 			//create an nginx file and write it so that nginx notices it
 			//use the pairs because that has information about what addresses to use
+			//NOTE: the user that runs manticore should own this directory or it may not write to the file!
 			var nginxFile = core.generateNginxFile(pairs);
 		    fs.writeFile("/etc/nginx/conf.d/manticore.conf", nginxFile, function(err) {
 		    	//done! restart nginx
@@ -102,8 +106,8 @@ module.exports = {
 		nomader.deleteJob(jobName, nomadAddress, function () {
 			callback();
 		});
-	},
-	checkCore: function () {
+	}
+	/*checkCore: function () {
 		//get the core job allocations
 		needle.get('http://' + ip.address() + ':4646/v1/job/core/allocations', null, function (err, res) {
 			if (res) {
@@ -114,5 +118,5 @@ module.exports = {
 			}
 			
 		});
-	}
+	}*/
 }
