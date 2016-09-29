@@ -2,7 +2,6 @@ var mocha = require('mocha');
 var assert = require('assert');
 var core = require('../app/core.js');
 var nomader = require('nomad-helper');
-var config = require('../config.js')
 
 describe("#expect()", function () {
 	it("should return an object with a send function to invoke", function () {
@@ -218,8 +217,8 @@ describe("#addHmisToJob()", function () {
 		var env2 = job.findTask("hmi-userId3", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
 		var tag1 = job.findTask("hmi-userId1", "hmi-master").Services[0].Tags[0];
 		var tag2 = job.findTask("hmi-userId3", "hmi-master").Services[0].Tags[0];
-		assert(env1 === "hmiToCore1." + config.domainName + ":3000");
-		assert(env2 === "hmiToCore2." + config.domainName + ":3000");
+		assert(env1 === "hmiToCore1." + process.env.DOMAIN_NAME + ":3000");
+		assert(env2 === "hmiToCore2." + process.env.DOMAIN_NAME + ":3000");
 		assert(tag1 === cores[0].Tags[0]);
 		assert(tag2 === cores[1].Tags[0]);
 	});

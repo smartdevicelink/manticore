@@ -3,7 +3,6 @@ var fs = require('fs');
 var nginx = require('./NginxTemplate.js');
 var nomader = require('nomad-helper');
 var ip = require('ip');
-var config = require('../config.js');
 
 module.exports = {
 	expect: function (callbackNumber, callback) {
@@ -159,7 +158,7 @@ function addHmiFordGroup (job, address, port, userId) {
 	job.setImage(groupName, "hmi-master", "crokita/discovery-sdl-hmi:master");
 	job.addPort(groupName, "hmi-master", true, "user", 8080);
 	//the address from the tags is just the prefix. add the domain/subdomain name too
-	var fullAddress = address + "." + config.domainName;
+	var fullAddress = address + "." + process.env.DOMAIN_NAME;
 	job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddress + ":" + port);
 	job.addService(groupName, "hmi-master", "hmi-master");
 	job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
@@ -178,7 +177,7 @@ function addHmiGenericGroup (job, address, port, userId) {
 	job.setImage(groupName, "hmi-master", "crokita/discovery-generic-hmi:master");
 	job.addPort(groupName, "hmi-master", true, "user", 3000);
 	//the address from the tags is just the prefix. add the domain/subdomain name too
-	var fullAddress = address + "." + config.domainName;
+	var fullAddress = address + "." + process.env.DOMAIN_NAME;
 	job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddress + ":" + port);
 	job.addService(groupName, "hmi-master", "hmi-master");
 	job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");

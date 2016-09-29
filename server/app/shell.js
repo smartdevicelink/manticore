@@ -3,7 +3,6 @@ var consuler;
 var nomader = require('nomad-helper');
 var core = require('./core.js');
 var needle = require('needle');
-var config = require('../config.js');
 var uuid = require('node-uuid');
 var randomString = require('randomstring');
 var exec = require('child_process').exec;

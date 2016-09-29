@@ -1,5 +1,3 @@
-var config = require('../config.js');
-
 module.exports = function () {
     return new NginxTemplate();
 }
@@ -27,7 +25,7 @@ NginxTemplate.prototype.server = function (port, isDefault, prefix, proxyAddr, i
     var serverString = `
 server {
     listen ${port} ${defaultString};
-    server_name ${prefixString}${config.domainName};
+    server_name ${prefixString}${process.env.DOMAIN_NAME};
     location / {`;
 
     this.file += serverString;
