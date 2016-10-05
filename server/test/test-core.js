@@ -30,50 +30,85 @@ describe("#expect()", function () {
 
 describe("#findPairs()", function () {
 	it("should return an empty array if no pairs are found", function () {
+		let coreTagObj = {
+			userId: "userId",
+			tcpPort: "44300",
+			userToHmiPrefix: "userToHmi1",
+			hmiToCorePrefix: "hmiToCore1",
+			userToCorePrefix: "userToCore1"
+		};
+		let hmiTagObj = {
+			userId: "userId2"
+		};
 		var cores = [{
 			Address: "127.0.0.1",
-			Tags: ["userId", "44300", "userToHmi1", "hmiToCore1", "userToCore1"]
+			Tags: [JSON.stringify(coreTagObj)]
 		}];
 		var hmis = [{
 			Address: "127.0.0.1",
 			Port: "8687",
-			Tags: ["userId2"]
+			Tags: [JSON.stringify(hmiTagObj)]
 		}];
 		var pairs = core.findPairs(cores, hmis);
 		assert(pairs.length === 0, "There are no pairs. Found " + pairs.length);
 	});
 
+	//use this data for the next two tests
+	let coreTagObj1 = {
+		userId: "userId1",
+		tcpPort: "44300",
+		userToHmiPrefix: "userToHmi1",
+		hmiToCorePrefix: "hmiToCore1",
+		userToCorePrefix: "userToCore1"
+	};
+	let coreTagObj2 = {
+		userId: "userId3",
+		tcpPort: "12345",
+		userToHmiPrefix: "userToHmi2",
+		hmiToCorePrefix: "hmiToCore2",
+		userToCorePrefix: "userToCore2"
+	};
+	let coreTagObj3 = {
+		userId: "userId2",
+		tcpPort: "25252",
+		userToHmiPrefix: "userToHmi3",
+		hmiToCorePrefix: "hmiToCore3",
+		userToCorePrefix: "userToCore3"
+	};
+	let hmiTagObj1 = {userId: "userId1"};
+	let hmiTagObj2 = {userId: "userId2"};
+	let hmiTagObj3 = {userId: "userId4"};
+	let cores = [{
+		Address: "127.0.0.1",
+		Port: "1211",
+		Tags: [JSON.stringify(coreTagObj1)]
+	},
+	{
+		Address: "127.0.0.2",
+		Port: "1212",
+		Tags: [JSON.stringify(coreTagObj2)]
+	},
+	{
+		Address: "127.0.0.3",
+		Port: "1213",
+		Tags: [JSON.stringify(coreTagObj3)]
+	}];
+	let hmis = [{
+		Address: "127.0.0.4",
+		Port: "8687",
+		Tags: [JSON.stringify(hmiTagObj1)]
+	},
+	{
+		Address: "127.0.0.5",
+		Port: "1234",
+		Tags: [JSON.stringify(hmiTagObj2)]
+	},
+	{
+		Address: "127.0.0.6",
+		Port: "2345",
+		Tags: [JSON.stringify(hmiTagObj3)]
+	}];
 	it("should return 2 pairs that are found", function () {
-		var cores = [{
-			Address: "127.0.0.1",
-			Port: "1211",
-			Tags: ["userId1", "44300", "userToHmi1", "hmiToCore1", "userToCore1"]
-		},
-		{
-			Address: "127.0.0.2",
-			Port: "1212",
-			Tags: ["userId3", "12345", "userToHmi2", "hmiToCore2", "userToCore2"]
-		},
-		{
-			Address: "127.0.0.3",
-			Port: "1213",
-			Tags: ["userId2", "25252", "userToHmi3", "hmiToCore3", "userToCore3"]
-		}];
-		var hmis = [{
-			Address: "127.0.0.4",
-			Port: "8687",
-			Tags: ["userId1"]
-		},
-		{
-			Address: "127.0.0.5",
-			Port: "1234",
-			Tags: ["userId2"]
-		},
-		{
-			Address: "127.0.0.6",
-			Port: "2345",
-			Tags: ["userId4"]
-		}];
 		var pairs = core.findPairs(cores, hmis);
 		assert(pairs.length === 2, "There are 2 pairs. Found " + pairs.length);
 		assert(pairs[0].user === "userId1");
@@ -94,36 +129,6 @@ describe("#findPairs()", function () {
 	});
 
 	it("should invoke callback for every HMI not paired with core", function (done) {
-		var cores = [{
-			Address: "127.0.0.1",
-			Port: "1211",
-			Tags: ["userId1", "44300", "userToHmi1", "hmiToCore1", "userToCore1"]
-		},
-		{
-			Address: "127.0.0.2",
-			Port: "1212",
-			Tags: ["userId3", "12345", "userToHmi2", "hmiToCore2", "userToCore2"]
-		},
-		{
-			Address: "127.0.0.3",
-			Port: "1213",
-			Tags: ["userId2", "25252", "userToHmi3", "hmiToCore3", "userToCore3"]
-		}];
-		var hmis = [{
-			Address: "127.0.0.4",
-			Port: "8687",
-			Tags: ["userId1"]
-		},
-		{
-			Address: "127.0.0.5",
-			Port: "1234",
-			Tags: ["userId2"]
-		},
-		{
-			Address: "127.0.0.6",
-			Port: "2345",
-			Tags: ["userId4"]
-		}];
 		var pairs = core.findPairs(cores, hmis, function (userId) {
 			assert(userId === "userId4", "userId4 has no core pair. Found " + userId);
 			done();
@@ -199,28 +204,90 @@ describe("#generateNginxFile()", function () {
 });
 
 describe("#addHmisToJob()", function () {
-	it("should create an hmi job based on the core job", function () {
+	it("should create an hmi job based on the core job when NGINX_OFF isn't true", function () {
+		process.env.NGINX_OFF = "";
+		let coreTagObj1 = {
+			userId: "userId1",
+			tcpPort: "44300",
+			userToHmiPrefix: "userToHmi1",
+			hmiToCorePrefix: "hmiToCore1",
+			userToCorePrefix: "userToCore1"
+		};
+		let coreTagObj2 = {
+			userId: "userId3",
+			tcpPort: "12345",
+			userToHmiPrefix: "userToHmi2",
+			hmiToCorePrefix: "hmiToCore2",
+			userToCorePrefix: "userToCore2"
+		};
 		var job = nomader.createJob("hmi");
 		var cores = [{
 			Address: "127.0.0.1",
 			Port: "1211",
-			Tags: ["userId1", "44300", "userToHmi1", "hmiToCore1", "userToCore1"]
+			Tags: [JSON.stringify(coreTagObj1)]
 		},
 		{
 			Address: "127.0.0.2",
 			Port: "1212",
-			Tags: ["userId3", "12345", "userToHmi2", "hmiToCore2", "userToCore2"]
+			Tags: [JSON.stringify(coreTagObj2)]
 		}];
 		core.addHmisToJob(job, cores);
-		//check env and tag for each hmi task
+		//check env and userId in tag for each hmi task
 		var env1 = job.findTask("hmi-userId1", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
 		var env2 = job.findTask("hmi-userId3", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
 		var tag1 = job.findTask("hmi-userId1", "hmi-master").Services[0].Tags[0];
 		var tag2 = job.findTask("hmi-userId3", "hmi-master").Services[0].Tags[0];
-		assert(env1 === "hmiToCore1." + process.env.DOMAIN_NAME + ":3000");
-		assert(env2 === "hmiToCore2." + process.env.DOMAIN_NAME + ":3000");
-		assert(tag1 === cores[0].Tags[0]);
-		assert(tag2 === cores[1].Tags[0]);
+		assert.equal(env1, "hmiToCore1." + process.env.DOMAIN_NAME + ":3000");
+		assert.equal(env2, "hmiToCore2." + process.env.DOMAIN_NAME + ":3000");
+		assert.equal(JSON.parse(tag1).userId, JSON.parse(cores[0].Tags[0]).userId);
+		assert.equal(JSON.parse(tag2).userId, JSON.parse(cores[1].Tags[0]).userId);
 	});
 
+	it("should create an hmi job based on the core job when NGINX_OFF is true", function () {
+		process.env.NGINX_OFF = "true";
+		let coreTagObj1 = {
+			userId: "userId1",
+			tcpPort: "44300",
+			userToHmiPrefix: "userToHmi1",
+			hmiToCorePrefix: "hmiToCore1",
+			userToCorePrefix: "userToCore1"
+		};
+		let coreTagObj2 = {
+			userId: "userId3",
+			tcpPort: "12345",
+			userToHmiPrefix: "userToHmi2",
+			hmiToCorePrefix: "hmiToCore2",
+			userToCorePrefix: "userToCore2"
+		};
+		var job = nomader.createJob("hmi");
+		var cores = [{
+			Address: "127.0.0.1",
+			Port: "1211",
+			Tags: [JSON.stringify(coreTagObj1)]
+		},
+		{
+			Address: "127.0.0.2",
+			Port: "1212",
+			Tags: [JSON.stringify(coreTagObj2)]
+		}];
+		core.addHmisToJob(job, cores);
+		//check env and userId in tag for each hmi task
+		var env1 = job.findTask("hmi-userId1", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
+		var env2 = job.findTask("hmi-userId3", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
+		var tag1 = job.findTask("hmi-userId1", "hmi-master").Services[0].Tags[0];
+		var tag2 = job.findTask("hmi-userId3", "hmi-master").Services[0].Tags[0];
+		assert.equal(env1, cores[0].Address+":"+cores[0].Port);
+		assert.equal(env2, cores[1].Address+":"+cores[1].Port);
+		assert.equal(JSON.parse(tag1).userId, JSON.parse(cores[0].Tags[0]).userId);
+		assert.equal(JSON.parse(tag2).userId, JSON.parse(cores[1].Tags[0]).userId);
+	});
+});
+
+describe("#checkNginxFlag()", function () {
+	it("should invoke a function if NGINX_OFF is not set to 'true' as an env variable", function (done) {
+		process.env.NGINX_OFF = ""; //force it
+		core.checkNginxFlag(function () {
+			done();
+		});
+	});
 });

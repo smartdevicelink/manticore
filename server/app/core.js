@@ -30,9 +30,11 @@ module.exports = {
 		var pairs = [];
 		for (let i = 0; i < hmis.length; i++) {
 			let corePair = undefined;
+			let hmiTagObj = JSON.parse(hmis[i].Tags[0]);
 			for (let j = 0; j < cores.length; j++) {
 				//check if there is a pair using the user id
-				if (hmis[i].Tags[0] === cores[j].Tags[0]) {
+				let coreTagObj = JSON.parse(cores[j].Tags[0]);
+				if (hmiTagObj.userId === coreTagObj.userId) {
 					corePair = cores[j];
 					j = cores.length; //break out of the loop
 				}
@@ -40,14 +42,15 @@ module.exports = {
 			if (corePair) {
 				//parse the name of the service to get just the user id
 				//the pair should have the same userId as the first tag string
+				let coreTagObj = JSON.parse(corePair.Tags[0]);
 				let body = {
-					user: hmis[i].Tags[0],
+					user: hmiTagObj.userId,
 					userAddressInternal: hmis[i].Address + ":" + hmis[i].Port,
 					hmiAddressInternal: corePair.Address + ":" + corePair.Port,
-					tcpAddressInternal: corePair.Address + ":" + corePair.Tags[1],
-					userAddressExternal: corePair.Tags[2],
-					hmiAddressExternal: corePair.Tags[3],
-					tcpAddressExternal: corePair.Tags[4]
+					tcpAddressInternal: corePair.Address + ":" + coreTagObj.tcpPort,
+					userAddressExternal: coreTagObj.userToHmiPrefix,
+					hmiAddressExternal: coreTagObj.hmiToCorePrefix,
+					tcpAddressExternal: coreTagObj.userToCorePrefix
 				}
 				pairs.push(body);
 			}
@@ -60,7 +63,7 @@ module.exports = {
 				//interpret this as the user being done with the pair and send back
 				//the id of the user from the request to be removed from the KV store
 				if (typeof callback === "function") {
-					callback(hmis[i].Tags[0]);
+					callback(hmiTagObj.userId);
 				}
 			}
 		}
@@ -71,8 +74,7 @@ module.exports = {
 			//pass in what is repesenting the user in order to name the service
 			//pass in the external address prefix of core so that when the user tries to connect to it
 			//from outside the network nginx can route that IP address to the correct internal one
-			//addHmiFordGroup(job, cores[i].Tags[3], 3000, cores[i].Tags[0]);
-			addHmiGenericGroup(job, cores[i].Tags[3], 3000, cores[i].Tags[0]);
+			addHmiGenericGroup(job, cores[i], 3000);
 		}	
 	},
 	generateNginxFile: function (pairs) {
@@ -111,6 +113,12 @@ module.exports = {
 			}
 		}
 		return addresses;
+	},
+	checkNginxFlag: function (callback) {
+		//invoke the callback function only if NGINX_OFF is not set to "true"
+		if (process.env.NGINX_OFF !== "true") {
+			callback();
+		}
 	}
 }
 
@@ -137,51 +145,55 @@ function addCoreGroup (job, userId, request) {
 	job.addService(groupName, "core-master", "core-master");
 	//include the userId's tag for ID purposes
 	//also include the user, hmi, and tcp external addresses for nginx
-	job.addTag(groupName, "core-master", "core-master", userId);
-	job.addTag(groupName, "core-master", "core-master", "${NOMAD_PORT_tcp}");
-	job.addTag(groupName, "core-master", "core-master", request.userToHmiPrefix);
-	job.addTag(groupName, "core-master", "core-master", request.hmiToCorePrefix);
-	job.addTag(groupName, "core-master", "core-master", request.userToCorePrefix);
+	//store all this information into one tag as a stringified JSON
+	var obj = {
+		userId: userId,
+		tcpPort: "${NOMAD_PORT_tcp}",
+		userToHmiPrefix: request.userToHmiPrefix,
+		hmiToCorePrefix: request.hmiToCorePrefix,
+		userToCorePrefix: request.userToCorePrefix
+	};
+	job.addTag(groupName, "core-master", "core-master", JSON.stringify(obj));
 	job.setPortLabel(groupName, "core-master", "core-master", "hmi");
 }
 
-function addHmiFordGroup (job, address, port, userId) {
-	//this adds a group for a user so that another hmi will be created
-	//since each group name must be different make the name based off of the user id
-	//hmi-<userId>
-	var groupName = "hmi-" + userId;
-	job.addGroup(groupName);
-	//set the restart policy of core so that if it dies once, it's gone for good
-	//attempts number should be 0. interval and delay don't matter since task is in fail mode
-	job.setRestartPolicy(groupName, 60000000000, 0, 60000000000, "fail");
-	job.addTask(groupName, "hmi-master");
-	job.setImage(groupName, "hmi-master", "crokita/discovery-sdl-hmi:master");
-	job.addPort(groupName, "hmi-master", true, "user", 8080);
-	//the address from the tags is just the prefix. add the domain/subdomain name too
-	var fullAddress = address + "." + process.env.DOMAIN_NAME;
-	job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddress + ":" + port);
-	job.addService(groupName, "hmi-master", "hmi-master");
-	job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
-	//give hmi the same id as core so we know they're together
-	job.addTag(groupName, "hmi-master", "hmi-master", userId);
-	return job;
-}
+function addHmiGenericGroup (job, core, nginxPort) {
+	//parse the JSON from the tag
+	var tagObj = JSON.parse(core.Tags[0]);
 
-function addHmiGenericGroup (job, address, port, userId) {
 	//this adds a group for a user so that another hmi will be created
 	//since each group name must be different make the name based off of the user id
 	//hmi-<userId>
-	var groupName = "hmi-" + userId;
+	var groupName = "hmi-" + tagObj.userId;
 	job.addGroup(groupName);
 	job.addTask(groupName, "hmi-master");
 	job.setImage(groupName, "hmi-master", "crokita/discovery-generic-hmi:master");
 	job.addPort(groupName, "hmi-master", true, "user", 3000);
-	//the address from the tags is just the prefix. add the domain/subdomain name too
-	var fullAddress = address + "." + process.env.DOMAIN_NAME;
-	job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddress + ":" + port);
+
+	//the address to pass into HMI will depend on whether the NGINX_OFF flag is on
+	//by default, use the external addresses so that nginx routes users to the HMI correctly
+	//if NGINX_OFF is true, then give the HMI the internal address of core and connect that way
+	//NGINX_OFF being true assumes everything is accessible on the same network and should only
+	//be used for the ease of local development
+
+	if (process.env.NGINX_OFF !== "true") { //nginx enabled
+		//the address from the tags is just the prefix. add the domain/subdomain name too
+		var fullAddress = tagObj.hmiToCorePrefix + "." + process.env.DOMAIN_NAME;
+		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddress + ":" + nginxPort);
+	}
+	else { //no nginx
+		//directly connect to core
+		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", core.Address + ":" + core.Port);
+	}
+
 	job.addService(groupName, "hmi-master", "hmi-master");
 	job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
+
 	//give hmi the same id as core so we know they're together
-	job.addTag(groupName, "hmi-master", "hmi-master", userId);
+	var obj = {
+		userId: tagObj.userId
+	};
+	
+	job.addTag(groupName, "hmi-master", "hmi-master", JSON.stringify(obj));
 	return job;
 }

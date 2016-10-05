@@ -16,6 +16,7 @@ app.use(express.static(rootLocation));
 
 //load the environment variables from the .env file in the same directory
 require('dotenv').config();
+
 //start the server
 (function () {
     var server = http.listen(process.env.HTTP_PORT, function () {

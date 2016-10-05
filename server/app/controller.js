@@ -1,6 +1,5 @@
 //the client needs an agent to connect to so that it may access consul services
 //supply a host IP address
-var core = require('./core.js');
 var shell = require('./shell.js');
 var uuid = require('node-uuid');
 

@@ -14,20 +14,21 @@ app.use(bodyParser.json()); //allow json parsing
 //for parsing application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({extended: true})); 
 var http = require('http').Server(app);
+process.env.NGINX_OFF = "true"; //turn off nginx flag for this test
 
 describe("Job Submitter", function () {
 	before(function (done) { 
 		shell.init(ip.address());
-		http.listen(4000, function () {
-			functionite()
-				.to(shell.deleteKey, "manticore/jimmy")
-				.to(shell.deleteKey, "manticore/susan")
-				.to(shell.deleteJob, "core")
-				.to(shell.deleteJob, "hmi")
-				.then(function (results) {
-					done();
-				});
-		});
+		functionite()
+			.toss(http.listen, 4000).with(http)
+			.toss(shell.deleteKey, "manticore/jimmy")
+			.toss(shell.deleteKey, "manticore/susan")
+			.toss(shell.deleteJob, "core")
+			.toss(shell.deleteJob, "hmi")
+			.toss(function () {
+				done();
+			})
+			.go();
 	});
 
 	it("should post paired cores to the given url after requests are sent", function (done) {
@@ -70,12 +71,13 @@ describe("Job Submitter", function () {
 
 	after(function (done) {
 		functionite()
-			.to(shell.deleteKey, "manticore/jimmy")
-			.to(shell.deleteKey, "manticore/susan")
-			.to(shell.deleteJob, "core")
-			.to(shell.deleteJob, "hmi")
-			.then(function () {
+			.toss(shell.deleteKey, "manticore/jimmy")
+			.toss(shell.deleteKey, "manticore/susan")
+			.toss(shell.deleteJob, "core")
+			.toss(shell.deleteJob, "hmi")
+			.toss(function () {
 				done();
-			});
+			})
+			.go();
 	});
 });

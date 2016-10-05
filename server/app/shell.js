@@ -54,14 +54,18 @@ module.exports = {
 			console.log(pairs);
 			needle.post(postUrl, pairs, function (err, res) {
 			});
-			//create an nginx file and write it so that nginx notices it
-			//use the pairs because that has information about what addresses to use
-			//NOTE: the user that runs manticore should own this directory or it may not write to the file!
-			var nginxFile = core.generateNginxFile(pairs);
-		    fs.writeFile("/etc/nginx/conf.d/manticore.conf", nginxFile, function(err) {
-		    	//done! restart nginx
-		    	exec("sudo service nginx reload", function () {});
-		    }); 
+
+			//if NGINX_OFF was not set to "true". write the file and reload nginx
+			core.checkNginxFlag(function () {
+				//create an nginx file and write it so that nginx notices it
+				//use the pairs because that has information about what addresses to use
+				//NOTE: the user that runs manticore should own this directory or it may not write to the file!
+				var nginxFile = core.generateNginxFile(pairs);
+			    fs.writeFile("/etc/nginx/conf.d/manticore.conf", nginxFile, function(err) {
+			    	//done! restart nginx
+			    	exec("sudo service nginx reload", function () {});
+			    }); 
+			});
 		});
 	},
 	requestCore: function (userId, body) {
