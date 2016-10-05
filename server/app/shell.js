@@ -53,6 +53,12 @@ module.exports = {
 			//for every core service, ensure it has a corresponding HMI
 			var job = nomader.createJob("hmi");
 			core.addHmisToJob(job, cores);
+			//if there are no cores, then delete the core job so that we don't leave the core
+			//task group in a "dead" state
+			core.checkJobs(job, function () {//there are tasks
+			}, function () { //there are no tasks
+				nomader.deleteJob("core", nomadAddress, function () {});
+			});
 			//submit the job. if there are no task groups then
 			//we want to remove the job completely. delete the job in that case
 			core.checkJobs(job, function () {//there are tasks
