@@ -284,9 +284,40 @@ describe("#addHmisToJob()", function () {
 });
 
 describe("#checkNginxFlag()", function () {
-	it("should invoke a function if NGINX_OFF is not set to 'true' as an env variable", function (done) {
+	it("should invoke the first function if NGINX_OFF is not set to 'true' as an env variable", function (done) {
 		process.env.NGINX_OFF = ""; //force it
 		core.checkNginxFlag(function () {
+			done();
+		}, function () {
+			assert.fail(null, null, "The first function should've been called");
+		});
+	});
+	it("should invoke the second function if NGINX_OFF is not set to 'true' as an env variable", function (done) {
+		process.env.NGINX_OFF = "true"; //force it
+		core.checkNginxFlag(function () {
+			assert.fail(null, null, "The second function should've been called");
+		}, function () {
+			done();
+		});
+	});
+});
+
+describe("#checkJobs()", function () {
+	it("should invoke the first function if there are tasks in TaskGroups", function (done) {
+		var job = nomader.createJob("test");
+		job.addGroup("test-group");
+		core.checkJobs(job, function () {
+			done();
+		}, function () {
+			assert.fail(null, null, "The first function should've been called");
+		});
+	});
+
+	it("should invoke the second function if there are no tasks in TaskGroups", function (done) {
+		var job = nomader.createJob("test");
+		core.checkJobs(job, function () {
+			assert.fail(null, null, "The second function should've been called");
+		}, function () {
 			done();
 		});
 	});

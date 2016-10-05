@@ -114,10 +114,22 @@ module.exports = {
 		}
 		return addresses;
 	},
-	checkNginxFlag: function (callback) {
+	checkNginxFlag: function (nginxOnFunc, nginxOffFunc) {
 		//invoke the callback function only if NGINX_OFF is not set to "true"
 		if (process.env.NGINX_OFF !== "true") {
-			callback();
+			nginxOnFunc();
+		}
+		else {
+			nginxOffFunc();
+		}
+	},
+	checkJobs: function (job, jobsFunc, noJobsFunc) {
+		//invoke the noJobsFunc function only if there are no task groups in TaskGroups
+		if (job.getJob().Job.TaskGroups.length === 0) {
+			noJobsFunc();
+		}
+		else { //there are task groups. call jobsFunc
+			jobsFunc();
 		}
 	}
 }

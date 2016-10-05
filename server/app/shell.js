@@ -18,10 +18,20 @@ module.exports = {
 	},
 	startWatches: function (postUrl) {
 		//set a watch for the KV store
-		consuler.watchKVStore("manticore", function (keys) {
+		consuler.watchKVStore("manticore", keysWatch);
+
+		function keysWatch (keys) {
+			//if keys is undefined, set it to an empty array
+			keys = keys || [];
 			//set up an expectation that we want the values of <keys.length> keys.
 			//send a callback function about what to do once we get all the values
 			var expecting = core.expect(keys.length, function (job) {
+				//if there are no tasks, delete the core job. otherwise, submit it
+				core.checkJobs(job, function () {//there are tasks
+					job.submitJob(nomadAddress, function () {});
+				}, function () { //there are no tasks
+					nomader.deleteJob("core", nomadAddress, function () {});
+				});
 				job.submitJob(nomadAddress, function (result){});
 			});
 			for (let i = 0; i < keys.length; i++) {
@@ -31,18 +41,26 @@ module.exports = {
 					expecting.send(keys[i], value);
 				});
 			}		
-		});
+		}
 
 		//set up a watch for all services
-		consuler.watchServices(function (services) {
+		consuler.watchServices(serviceWatch);
+
+		function serviceWatch (services) {
 			//services updated. get information about core and hmi if possible
 			let cores = services.filter("core-master");
 			let hmis = services.filter("hmi-master");
 			//for every core service, ensure it has a corresponding HMI
 			var job = nomader.createJob("hmi");
 			core.addHmisToJob(job, cores);
-			//submit the job
-			job.submitJob(nomadAddress, function () {});
+			//submit the job. if there are no task groups then
+			//we want to remove the job completely. delete the job in that case
+			core.checkJobs(job, function () {//there are tasks
+				job.submitJob(nomadAddress, function () {});
+			}, function () { //there are no tasks
+				nomader.deleteJob("hmi", nomadAddress, function () {});
+			});
+
 			var pairs = core.findPairs(cores, hmis, function (userId) {
 				//remove user from KV store 
 				consuler.delKey("manticore/" + userId, function () {});
@@ -65,8 +83,9 @@ module.exports = {
 			    	//done! restart nginx
 			    	exec("sudo service nginx reload", function () {});
 			    }); 
+			}, function () {//NGINX_OFF is set to true. do nothing
 			});
-		});
+		}
 	},
 	requestCore: function (userId, body) {
 		//store the userId and request info in the database. wait for this app to find it
@@ -110,16 +129,4 @@ module.exports = {
 			callback();
 		});
 	}
-	/*checkCore: function () {
-		//get the core job allocations
-		needle.get('http://' + ip.address() + ':4646/v1/job/core/allocations', null, function (err, res) {
-			if (res) {
-				//get the last allocation of core
-				console.log(res.body.length);
-				console.log(res.body[res.body.length - 1]);
-				console.log(res.body[res.body.length - 1]["TaskStates"]["core-master"]);
-			}
-			
-		});
-	}*/
 }
