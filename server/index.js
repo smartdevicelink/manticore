@@ -1,3 +1,5 @@
+//load the environment variables from the .env file in the same directory
+require('dotenv').config();
 //modules
 var express = require('express');
 var bodyParser = require('body-parser');
@@ -6,6 +8,7 @@ var app = express();
 var http = require('http').Server(app);
 //custom vars and modules
 var controller = require('./app/controller.js');
+var logger = require('./lib/logger.js');
 var rootLocation = __dirname + '/../client/public';
 
 app.use(bodyParser.json()); //allow json parsing
@@ -14,13 +17,17 @@ app.use(bodyParser.urlencoded({extended: true})); //for parsing application/x-ww
 //expose everything in public. The main index.html file should exist inside public but not inside html/
 app.use(express.static(rootLocation));
 
-//load the environment variables from the .env file in the same directory
-require('dotenv').config();
-
 //start the server
 (function () {
     var server = http.listen(process.env.HTTP_PORT, function () {
-        console.log("Server started");
+        logger.info("Server started");
+        logger.debug("Manticore's environment variables:");
+        logger.debug("CONSUL_IP: " + process.env.CONSUL_IP);
+        logger.debug("POST_CONNECTION_ADDR: " + process.env.POST_CONNECTION_ADDR);
+        logger.debug("DOMAIN_NAME: " + process.env.DOMAIN_NAME);
+        logger.debug("HTTP_PORT: " + process.env.HTTP_PORT);
+        logger.debug("NGINX_OFF: " + process.env.NGINX_OFF);
+        logger.debug("NODE_LOGS: " + process.env.NODE_LOGS);
         controller(app);
     });
 })();

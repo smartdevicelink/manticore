@@ -22,6 +22,7 @@
     "node-uuid": "^1.4.7",
     "nomad-helper": "^1.1.2",
     "randomstring": "^1.1.5",
-    "replace": "^0.3.0"
+    "replace": "^0.3.0",
+    "winston": "^2.2.0"
   }
 }

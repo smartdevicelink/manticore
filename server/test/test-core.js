@@ -1,6 +1,6 @@
 var mocha = require('mocha');
 var assert = require('assert');
-var core = require('../app/core.js');
+var core = require('../lib/core.js');
 var nomader = require('nomad-helper');
 
 describe("#expect()", function () {
@@ -320,5 +320,21 @@ describe("#checkJobs()", function () {
 		}, function () {
 			done();
 		});
+	});
+});
+
+describe("#filterKeys()", function () {
+	it("should remove keys that match the name of the target string", function () {
+		var targetString = "eh";
+		var keys = [
+			"wow",
+			"alright",
+			"eh",
+			"okay"
+		]
+		core.filterKeys(keys, targetString);
+		assert.equal(keys[0], "wow");
+		assert.equal(keys[1], "alright");
+		assert.equal(keys[2], "okay");
 	});
 });

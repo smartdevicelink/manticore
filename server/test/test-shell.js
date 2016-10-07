@@ -1,6 +1,6 @@
 var mocha = require('mocha');
 var assert = require('assert');
-var shell = require('../app/shell.js');
+var shell = require('../lib/shell.js');
 var ip = require('ip');
 var express = require('express');
 var bodyParser = require('body-parser');

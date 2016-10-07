@@ -1,17 +1,22 @@
 //the client needs an agent to connect to so that it may access consul services
 //supply a host IP address
-var shell = require('./shell.js');
+var shell = require('../lib/shell.js');
 var uuid = require('node-uuid');
+var logger = require('../lib/logger');
 
 module.exports = function (app) {
 	//connect to the consul agent
-	shell.init(process.env.CONSUL_IP);
-	//set up watches one time. listen forever for changes in consul's services
-	shell.startWatches(process.env.POST_CONNECTION_ADDR);
+	shell.init(process.env.CONSUL_IP, function () {
+		//set up watches one time. listen forever for changes in consul's services
+		shell.startWatches(process.env.POST_CONNECTION_ADDR);		
+	});
+
 	//start core and hmi
 	app.post('/v1/cores', function (req, res) {
 		//pretend we have some unique identifier for the client so that
 		//we know which client wants what core
+		logger.debug("/v1/cores");
+		logger.debug(req.body);
 		shell.requestCore(uuid.v4(), req.body);
 		res.sendStatus(200);
 	});

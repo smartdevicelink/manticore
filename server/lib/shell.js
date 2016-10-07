@@ -8,31 +8,42 @@ var randomString = require('randomstring');
 var exec = require('child_process').exec;
 var fs = require('fs');
 var ip = require('ip');
+var logger = require('../lib/logger');
 var nomadAddress;
+var self;
 
 module.exports = {
-	init: function (address) {
+	init: function (address, callback) {
 		consuler = require('consul-helper')(address);
 		//set the address
 		nomadAddress = address + ":4646";
+		logger.debug("Nomad address: " + nomadAddress);
+		self = this; //keep a consistent context around
+		consuler.setKeyValue("manticore/filler", "Keep me here please!", function () {
+			callback();
+		});
 	},
 	startWatches: function (postUrl) {
 		//set a watch for the KV store
-		consuler.watchKVStore("manticore", keysWatch);
+		consuler.watchKVStore("manticore/", keysWatch);
 
 		function keysWatch (keys) {
 			//if keys is undefined, set it to an empty array
 			keys = keys || [];
+			core.filterKeys(keys, "manticore/filler");
+			logger.debug("KV store update (after filtering)");
+			logger.debug(keys);
+
 			//set up an expectation that we want the values of <keys.length> keys.
 			//send a callback function about what to do once we get all the values
 			var expecting = core.expect(keys.length, function (job) {
-				//if there are no tasks, delete the core job. otherwise, submit it
-				core.checkJobs(job, function () {//there are tasks
+				core.checkJobs(job, function () {//there are tasks. submit the job
+					logger.debug("Core tasks exist");
 					job.submitJob(nomadAddress, function () {});
-				}, function () { //there are no tasks
-					nomader.deleteJob("core", nomadAddress, function () {});
+				}, function () { //there are no tasks. delete the job
+					logger.debug("No core tasks");
+					self.deleteJob("core", function () {});
 				});
-				job.submitJob(nomadAddress, function (result){});
 			});
 			for (let i = 0; i < keys.length; i++) {
 				//go through each key and get their value. send the value to expecting
@@ -47,35 +58,41 @@ module.exports = {
 		consuler.watchServices(serviceWatch);
 
 		function serviceWatch (services) {
+			logger.debug("Services update");
 			//services updated. get information about core and hmi if possible
 			let cores = services.filter("core-master");
 			let hmis = services.filter("hmi-master");
+			logger.debug("Core services: " + cores.length);
+			logger.debug("Hmi services: " + hmis.length);
 			//for every core service, ensure it has a corresponding HMI
 			var job = nomader.createJob("hmi");
 			core.addHmisToJob(job, cores);
 			//if there are no cores, then delete the core job so that we don't leave the core
 			//task group in a "dead" state
-			core.checkJobs(job, function () {//there are tasks
+			/*core.checkJobs(job, function () {//there are tasks
 			}, function () { //there are no tasks
-				nomader.deleteJob("core", nomadAddress, function () {});
-			});
+				self.deleteJob("core", function () {});
+			});*/
 			//submit the job. if there are no task groups then
 			//we want to remove the job completely. delete the job in that case
 			core.checkJobs(job, function () {//there are tasks
+				logger.debug("HMI tasks exist");
 				job.submitJob(nomadAddress, function () {});
 			}, function () { //there are no tasks
-				nomader.deleteJob("hmi", nomadAddress, function () {});
+				logger.debug("No HMI tasks");
+				self.deleteJob("hmi", function () {});
 			});
 
 			var pairs = core.findPairs(cores, hmis, function (userId) {
-				//remove user from KV store 
-				consuler.delKey("manticore/" + userId, function () {});
+				//remove user from KV store because the HMI has no paired core which
+				//indicates that the user exited the HMI page and is done with their instance
+				self.deleteKey("manticore/requests/" + userId, function () {});
 			});
 			pairs = {
 				pairs: pairs
 			};
 			//post all pairs at once
-			console.log(pairs);
+			logger.info(pairs);
 			needle.post(postUrl, pairs, function (err, res) {
 			});
 
@@ -84,6 +101,7 @@ module.exports = {
 				//create an nginx file and write it so that nginx notices it
 				//use the pairs because that has information about what addresses to use
 				//NOTE: the user that runs manticore should own this directory or it may not write to the file!
+				logger.debug("Updating Nginx conf file");
 				var nginxFile = core.generateNginxFile(pairs);
 			    fs.writeFile("/etc/nginx/conf.d/manticore.conf", nginxFile, function(err) {
 			    	//done! restart nginx
@@ -100,7 +118,7 @@ module.exports = {
 		//of core and hmi
 		//generate random letters and numbers for the user and hmi addresses
 		//get all keys in the KV store and find their external address prefixes
-		consuler.getKeyAll("manticore", function (results) {
+		consuler.getKeyAll("manticore/requests/", function (results) {
 			var addresses = core.getAddressesFromUserRequests(results);
 			var options1 = {
 				length: 12,
@@ -121,7 +139,8 @@ module.exports = {
 			body.userToHmiPrefix = userToHmiAddress;
 			body.hmiToCorePrefix = hmiToCoreAddress;
 			body.userToCorePrefix = userToCoreAddress;
-			consuler.setKeyValue("manticore/" + userId, JSON.stringify(body));
+			logger.debug("Store request " + userId);
+			consuler.setKeyValue("manticore/requests/" + userId, JSON.stringify(body));
 		});
 
 	},

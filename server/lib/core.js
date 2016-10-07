@@ -3,12 +3,16 @@ var fs = require('fs');
 var nginx = require('./NginxTemplate.js');
 var nomader = require('nomad-helper');
 var ip = require('ip');
+var logger = require('../lib/logger');
 
 module.exports = {
 	expect: function (callbackNumber, callback) {
 		let count = callbackNumber;
 
 		var job = nomader.createJob("core");
+		if (count === 0) { //is 0 is passed in, callback immediately
+			callback(job); 
+		}
 		return {
 			send: function (key, value) {
 				count--;
@@ -62,6 +66,7 @@ module.exports = {
 				//shutdown signal was sent from HMI to core to kill it
 				//interpret this as the user being done with the pair and send back
 				//the id of the user from the request to be removed from the KV store
+				logger.debug("HMI with no core. Stop serving " + hmiTagObj.userId);
 				if (typeof callback === "function") {
 					callback(hmiTagObj.userId);
 				}
@@ -131,6 +136,13 @@ module.exports = {
 		else { //there are task groups. call jobsFunc
 			jobsFunc();
 		}
+	},
+	filterKeys: function (keys, targetString) {
+		for (let i = 0; i < keys.length; i++) {
+			if (keys[i] === targetString) { //remove filler key
+				keys.splice(i, 1);
+			}
+		}
 	}
 }
 
@@ -180,7 +192,7 @@ function addHmiGenericGroup (job, core, nginxPort) {
 	job.addGroup(groupName);
 	job.addTask(groupName, "hmi-master");
 	job.setImage(groupName, "hmi-master", "crokita/discovery-generic-hmi:master");
-	job.addPort(groupName, "hmi-master", true, "user", 3000);
+	job.addPort(groupName, "hmi-master", true, "user", 8080);
 
 	//the address to pass into HMI will depend on whether the NGINX_OFF flag is on
 	//by default, use the external addresses so that nginx routes users to the HMI correctly
@@ -200,6 +212,16 @@ function addHmiGenericGroup (job, core, nginxPort) {
 
 	job.addService(groupName, "hmi-master", "hmi-master");
 	job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
+	//add a health check
+	var healthObj = {
+		Type: "http",
+		Name: "hmi-alive",
+		Interval: 3000000000, //in nanoseconds
+		Timeout: 2000000000, //in nanoseconds
+		Path: "/",
+		Protocol: "http"
+	}
+	job.addCheck(groupName, "hmi-master", "hmi-master", healthObj);
 
 	//give hmi the same id as core so we know they're together
 	var obj = {
