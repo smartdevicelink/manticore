@@ -324,17 +324,25 @@ describe("#checkJobs()", function () {
 });
 
 describe("#filterKeys()", function () {
-	it("should remove keys that match the name of the target string", function () {
-		var targetString = "eh";
+	it("should include keys that contain the target string", function () {
+		var targetString = "requests/";
 		var keys = [
-			"wow",
-			"alright",
-			"eh",
-			"okay"
+			"requests/1234",
+			"requests/13hb",
+			"filler",
+			"requests/abcd"
 		]
-		core.filterKeys(keys, targetString);
-		assert.equal(keys[0], "wow");
-		assert.equal(keys[1], "alright");
-		assert.equal(keys[2], "okay");
+		keys = core.filterKeys(keys, targetString);
+		assert.equal(keys[0], "requests/1234");
+		assert.equal(keys[1], "requests/13hb");
+		assert.equal(keys[2], "requests/abcd");
+	});
+});
+
+describe("#parseKvUserId()", function () {
+	it("should strip off manticore/requests/ from the string", function () {
+		var userId = "manticore/requests/2135494ygth";
+		userId = core.parseKvUserId(userId);
+		assert.equal(userId, "2135494ygth");
 	});
 });

@@ -138,18 +138,19 @@ module.exports = {
 		}
 	},
 	filterKeys: function (keys, targetString) {
-		for (let i = 0; i < keys.length; i++) {
-			if (keys[i] === targetString) { //remove filler key
-				keys.splice(i, 1);
-			}
+		//remove all keys that do not contain the targetString
+		keys = keys.filter(containTest);
+		return keys;
+		function containTest (element) {
+			return element.includes(targetString);
 		}
-	}
+	},
+	parseKvUserId: parseKvUserId
 }
 
-//remove "manticore/" from key in store to get user id
 function parseKvUserId (userId) {
-	var indexOfHyphen = userId.indexOf("/");
-	return userId.substr(indexOfHyphen + 1);
+		var userIdParts = userId.split("manticore/requests/");
+		return userIdParts.join("");
 }
 
 function addCoreGroup (job, userId, request) {

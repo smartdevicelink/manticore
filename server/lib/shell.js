@@ -30,7 +30,7 @@ module.exports = {
 		function keysWatch (keys) {
 			//if keys is undefined, set it to an empty array
 			keys = keys || [];
-			core.filterKeys(keys, "manticore/filler");
+			keys = core.filterKeys(keys, "manticore/requests/");
 			logger.debug("KV store update (after filtering)");
 			logger.debug(keys);
 
