@@ -11,16 +11,16 @@ var ip = require('ip');
 var logger = require('../lib/logger');
 var nomadAddress;
 var self;
+var io;
 
 module.exports = {
-	init: function (address, io, callback) {
+	init: function (address, socketIo, callback) {
 		consuler = require('consul-helper')(address);
 		//set the address
 		nomadAddress = address + ":4646";
 		logger.debug("Nomad address: " + nomadAddress);
 		self = this; //keep a consistent context around
-		//start accepting connections
-		handleWebSocket(io);
+		io = socketIo;
 
 		consuler.setKeyValue("manticore/filler", "Keep me here please!", function () {
 			callback();
@@ -144,9 +144,13 @@ module.exports = {
 	},
 	//send back connection information in order for the client to make a websocket connection to
 	//receive sdl_core logs
-	getWsUrl: function () {
+	requestLogs: function (clientID) {
 		//point the user to the appropriate address
-		return core.getWsUrl();
+		var address = core.getWsUrl();
+		//before we're done here, setup a connection for this client to receive logs from core
+		//use the clientID as the socket namespace in order to distinguish users
+		acceptConnections(clientID);
+		return address;
 	},
 	deleteKey: function (key, callback) {
 		consuler.delKey(key, function () {
@@ -159,14 +163,16 @@ module.exports = {
 		});
 	}
 }
-
-function handleWebSocket (io) {
-	io.on('connection', function (socket) {
-		socket.emit('logs', "Found you!");
-				/*
-		//get the stream of core
-		nomader.getAllocations("core", nomadAddress, function (res) {
-			console.log(res.getProperty("ID"));
-		});*/
+var counter = 0;
+function acceptConnections (customName) {
+			/*
+	//get the stream of core
+	nomader.getAllocations("core", nomadAddress, function (res) {
+		console.log(res.getProperty("ID"));
+	});*/
+	var custom = io.of('/' + customName);
+	custom.on('connection', function (socket) {
+		socket.emit('logs', "I found you! " + counter);
+		counter++;
 	});
 }

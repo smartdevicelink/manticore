@@ -8,6 +8,11 @@ var body = {
 	"hmiName": "ford"
 }
 
+var body2 = {
+	"id": Math.floor(Math.random()*1000)
+}
+
+
 var socket;
 
 function requestInstance() {
@@ -17,12 +22,13 @@ function requestInstance() {
 }
 
 function requestLogs() {
-	$.post('/v1/logs', body, function (data) {
-		console.log(data);
+	$.post('/v1/logs', body2, function (data) {
 		//the data contains the url we need to connect to the websocket server
 		if (!socket) {
 			//make a connection using the url given
-			socket = io(data.url);
+			var address = data.url + "/" + body2.id;
+			console.log(address);
+			socket = io(address);
 			socket.on('logs', function (data) {
 				console.log(data);
 			});

@@ -28,7 +28,7 @@ module.exports = function (app, io) {
 		//we know which client wants what core
 		logger.debug("/v1/logs");
 		logger.debug(req.body);
-		var url = shell.getWsUrl();
+		var url = shell.requestLogs(req.body.id);
 		var response = {
 			url: url
 		}
