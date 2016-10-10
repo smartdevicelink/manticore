@@ -8,8 +8,24 @@ var body = {
 	"hmiName": "ford"
 }
 
+var socket;
+
 function requestInstance() {
 	$.post('/v1/cores', body, function (data) {
 		console.log(data);
+	});
+}
+
+function requestLogs() {
+	$.post('/v1/logs', body, function (data) {
+		console.log(data);
+		//the data contains the url we need to connect to the websocket server
+		if (!socket) {
+			//make a connection using the url given
+			socket = io(data.url);
+			socket.on('logs', function (data) {
+				console.log(data);
+			});
+		}
 	});
 }
