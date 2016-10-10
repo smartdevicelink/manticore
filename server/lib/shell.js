@@ -13,12 +13,15 @@ var nomadAddress;
 var self;
 
 module.exports = {
-	init: function (address, callback) {
+	init: function (address, io, callback) {
 		consuler = require('consul-helper')(address);
 		//set the address
 		nomadAddress = address + ":4646";
 		logger.debug("Nomad address: " + nomadAddress);
 		self = this; //keep a consistent context around
+		//start accepting connections
+		handleWebSocket(io);
+
 		consuler.setKeyValue("manticore/filler", "Keep me here please!", function () {
 			callback();
 		});
@@ -62,17 +65,12 @@ module.exports = {
 			//services updated. get information about core and hmi if possible
 			let cores = services.filter("core-master");
 			let hmis = services.filter("hmi-master");
+			console.log(cores);
 			logger.debug("Core services: " + cores.length);
 			logger.debug("Hmi services: " + hmis.length);
 			//for every core service, ensure it has a corresponding HMI
 			var job = nomader.createJob("hmi");
 			core.addHmisToJob(job, cores);
-			//if there are no cores, then delete the core job so that we don't leave the core
-			//task group in a "dead" state
-			/*core.checkJobs(job, function () {//there are tasks
-			}, function () { //there are no tasks
-				self.deleteJob("core", function () {});
-			});*/
 			//submit the job. if there are no task groups then
 			//we want to remove the job completely. delete the job in that case
 			core.checkJobs(job, function () {//there are tasks
@@ -144,6 +142,12 @@ module.exports = {
 		});
 
 	},
+	//send back connection information in order for the client to make a websocket connection to
+	//receive sdl_core logs
+	getWsUrl: function () {
+		//point the user to the appropriate address
+		return core.getWsUrl();
+	},
 	deleteKey: function (key, callback) {
 		consuler.delKey(key, function () {
 			callback();
@@ -154,4 +158,15 @@ module.exports = {
 			callback();
 		});
 	}
+}
+
+function handleWebSocket (io) {
+	io.on('connection', function (socket) {
+		socket.emit('logs', "Found you!");
+				/*
+		//get the stream of core
+		nomader.getAllocations("core", nomadAddress, function (res) {
+			console.log(res.getProperty("ID"));
+		});*/
+	});
 }

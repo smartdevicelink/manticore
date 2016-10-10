@@ -4,9 +4,10 @@ var shell = require('../lib/shell.js');
 var uuid = require('node-uuid');
 var logger = require('../lib/logger');
 
-module.exports = function (app) {
+module.exports = function (app, io) {
 	//connect to the consul agent
-	shell.init(process.env.CONSUL_IP, function () {
+	//let the shell handle the websocket server
+	shell.init(process.env.CONSUL_IP, io, function () {
 		//set up watches one time. listen forever for changes in consul's services
 		shell.startWatches(process.env.POST_CONNECTION_ADDR);		
 	});
@@ -19,6 +20,19 @@ module.exports = function (app) {
 		logger.debug(req.body);
 		shell.requestCore(uuid.v4(), req.body);
 		res.sendStatus(200);
+	});
+
+	//get logs from core
+	app.post('/v1/logs', function (req, res) {
+		//pretend we have some unique identifier for the client so that
+		//we know which client wants what core
+		logger.debug("/v1/logs");
+		logger.debug(req.body);
+		var url = shell.getWsUrl();
+		var response = {
+			url: url
+		}
+		res.json(response);
 	});
 
 	//get a list of HMIs and their branches

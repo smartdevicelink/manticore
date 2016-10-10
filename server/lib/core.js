@@ -145,12 +145,20 @@ module.exports = {
 			return element.includes(targetString);
 		}
 	},
-	parseKvUserId: parseKvUserId
+	parseKvUserId: parseKvUserId,
+	getWsUrl: function () {
+		if (process.env.NGINX_OFF !== "true") { //nginx enabled
+			return "http://" + ip.address() + ":" + process.env.HTTP_PORT;
+		}
+		else { //no nginx
+			return "http://localhost:" + process.env.HTTP_PORT;
+		}
+	}
 }
 
 function parseKvUserId (userId) {
-		var userIdParts = userId.split("manticore/requests/");
-		return userIdParts.join("");
+	var userIdParts = userId.split("manticore/requests/");
+	return userIdParts.join("");
 }
 
 function addCoreGroup (job, userId, request) {
