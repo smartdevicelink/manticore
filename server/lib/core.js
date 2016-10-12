@@ -147,11 +147,11 @@ module.exports = {
 	},
 	parseKvUserId: parseKvUserId,
 	getWsUrl: function () {
-		if (process.env.NGINX_OFF !== "true") { //nginx enabled
-			return "http://" + ip.address() + ":" + process.env.HTTP_PORT;
+		if (process.env.NGINX_OFF === "true") { //no nginx
+			return "http://localhost:" + process.env.HTTP_PORT;	
 		}
-		else { //no nginx
-			return "http://localhost:" + process.env.HTTP_PORT;
+		else { //nginx enabled
+			return "http://" + process.env.DOMAIN_NAME + ":3000";
 		}
 	},
 	findAliveCoreAllocation: function (allocations, targetID) {

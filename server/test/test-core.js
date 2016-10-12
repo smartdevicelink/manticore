@@ -292,7 +292,7 @@ describe("#checkNginxFlag()", function () {
 			assert.fail(null, null, "The first function should've been called");
 		});
 	});
-	it("should invoke the second function if NGINX_OFF is not set to 'true' as an env variable", function (done) {
+	it("should invoke the second function if NGINX_OFF is set to 'true' as an env variable", function (done) {
 		process.env.NGINX_OFF = "true"; //force it
 		core.checkNginxFlag(function () {
 			assert.fail(null, null, "The second function should've been called");
@@ -344,6 +344,19 @@ describe("#parseKvUserId()", function () {
 		var userId = "manticore/requests/2135494ygth";
 		userId = core.parseKvUserId(userId);
 		assert.equal(userId, "2135494ygth");
+	});
+});
+
+describe("#getWsUrl()", function () {
+	it("should return domain name if NGINX_OFF is not set to 'true' as an env variable", function () {
+		process.env.NGINX_OFF = ""; //force it
+		var address = core.getWsUrl();
+		assert.equal(address, "http://" + process.env.DOMAIN_NAME + ":3000");
+	});
+	it("should return localhost if NGINX_OFF is set to 'true' as an env variable", function () {
+		process.env.NGINX_OFF = "true"; //force it
+		var address = core.getWsUrl();
+		assert.equal(address, "http://localhost:" + process.env.HTTP_PORT);
 	});
 });
 
