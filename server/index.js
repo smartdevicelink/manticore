@@ -29,7 +29,6 @@ app.use(express.static(rootLocation));
         logger.debug("POST_CONNECTION_ADDR: " + process.env.POST_CONNECTION_ADDR);
         logger.debug("DOMAIN_NAME: " + process.env.DOMAIN_NAME);
         logger.debug("HTTP_PORT: " + process.env.HTTP_PORT);
-        logger.debug("WS_PORT: " + process.env.WS_PORT);
         logger.debug("NGINX_OFF: " + process.env.NGINX_OFF);
         
         //let shell.js handle the websocket server

@@ -1,3 +1,5 @@
+var id = Math.floor(Math.random()*1000);
+
 var body = {
 	"url": "http://192.168.1.142:3000/v1/address",
 	"build": [],
@@ -5,11 +7,12 @@ var body = {
 		"hmi": "master",
 		"core": "master"
 	},
-	"hmiName": "ford"
+	"hmiName": "ford",
+	"id": id
 }
 
 var body2 = {
-	"id": Math.floor(Math.random()*1000)
+	"id": id
 }
 
 
@@ -26,8 +29,7 @@ function requestLogs() {
 		//the data contains the url we need to connect to the websocket server
 		if (!socket) {
 			//make a connection using the url given
-			var address = data.url + "/" + body2.id;
-			console.log(address);
+			var address = data.url + "/" + data.connectionId;
 			socket = io(address);
 			socket.on('logs', function (data) {
 				console.log(data);

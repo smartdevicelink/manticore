@@ -65,7 +65,6 @@ module.exports = {
 			//services updated. get information about core and hmi if possible
 			let cores = services.filter("core-master");
 			let hmis = services.filter("hmi-master");
-			console.log(cores);
 			logger.debug("Core services: " + cores.length);
 			logger.debug("Hmi services: " + hmis.length);
 			//for every core service, ensure it has a corresponding HMI
@@ -144,13 +143,20 @@ module.exports = {
 	},
 	//send back connection information in order for the client to make a websocket connection to
 	//receive sdl_core logs
-	requestLogs: function (clientID) {
+	requestLogs: function (userId) {
 		//point the user to the appropriate address
 		var address = core.getWsUrl();
-		//before we're done here, setup a connection for this client to receive logs from core
-		//use the clientID as the socket namespace in order to distinguish users
-		acceptConnections(clientID);
-		return address;
+		//use the userId to generate a unique ID intended for the socket connection
+		var connectionId = userId;
+		//setup a connection for this client to receive logs from core
+		//use the connectionId as the socket namespace in order to distinguish users
+		//connectionId must be a string
+		acceptConnections(connectionId);
+		//pass back the address to connect to the websocket server and the connectionID you need
+		return {
+			url: address,
+			connectionId: connectionId
+		};
 	},
 	deleteKey: function (key, callback) {
 		consuler.delKey(key, function () {
@@ -163,16 +169,26 @@ module.exports = {
 		});
 	}
 }
-var counter = 0;
-function acceptConnections (customName) {
-			/*
-	//get the stream of core
-	nomader.getAllocations("core", nomadAddress, function (res) {
-		console.log(res.getProperty("ID"));
-	});*/
-	var custom = io.of('/' + customName);
+
+//this should only be called once the core task is actually running!
+function acceptConnections (userId) {
+	var custom = io.of('/' + userId);
 	custom.on('connection', function (socket) {
-		socket.emit('logs', "I found you! " + counter);
-		counter++;
+		//send core logs
+		//get the stream of core
+		nomader.getAllocations("core", nomadAddress, function (res) {
+			//we know which allocation to find because the TaskGroup name has the client ID
+			var allocation = core.findMatchedCoreAllocationToId(res.allocations, userId);
+			var taskName; //get the task name
+			for (var obj in res.allocations[0].TaskStates) {
+				taskName = obj; //the first task state is the one that's alive
+				break;
+			}
+			//get the stdout logs and stream them
+			nomader.streamLogs(allocation, taskName, "stdout", nomadAddress, function (data) {
+				//this function gets invoked whenever new data arrives from core
+				socket.emit("logs", data);
+			});
+		});
 	});
 }

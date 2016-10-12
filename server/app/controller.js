@@ -18,7 +18,7 @@ module.exports = function (app, io) {
 		//we know which client wants what core
 		logger.debug("/v1/cores");
 		logger.debug(req.body);
-		shell.requestCore(uuid.v4(), req.body);
+		shell.requestCore(req.body.id, req.body);
 		res.sendStatus(200);
 	});
 
@@ -28,10 +28,7 @@ module.exports = function (app, io) {
 		//we know which client wants what core
 		logger.debug("/v1/logs");
 		logger.debug(req.body);
-		var url = shell.requestLogs(req.body.id);
-		var response = {
-			url: url
-		}
+		var response = shell.requestLogs(req.body.id);
 		res.json(response);
 	});
 
