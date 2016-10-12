@@ -148,6 +148,7 @@ module.exports = {
 		var address = core.getWsUrl();
 		//use the userId to generate a unique ID intended for the socket connection
 		var connectionId = userId;
+		logger.debug("Connection ID Generated:" + connectionId);
 		//make sure there is an allocation for core intended for this user before 
 		//starting up a connection
 		nomader.getAllocations("core", nomadAddress, function (res) {
@@ -156,15 +157,20 @@ module.exports = {
 			var allocation = core.findAliveCoreAllocation(res.allocations, userId);
 			if (allocation === null) {
 				//core isn't available to stream logs
+				logger.debug("Core isn't available for streaming for connection ID " + userId);
 				callback(null);
 			}
 			else {
 				//we can stream logs! return the appropriate connection details
 				//pass back the address and connectionID to connect to the websocket server
-				callback({
+				var connectionInfo = {
 					url: address,
 					connectionId: connectionId
-				});
+				}
+				logger.debug("Sending connection information to user " + userId);
+				logger.debug("Address: " + connectionInfo.url);
+				logger.debug("Connection ID: " + connectionInfo.connectionId);
+				callback(connectionInfo);
 				var taskName; //get the task name
 				for (var obj in allocation.TaskStates) {
 					taskName = obj;
@@ -173,6 +179,7 @@ module.exports = {
 				//start streaming logs to the client once they connect using the connection details
 				var custom = io.of('/' + userId);
 				custom.on('connection', function (socket) {
+					logger.debug("User connected! Stream core logs");
 					//get the stdout logs and stream them
 					nomader.streamLogs(allocation.ID, taskName, "stdout", nomadAddress, function (data) {
 						//this function gets invoked whenever new data arrives from core
