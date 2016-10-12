@@ -27,7 +27,10 @@ function requestInstance() {
 function requestLogs() {
 	$.post('/v1/logs', body2, function (data) {
 		//the data contains the url we need to connect to the websocket server
-		if (!socket) {
+		//make sure the information isn't null. if it's null then that indicates that the
+		//core isn't ready to have logs streamed to yet
+		console.log(data);
+		if (!socket && data !== null) {
 			//make a connection using the url given
 			var address = data.url + "/" + data.connectionId;
 			socket = io(address);

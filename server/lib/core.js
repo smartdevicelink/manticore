@@ -154,12 +154,15 @@ module.exports = {
 			return "http://localhost:" + process.env.HTTP_PORT;
 		}
 	},
-	findMatchedCoreAllocationToId: function (allocations, targetID) {
+	findAliveCoreAllocation: function (allocations, targetID) {
 		for (let i = 0; i < allocations.length; i++) {
 			//remove "core-" from taskgroup name to get just the ID
 			var testID = allocations[i].TaskGroup.split("core-")[1];
 			if (testID === targetID) {
-				return allocations[i].ID;
+				//only return the alloc ID if the ClientStatus is set to "running"
+				if (allocations[i].ClientStatus === "running") {
+					return allocations[i];
+				}
 			}
 		}
 		return null; //return null if nothing matches

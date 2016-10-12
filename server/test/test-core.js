@@ -347,41 +347,64 @@ describe("#parseKvUserId()", function () {
 	});
 });
 
-describe("#findMatchedCoreAllocationToId()", function () {
+describe("#findAliveCoreAllocation()", function () {
 	it("should return null if no ID matches", function () {
 		var userId = "12345";
 		var allocations = [{
 			ID: "234710237512",
-			TaskGroup: "core-15515"
+			TaskGroup: "core-15515",
+			ClientStatus: "running"
 		},{
 			ID: "12312361163",
-			TaskGroup: "core-24242"
-		},{
-			ID: "76343762266",
-			TaskGroup: "core-26434"
+			TaskGroup: "core-24242",
+			ClientStatus: "running"
 		},{
 			ID: "8425245674",
-			TaskGroup: "core-35782"
-		},];
-		var result = core.findMatchedCoreAllocationToId(allocations, userId);
+			TaskGroup: "core-35782",
+			ClientStatus: "running"
+		}];
+		var result = core.findAliveCoreAllocation(allocations, userId);
 		assert.equal(result, null);
 	});
+	it("should return null if there's no matching ID that is also running", function () {
+		var userId = "35782";
+		var allocations = [{
+			ID: "234710237512",
+			TaskGroup: "core-15515",
+			ClientStatus: "complete"
+		},{
+			ID: "12312361163",
+			TaskGroup: "core-24242",
+			ClientStatus: "running"
+		},{
+			ID: "8425245674",
+			TaskGroup: "core-35782",
+			ClientStatus: "complete"
+		}];
+		var result = core.findAliveCoreAllocation(allocations, userId);
+		assert.equal(result, null);
+	});
+
 	it("should return a match if an ID matches", function () {
 		var userId = "12345";
 		var allocations = [{
 			ID: "234710237512",
-			TaskGroup: "core-15515"
+			TaskGroup: "core-15515",
+			ClientStatus: "complete"
 		},{
 			ID: "12312361163",
-			TaskGroup: "core-17614"
+			TaskGroup: "core-17614",
+			ClientStatus: "running"
 		},{
 			ID: "76343762266",
-			TaskGroup: "core-26434"
+			TaskGroup: "core-26434",
+			ClientStatus: "complete"
 		},{
 			ID: "8425245674",
-			TaskGroup: "core-12345"
+			TaskGroup: "core-12345",
+			ClientStatus: "running"
 		},];
-		var result = core.findMatchedCoreAllocationToId(allocations, userId);
-		assert.equal(result, "8425245674");
+		var result = core.findAliveCoreAllocation(allocations, userId);
+		assert.equal(result.ID, "8425245674");
 	});
 });

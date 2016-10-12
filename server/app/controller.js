@@ -24,12 +24,11 @@ module.exports = function (app, io) {
 
 	//get logs from core
 	app.post('/v1/logs', function (req, res) {
-		//pretend we have some unique identifier for the client so that
-		//we know which client wants what core
 		logger.debug("/v1/logs");
 		logger.debug(req.body);
-		var response = shell.requestLogs(req.body.id);
-		res.json(response);
+		shell.requestLogs(req.body.id, function (response) {
+			res.json(response);
+		});
 	});
 
 	//get a list of HMIs and their branches

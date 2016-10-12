@@ -143,20 +143,46 @@ module.exports = {
 	},
 	//send back connection information in order for the client to make a websocket connection to
 	//receive sdl_core logs
-	requestLogs: function (userId) {
+	requestLogs: function (userId, callback) {
 		//point the user to the appropriate address
 		var address = core.getWsUrl();
 		//use the userId to generate a unique ID intended for the socket connection
 		var connectionId = userId;
-		//setup a connection for this client to receive logs from core
-		//use the connectionId as the socket namespace in order to distinguish users
-		//connectionId must be a string
-		acceptConnections(connectionId);
-		//pass back the address to connect to the websocket server and the connectionID you need
-		return {
-			url: address,
-			connectionId: connectionId
-		};
+		//make sure there is an allocation for core intended for this user before 
+		//starting up a connection
+		nomader.getAllocations("core", nomadAddress, function (res) {
+			//we know which allocation to find because the TaskGroup name has the client ID
+			//make sure the allocation is alive, which indicates it's the one that's running core
+			var allocation = core.findAliveCoreAllocation(res.allocations, userId);
+			if (allocation === null) {
+				//core isn't available to stream logs
+				callback(null);
+			}
+			else {
+				//we can stream logs! return the appropriate connection details
+				//pass back the address and connectionID to connect to the websocket server
+				callback({
+					url: address,
+					connectionId: connectionId
+				});
+				var taskName; //get the task name
+				for (var obj in allocation.TaskStates) {
+					taskName = obj;
+					break;
+				}
+				//start streaming logs to the client once they connect using the connection details
+				var custom = io.of('/' + userId);
+				custom.on('connection', function (socket) {
+					//get the stdout logs and stream them
+					nomader.streamLogs(allocation.ID, taskName, "stdout", nomadAddress, function (data) {
+						//this function gets invoked whenever new data arrives from core
+						socket.emit("logs", data);
+					});	
+				});
+			}
+
+		});
+
 	},
 	deleteKey: function (key, callback) {
 		consuler.delKey(key, function () {
@@ -168,27 +194,4 @@ module.exports = {
 			callback();
 		});
 	}
-}
-
-//this should only be called once the core task is actually running!
-function acceptConnections (userId) {
-	var custom = io.of('/' + userId);
-	custom.on('connection', function (socket) {
-		//send core logs
-		//get the stream of core
-		nomader.getAllocations("core", nomadAddress, function (res) {
-			//we know which allocation to find because the TaskGroup name has the client ID
-			var allocation = core.findMatchedCoreAllocationToId(res.allocations, userId);
-			var taskName; //get the task name
-			for (var obj in res.allocations[0].TaskStates) {
-				taskName = obj; //the first task state is the one that's alive
-				break;
-			}
-			//get the stdout logs and stream them
-			nomader.streamLogs(allocation, taskName, "stdout", nomadAddress, function (data) {
-				//this function gets invoked whenever new data arrives from core
-				socket.emit("logs", data);
-			});
-		});
-	});
 }
