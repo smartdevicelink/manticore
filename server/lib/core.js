@@ -82,7 +82,7 @@ module.exports = {
 			addHmiGenericGroup(job, cores[i], 3000);
 		}	
 	},
-	generateNginxFile: function (pairs) {
+	generateNginxFiles: function (pairs) {
 		var pairs = pairs.pairs;
 		//for each pair, extract connection information and add them to nginx config file
 		//put TCP blocks in a separate file

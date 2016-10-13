@@ -182,7 +182,7 @@ describe("#getAddressesFromUserRequests()", function () {
 	});
 });
 
-describe("#generateNginxFile()", function () {
+describe("#generateNginxFiles()", function () {
 	it("should generate server blocks meant for HTTP and for TCP proxying", function () {
 		var testData = {
 			pairs: [{
@@ -203,7 +203,7 @@ describe("#generateNginxFile()", function () {
 				tcpAddressExternal: "2742"
 			}]
 		};
-		var nginxFiles = core.generateNginxFile(testData);
+		var nginxFiles = core.generateNginxFiles(testData);
 		//there should be 4 server blocks. check for server_name as a string
 		var matches1 = nginxFiles[0].match(/server_name/g);
 		var matches2 = nginxFiles[1].match(/server_name/g);
