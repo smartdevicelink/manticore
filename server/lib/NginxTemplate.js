@@ -62,7 +62,7 @@ NginxTemplate.prototype.tcp = function (port, prefix, proxyAddr) {
     }
     var serverString = `
 server {
-    listen ${port};
+    listen 12345;
     proxy_pass ${proxyAddr};
 `;
     this.file += serverString;
