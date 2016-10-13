@@ -64,7 +64,7 @@ NginxTemplate.prototype.tcp = function (port, prefix, proxyAddr) {
 server {
     listen ${prefixString}${process.env.DOMAIN_NAME}:${port};
     proxy_pass ${proxyAddr};
-    proxy_bind ${prefixString}${process.env.DOMAIN_NAME}:${port};
+    proxy_bind ${proxyAddr}:${port};
 `;
     this.file += serverString;
 
