@@ -85,15 +85,20 @@ module.exports = {
 	generateNginxFile: function (pairs) {
 		var pairs = pairs.pairs;
 		//for each pair, extract connection information and add them to nginx config file
-		var file = nginx();
-		file.server(3000, true, null, ip.address() + ":4000", false); //manticore web server of this machine
+		//put TCP blocks in a separate file
+		var fileMain = nginx();
+		var fileTcp = nginx();
+		fileMain.server(3000, true, null, ip.address() + ":4000", false); //manticore web server of this machine
 		for (let i = 0; i < pairs.length; i++) {
 			let pair = pairs[i];
-			file.server(3000, false, pair.userAddressExternal, pair.userAddressInternal, false) //route user to hmi
-				.server(3000, false, pair.hmiAddressExternal, pair.hmiAddressInternal, true) //route hmi to core (websocket)
-				.server(3000, false, pair.tcpAddressExternal, pair.tcpAddressInternal, false); //route user app to core
+			fileMain.server(3000, false, pair.userAddressExternal, pair.userAddressInternal, false) //route user to hmi
+				.server(3000, false, pair.hmiAddressExternal, pair.hmiAddressInternal, true); //route hmi to core (websocket)
+			fileTcp.server(3000, false, pair.tcpAddressExternal, pair.tcpAddressInternal, false); //route user app to core
 		}
-		return file.get();
+		return [
+			fileMain.get(),
+			fileTcp.get()
+		];
 	},
 	getUniqueString: function (blackList, generatorFunc) {
 		//use generatorFunc to keep creating new strings until

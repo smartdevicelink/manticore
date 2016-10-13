@@ -7,7 +7,7 @@ var logger = require('../lib/logger');
 module.exports = function (app, io) {
 	//connect to the consul agent
 	//let the shell handle the websocket server
-	shell.init(process.env.CONSUL_IP, io, function () {
+	shell.init(process.env.CLIENT_AGENT_IP, io, function () {
 		//set up watches one time. listen forever for changes in consul's services
 		shell.startWatches(process.env.POST_CONNECTION_ADDR);		
 	});

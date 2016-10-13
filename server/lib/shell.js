@@ -98,12 +98,16 @@ module.exports = {
 				//create an nginx file and write it so that nginx notices it
 				//use the pairs because that has information about what addresses to use
 				//NOTE: the user that runs manticore should own this directory or it may not write to the file!
-				logger.debug("Updating Nginx conf file");
-				var nginxFile = core.generateNginxFile(pairs);
-			    fs.writeFile("/etc/nginx/conf.d/manticore.conf", nginxFile, function(err) {
-			    	//done! restart nginx
-			    	exec("sudo service nginx reload", function () {});
+				logger.debug("Updating Nginx conf files");
+				var nginxFiles = core.generateNginxFiles(pairs);
+			    fs.writeFile(process.env.NGINX_MAIN_DIRECTORY+"/manticore.conf", nginxFiles[0], function (err) {
+				    //the TCP server blocks file
+				    fs.writeFile(process.env.NGINX_TCP_DIRECTORY+"/manticore.conf", nginxFiles[1], function (err) {
+				    	//done! restart nginx
+				    	exec("sudo service nginx reload", function () {});
+				    }); 
 			    }); 
+
 			}, function () {//NGINX_OFF is set to true. do nothing
 			});
 		}

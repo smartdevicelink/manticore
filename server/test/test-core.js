@@ -183,7 +183,7 @@ describe("#getAddressesFromUserRequests()", function () {
 });
 
 describe("#generateNginxFile()", function () {
-	it("should retrieve all address prefixes from all keys in manticore", function () {
+	it("should generate server blocks meant for HTTP and for TCP proxying", function () {
 		var testData = {
 			pairs: [{
 				user: "3456789yduc2nj3f",
@@ -193,12 +193,22 @@ describe("#generateNginxFile()", function () {
 				userAddressExternal: "15uyh6176",
 				hmiAddressExternal: "a4a4y43yq53",
 				tcpAddressExternal: "2742"
+			},{
+				user: "3456789yduc2nj3f",
+				userAddressInternal: "127.0.0.1:4000",
+				hmiAddressInternal: "127.0.0.1:5000",
+				tcpAddressInternal: "127.0.0.1:6000",
+				userAddressExternal: "15uyh6176",
+				hmiAddressExternal: "a4a4y43yq53",
+				tcpAddressExternal: "2742"
 			}]
 		};
-		var nginxFile = core.generateNginxFile(testData);
+		var nginxFiles = core.generateNginxFile(testData);
 		//there should be 4 server blocks. check for server_name as a string
-		var matches = nginxFile.match(/server_name/g);
-		assert(matches.length === 4, "there are 4 server blocks. found " + matches.length);
+		var matches1 = nginxFiles[0].match(/server_name/g);
+		var matches2 = nginxFiles[1].match(/server_name/g);
+		assert(matches1.length === 5, "there are 5 server blocks. found " + matches1.length);
+		assert(matches2.length === 2, "there is 2 server block. found " + matches2.length);
 	});
 
 });
