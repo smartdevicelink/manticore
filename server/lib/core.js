@@ -93,7 +93,7 @@ module.exports = {
 			let pair = pairs[i];
 			fileMain.server(3000, false, pair.userAddressExternal, pair.userAddressInternal, false) //route user to hmi
 				.server(3000, false, pair.hmiAddressExternal, pair.hmiAddressInternal, true); //route hmi to core (websocket)
-			fileTcp.server(3000, false, pair.tcpAddressExternal, pair.tcpAddressInternal, false); //route user app to core
+			fileTcp.tcp(3000, pair.tcpAddressExternal, pair.tcpAddressInternal); //route user app to core
 		}
 		return [
 			fileMain.get(),

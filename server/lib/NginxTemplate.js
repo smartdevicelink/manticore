@@ -52,3 +52,25 @@ server {
 
     return this;
 }
+
+//make a new server block for TCP routing
+NginxTemplate.prototype.tcp = function (port, prefix, proxyAddr) {
+    //if prefix exists, add a dot to the end of the string
+    var prefixString = "";
+    if (prefix) {
+        prefixString = prefix + ".";
+    }
+    var serverString = `
+server {
+    listen ${prefixString}${process.env.DOMAIN_NAME}:${port};
+    proxy_pass ${proxyAddr};
+`;
+    this.file += serverString;
+
+    //end the server block
+    this.file += `
+}
+`;
+
+    return this;
+}

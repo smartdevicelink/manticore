@@ -205,10 +205,12 @@ describe("#generateNginxFiles()", function () {
 		};
 		var nginxFiles = core.generateNginxFiles(testData);
 		//there should be 4 server blocks. check for server_name as a string
-		var matches1 = nginxFiles[0].match(/server_name/g);
-		var matches2 = nginxFiles[1].match(/server_name/g);
-		assert(matches1.length === 5, "there are 5 server blocks. found " + matches1.length);
-		assert(matches2.length === 2, "there is 2 server block. found " + matches2.length);
+		var matches1 = nginxFiles[0].match(/proxy_pass/g);
+		var matches2 = nginxFiles[1].match(/proxy_pass/g);
+		console.log(nginxFiles[0]);
+		console.log(nginxFiles[1]);
+		assert(matches1.length === 5, "there are 5 proxy passes. found " + matches1.length);
+		assert(matches2.length === 2, "there are 2 proxy passes. found " + matches2.length);
 	});
 
 });
