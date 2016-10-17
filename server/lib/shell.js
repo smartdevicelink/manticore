@@ -110,6 +110,7 @@ module.exports = {
 				    	//done! restart nginx
 				    	exec("sudo service nginx reload", function (err, stdout, stderr) {
 				    		logger.debug(stdout);
+				    		logger.debug(stderr);
 				    	});
 				    }); 
 			    }); 
