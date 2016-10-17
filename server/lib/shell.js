@@ -42,7 +42,9 @@ module.exports = {
 			var expecting = core.expect(keys.length, function (job) {
 				core.checkJobs(job, function () {//there are tasks. submit the job
 					logger.debug("Core tasks exist");
-					job.submitJob(nomadAddress, function () {});
+					job.submitJob(nomadAddress, function (result) {
+						logger.debug(result);
+					});
 				}, function () { //there are no tasks. delete the job
 					logger.debug("No core tasks");
 					self.deleteJob("core", function () {});
@@ -74,7 +76,9 @@ module.exports = {
 			//we want to remove the job completely. delete the job in that case
 			core.checkJobs(job, function () {//there are tasks
 				logger.debug("HMI tasks exist");
-				job.submitJob(nomadAddress, function () {});
+				job.submitJob(nomadAddress, function (result) {
+					logger.debug(result);
+				});
 			}, function () { //there are no tasks
 				logger.debug("No HMI tasks");
 				self.deleteJob("hmi", function () {});
@@ -104,7 +108,9 @@ module.exports = {
 				    //the TCP server blocks file
 				    fs.writeFile(process.env.NGINX_TCP_DIRECTORY+"/manticore.conf", nginxFiles[1], function (err) {
 				    	//done! restart nginx
-				    	exec("sudo service nginx reload", function () {});
+				    	exec("sudo service nginx reload", function (err, stdout, stderr) {
+				    		logger.debug(stdout);
+				    	});
 				    }); 
 			    }); 
 

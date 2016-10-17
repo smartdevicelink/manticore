@@ -193,6 +193,12 @@ function addCoreGroup (job, userId, request) {
 	job.addPort(groupName, "core-master", true, "hmi", 8087);
 	job.addPort(groupName, "core-master", true, "tcp", 12345);
 	job.addEnv(groupName, "core-master", "DOCKER_IP", "${NOMAD_IP_hmi}");
+	//set resource limitations
+	job.setCPU(groupName, "core-master", 100);
+	job.setMemory(groupName, "core-master", 25);
+	job.setDisk(groupName, "core-master", 50);
+	job.setLogs(groupName, "core-master", 2, 10);
+
 	job.addService(groupName, "core-master", "core-master");
 	//include the userId's tag for ID purposes
 	//also include the user, hmi, and tcp external addresses for nginx
@@ -220,7 +226,11 @@ function addHmiGenericGroup (job, core, nginxPort) {
 	job.addTask(groupName, "hmi-master");
 	job.setImage(groupName, "hmi-master", "crokita/discovery-generic-hmi:master");
 	job.addPort(groupName, "hmi-master", true, "user", 8080);
-
+	//set resource limitations
+	job.setCPU(groupName, "hmi-master", 50);
+	job.setMemory(groupName, "hmi-master", 150);
+	job.setDisk(groupName, "hmi-master", 30);
+	job.setLogs(groupName, "hmi-master", 1, 10);
 	//the address to pass into HMI will depend on whether the NGINX_OFF flag is on
 	//by default, use the external addresses so that nginx routes users to the HMI correctly
 	//if NGINX_OFF is true, then give the HMI the internal address of core and connect that way
