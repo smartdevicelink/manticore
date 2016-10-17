@@ -62,7 +62,7 @@ NginxTemplate.prototype.tcp = function (port, prefix, proxyAddr) {
     }
     var serverString = `
 server {
-    listen 1234.m.livio.io:12345;
+    listen 12345;
     proxy_pass ${proxyAddr};
 `;
     this.file += serverString;
