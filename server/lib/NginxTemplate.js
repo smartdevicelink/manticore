@@ -67,6 +67,6 @@ server {
     websocket_pass http://${proxyAddr};
 }
 `;
-
+    this.file += serverString;
     return this;
 }
