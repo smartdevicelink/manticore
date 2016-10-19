@@ -52,7 +52,7 @@ server {
 
     return this;
 }
-/*
+
 //make a new server block for TCP routing
 NginxTemplate.prototype.tcp = function (port, prefix, proxyAddr) {
     //if prefix exists, add a dot to the end of the string
@@ -62,15 +62,21 @@ NginxTemplate.prototype.tcp = function (port, prefix, proxyAddr) {
     }
     var serverString = `
 server {
-    listen 12345;
-    proxy_pass ${proxyAddr};
-`;
+    listen ${port};
+    server_name ${prefixString}${process.env.DOMAIN_NAME};
+    location / {`;
+
     this.file += serverString;
 
-    //end the server block
+    serverString = `
+        websocket_pass http://${proxyAddr};
+`;
+    this.file += serverString;
+    //end the location block and the server block
     this.file += `
+    }
 }
 `;
 
     return this;
-}*/
+}

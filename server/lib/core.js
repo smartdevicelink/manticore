@@ -93,7 +93,7 @@ module.exports = {
 			let pair = pairs[i];
 			fileMain.server(process.env.NGINX_HTTP_LISTEN, false, pair.userAddressExternal, pair.userAddressInternal, false) //route user to hmi
 				.server(process.env.NGINX_HTTP_LISTEN, false, pair.hmiAddressExternal, pair.hmiAddressInternal, true); //route hmi to core (websocket)
-			fileTcp.server(process.env.NGINX_TCP_LISTEN, false, pair.tcpAddressExternal, pair.tcpAddressInternal, false); //route user app to core
+			fileTcp.tcp(process.env.NGINX_TCP_LISTEN, pair.tcpAddressExternal, pair.tcpAddressInternal); //route user app to core
 		}
 		return [
 			fileMain.get(),
