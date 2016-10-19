@@ -52,7 +52,7 @@ server {
 
     return this;
 }
-
+/*
 //make a new server block for TCP routing
 NginxTemplate.prototype.tcp = function (port, prefix, proxyAddr) {
     //if prefix exists, add a dot to the end of the string
@@ -73,4 +73,4 @@ server {
 `;
 
     return this;
-}
+}*/

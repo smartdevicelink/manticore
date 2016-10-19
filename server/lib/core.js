@@ -79,7 +79,7 @@ module.exports = {
 			//pass in what is repesenting the user in order to name the service
 			//pass in the external address prefix of core so that when the user tries to connect to it
 			//from outside the network nginx can route that IP address to the correct internal one
-			addHmiGenericGroup(job, cores[i], 3000);
+			addHmiGenericGroup(job, cores[i], process.env.NGINX_HTTP_LISTEN);
 		}	
 	},
 	generateNginxFiles: function (pairs) {
@@ -88,12 +88,12 @@ module.exports = {
 		//put TCP blocks in a separate file
 		var fileMain = nginx();
 		var fileTcp = nginx();
-		fileMain.server(3000, true, null, ip.address() + ":4000", false); //manticore web server of this machine
+		fileMain.server(process.env.NGINX_HTTP_LISTEN, true, null, ip.address() + ":" + process.env.HTTP_PORT, false); //manticore web server of this machine
 		for (let i = 0; i < pairs.length; i++) {
 			let pair = pairs[i];
-			fileMain.server(3000, false, pair.userAddressExternal, pair.userAddressInternal, false) //route user to hmi
-				.server(3000, false, pair.hmiAddressExternal, pair.hmiAddressInternal, true); //route hmi to core (websocket)
-			fileTcp.tcp(3000, pair.tcpAddressExternal, pair.tcpAddressInternal); //route user app to core
+			fileMain.server(process.env.NGINX_HTTP_LISTEN, false, pair.userAddressExternal, pair.userAddressInternal, false) //route user to hmi
+				.server(process.env.NGINX_HTTP_LISTEN, false, pair.hmiAddressExternal, pair.hmiAddressInternal, true); //route hmi to core (websocket)
+			fileTcp.server(process.env.NGINX_TCP_LISTEN, false, pair.tcpAddressExternal, pair.tcpAddressInternal, false); //route user app to core
 		}
 		return [
 			fileMain.get(),

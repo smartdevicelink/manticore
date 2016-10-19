@@ -105,7 +105,7 @@ module.exports = {
 				logger.debug("Updating Nginx conf files");
 				var nginxFiles = core.generateNginxFiles(pairs);
 			    fs.writeFile(process.env.NGINX_MAIN_DIRECTORY+"/manticore.conf", nginxFiles[0], function (err) {
-				    //the TCP server blocks file
+				    //the file for TCP server blocks
 				    fs.writeFile(process.env.NGINX_TCP_DIRECTORY+"/manticore.conf", nginxFiles[1], function (err) {
 				    	//done! restart nginx
 				    	exec("sudo service nginx reload", function (err, stdout, stderr) {

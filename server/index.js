@@ -37,6 +37,8 @@ if (!process.env.NGINX_TCP_DIRECTORY) {
         logger.debug("POST_CONNECTION_ADDR: " + process.env.POST_CONNECTION_ADDR);
         logger.debug("DOMAIN_NAME: " + process.env.DOMAIN_NAME);
         logger.debug("HTTP_PORT: " + process.env.HTTP_PORT);
+        logger.debug("NGINX_HTTP_LISTEN: " + process.env.NGINX_HTTP_LISTEN);
+        logger.debug("NGINX_TCP_LISTEN: " + process.env.NGINX_TCP_LISTEN);
         logger.debug("NGINX_OFF: " + process.env.NGINX_OFF);
         logger.debug("NGINX_MAIN_DIRECTORY: " + process.env.NGINX_MAIN_DIRECTORY);
         logger.debug("NGINX_TCP_DIRECTORY: " + process.env.NGINX_TCP_DIRECTORY);
