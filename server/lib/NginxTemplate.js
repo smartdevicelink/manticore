@@ -64,17 +64,7 @@ NginxTemplate.prototype.tcp = function (port, prefix, proxyAddr) {
 server {
     listen ${port};
     server_name ${prefixString}${process.env.DOMAIN_NAME};
-    location / {`;
-
-    this.file += serverString;
-
-    serverString = `
-        websocket_pass http://${proxyAddr};
-`;
-    this.file += serverString;
-    //end the location block and the server block
-    this.file += `
-    }
+    websocket_pass http://${proxyAddr};
 }
 `;
 
