@@ -45,7 +45,9 @@ if (!process.env.NGINX_TCP_DIRECTORY) {
         if (process.env.NGINX_MAIN_DIRECTORY === process.env.NGINX_TCP_DIRECTORY) {
             logger.error("NGINX_MAIN_DIRECTORY and NGINX_TCP_DIRECTORY cannot be the same!");
         }
-        
+        if (process.env.NGINX_HTTP_LISTEN === process.env.NGINX_TCP_LISTEN) {
+            logger.error("NGINX_HTTP_LISTEN and NGINX_TCP_LISTEN cannot be the same!");
+        }     
         //let shell.js handle the websocket server
         controller(app, io);
     });
