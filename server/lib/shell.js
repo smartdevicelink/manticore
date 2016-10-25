@@ -26,11 +26,10 @@ module.exports = {
 		io = socketIo;
 		//set up AWS SDK. assume this EC2 instance has an IAM role so we don't need to put in extra credentials
 		ec2 = new AWS.EC2();
-		ec2.describeSecurityGroups({}, function (err, data) {
-			console.log(data);
-			console.log(data.SecurityGroups[0].IpPermissions);
-			console.log(data.SecurityGroups[0].IpPermissionsEgress);
-		});
+		/*ec2.describeSecurityGroups({}, function (err, data) {
+			console.log(data.SecurityGroups[16].IpPermissions);
+			console.log(data.SecurityGroups[16].IpPermissionsEgress);
+		});*/
 		//make a security group because why not
 		var params = {
 			Description: "Im computer generated!",
@@ -38,10 +37,10 @@ module.exports = {
 			IpPermissions: {},
 			IpPermissionsEgress: {}
 		};
-		/*ec2.createSecurityGroup(params, function (err, data) {
+		ec2.createSecurityGroup(params, function (err, data) {
 			console.log(err);
 			console.log(data);
-		});*/
+		});
 		consuler.setKeyValue("manticore/filler", "Keep me here please!", function () {
 			callback();
 		});

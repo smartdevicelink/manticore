@@ -1,5 +1,5 @@
 module.exports = {
-	Description: "Im computer generated!",
+	Description: "Manticore-Internal",
 	GroupName: "Please delete me",
 	IpPermissions: {[
 		
