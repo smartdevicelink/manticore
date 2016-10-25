@@ -32,8 +32,8 @@ module.exports = {
 		});*/
 		//make a security group because why not
 		var params = {
-			Description: "Im computer generated!",
-			GroupName: "Please kill me"
+			Description: "Im generated!",
+			GroupName: "Please delete me"
 		};
 		ec2.createSecurityGroup(params, function (err, data) {
 			console.log(err);
