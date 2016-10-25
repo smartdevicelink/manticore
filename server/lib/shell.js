@@ -27,13 +27,19 @@ module.exports = {
 		//set up AWS SDK. assume this EC2 instance has an IAM role so we don't need to put in extra credentials
 		ec2 = new AWS.EC2();
 		ec2.describeSecurityGroups({}, function (err, data) {
-			console.log(data);
+			console.log(data.SecurityGroups[0].IpPermissions);
+			console.log(data.SecurityGroups[0].IpPermissionsEgress);
 		});
 		//make a security group because why not
 		var params = {
 			Description: "Im computer generated!",
 			GroupName: "Please delete me",
-			DryRun: false
+			IpPermissions: {
+
+			},
+			IpPermissionsEgress: {
+
+			}
 		};
 		/*ec2.createSecurityGroup(params, function (err, data) {
 			console.log(err);
