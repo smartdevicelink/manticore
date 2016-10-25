@@ -35,12 +35,8 @@ module.exports = {
 		var params = {
 			Description: "Im computer generated!",
 			GroupName: "Please delete me",
-			IpPermissions: {[
-
-			]},
-			IpPermissionsEgress: {[
-
-			]}
+			IpPermissions: {},
+			IpPermissionsEgress: {}
 		};
 		/*ec2.createSecurityGroup(params, function (err, data) {
 			console.log(err);
