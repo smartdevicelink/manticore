@@ -31,7 +31,7 @@ module.exports = {
 		var params = {
 			Description: "I'm computer generated!",
 			GroupName: "Please delete me",
-			DryRun: true
+			DryRun: false
 		};
 		ec2.createSecurityGroup(params, function (err, data) {
 			console.log(err);
