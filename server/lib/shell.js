@@ -33,7 +33,7 @@ module.exports = {
 		//make a security group because why not
 		var params = {
 			Description: "Im computer generated!",
-			GroupName: "Please delete me"
+			GroupName: "Please kill me"
 		};
 		ec2.createSecurityGroup(params, function (err, data) {
 			console.log(err);
