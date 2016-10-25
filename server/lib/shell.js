@@ -29,7 +29,7 @@ module.exports = {
 
 		//make a security group because why not
 		var params = {
-			Description: "I'm computer generated!",
+			Description: "Im computer generated!",
 			GroupName: "Please delete me",
 			DryRun: false
 		};
