@@ -28,7 +28,7 @@ module.exports = {
 		ec2 = new AWS.EC2();
 		ec2.describeSecurityGroups({}, function (err, data) {
 			console.log(data);
-		};
+		});
 		//make a security group because why not
 		var params = {
 			Description: "Im computer generated!",
