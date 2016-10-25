@@ -26,17 +26,19 @@ module.exports = {
 		io = socketIo;
 		//set up AWS SDK. assume this EC2 instance has an IAM role so we don't need to put in extra credentials
 		ec2 = new AWS.EC2();
-
+		ec2.describeSecurityGroups({}, function (err, data) {
+			console.log(data);
+		};
 		//make a security group because why not
 		var params = {
 			Description: "Im computer generated!",
 			GroupName: "Please delete me",
 			DryRun: false
 		};
-		ec2.createSecurityGroup(params, function (err, data) {
+		/*ec2.createSecurityGroup(params, function (err, data) {
 			console.log(err);
 			console.log(data);
-		});
+		});*/
 		consuler.setKeyValue("manticore/filler", "Keep me here please!", function () {
 			callback();
 		});
