@@ -42,6 +42,7 @@ if (!process.env.NGINX_TCP_DIRECTORY) {
         logger.debug("NGINX_OFF: " + process.env.NGINX_OFF);
         logger.debug("NGINX_MAIN_DIRECTORY: " + process.env.NGINX_MAIN_DIRECTORY);
         logger.debug("NGINX_TCP_DIRECTORY: " + process.env.NGINX_TCP_DIRECTORY);
+        logger.debug("AWS_REGION: " + process.env.AWS_REGION);
         if (process.env.NGINX_MAIN_DIRECTORY === process.env.NGINX_TCP_DIRECTORY) {
             logger.error("NGINX_MAIN_DIRECTORY and NGINX_TCP_DIRECTORY cannot be the same!");
         }

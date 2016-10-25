@@ -9,6 +9,9 @@ var exec = require('child_process').exec;
 var fs = require('fs');
 var ip = require('ip');
 var logger = require('../lib/logger');
+var AWS = require('aws-sdk');
+AWS.config.update({region: process.env.AWS_REGION});
+var ec2;
 var nomadAddress;
 var self;
 var io;
@@ -21,7 +24,19 @@ module.exports = {
 		logger.debug("Nomad address: " + nomadAddress);
 		self = this; //keep a consistent context around
 		io = socketIo;
+		//set up AWS SDK. assume this EC2 instance has an IAM role so we don't need to put in extra credentials
+		ec2 = new AWS.EC2();
 
+		//make a security group because why not
+		var params = {
+			Description: "I'm computer generated!",
+			GroupName: "Please delete me",
+			DryRun: true
+		};
+		ec2.createSecurityGroup(params, function (err, data) {
+			console.log(err);
+			console.log(data);
+		});
 		consuler.setKeyValue("manticore/filler", "Keep me here please!", function () {
 			callback();
 		});
