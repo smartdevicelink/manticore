@@ -182,8 +182,8 @@ describe("#getAddressesFromUserRequests()", function () {
 	});
 });
 
-describe("#generateNginxFiles()", function () {
-	it("should generate server blocks meant for HTTP and for TCP proxying", function () {
+describe("#generateHAProxyConfig()", function () {
+	it("should generate HAProxy config file meant for HTTP and for TCP proxying", function () {
 		var testData = {
 			pairs: [{
 				user: "3456789yduc2nj3f",
@@ -203,21 +203,21 @@ describe("#generateNginxFiles()", function () {
 				tcpAddressExternal: "2742"
 			}]
 		};
-		var nginxFiles = core.generateNginxFiles(testData);
+		var file = core.generateHAProxyConfig(testData);
 		//there should be 4 server blocks. check for server_name as a string
-		var matches1 = nginxFiles[0].match(/proxy_pass/g);
-		var matches2 = nginxFiles[1].match(/proxy_pass/g);
-		console.log(nginxFiles[0]);
-		console.log(nginxFiles[1]);
-		assert(matches1.length === 5, "there are 5 proxy passes. found " + matches1.length);
-		assert(matches2.length === 2, "there are 2 proxy passes. found " + matches2.length);
+		var frontends = file.match(/frontend/g);
+		//there's one additional backend that isn't caught by this regex. assume it exists
+		var backends = file.match(/server.*server/g); 
+		assert(frontends.length === 3, "there are 3 front ends. found " + frontends.length);
+		assert(backends.length + 1 === 7, "there are 7 back ends. found " + backends.length);
 	});
 
 });
 
 describe("#addHmisToJob()", function () {
-	it("should create an hmi job based on the core job when NGINX_OFF isn't true", function () {
-		process.env.NGINX_OFF = "";
+	it("should create an hmi job based on the core job when HAPROXY_OFF isn't true", function () {
+		process.env.HAPROXY_OFF = "";
+		process.env.HAPROXY_HTTP_LISTEN = 3000;
 		let coreTagObj1 = {
 			userId: "userId1",
 			tcpPort: "44300",
@@ -249,14 +249,14 @@ describe("#addHmisToJob()", function () {
 		var env2 = job.findTask("hmi-userId3", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
 		var tag1 = job.findTask("hmi-userId1", "hmi-master").Services[0].Tags[0];
 		var tag2 = job.findTask("hmi-userId3", "hmi-master").Services[0].Tags[0];
-		assert.equal(env1, "hmiToCore1." + process.env.DOMAIN_NAME + ":3000");
-		assert.equal(env2, "hmiToCore2." + process.env.DOMAIN_NAME + ":3000");
+		assert.equal(env1, "hmiToCore1." + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN);
+		assert.equal(env2, "hmiToCore2." + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN);
 		assert.equal(JSON.parse(tag1).userId, JSON.parse(cores[0].Tags[0]).userId);
 		assert.equal(JSON.parse(tag2).userId, JSON.parse(cores[1].Tags[0]).userId);
 	});
 
-	it("should create an hmi job based on the core job when NGINX_OFF is true", function () {
-		process.env.NGINX_OFF = "true";
+	it("should create an hmi job based on the core job when HAPROXY_OFF is true", function () {
+		process.env.HAPROXY_OFF = "true";
 		let coreTagObj1 = {
 			userId: "userId1",
 			tcpPort: "44300",
@@ -295,18 +295,18 @@ describe("#addHmisToJob()", function () {
 	});
 });
 
-describe("#checkNginxFlag()", function () {
-	it("should invoke the first function if NGINX_OFF is not set to 'true' as an env variable", function (done) {
-		process.env.NGINX_OFF = ""; //force it
-		core.checkNginxFlag(function () {
+describe("#checkHaProxyFlag()", function () {
+	it("should invoke the first function if HAPROXY_OFF is not set to 'true' as an env variable", function (done) {
+		process.env.HAPROXY_OFF = ""; //force it
+		core.checkHaProxyFlag(function () {
 			done();
 		}, function () {
 			assert.fail(null, null, "The first function should've been called");
 		});
 	});
-	it("should invoke the second function if NGINX_OFF is set to 'true' as an env variable", function (done) {
-		process.env.NGINX_OFF = "true"; //force it
-		core.checkNginxFlag(function () {
+	it("should invoke the second function if HAPROXY_OFF is set to 'true' as an env variable", function (done) {
+		process.env.HAPROXY_OFF = "true"; //force it
+		core.checkHaProxyFlag(function () {
 			assert.fail(null, null, "The second function should've been called");
 		}, function () {
 			done();
@@ -360,13 +360,13 @@ describe("#parseKvUserId()", function () {
 });
 
 describe("#getWsUrl()", function () {
-	it("should return domain name if NGINX_OFF is not set to 'true' as an env variable", function () {
-		process.env.NGINX_OFF = ""; //force it
+	it("should return domain name if HAPROXY_OFF is not set to 'true' as an env variable", function () {
+		process.env.HAPROXY_OFF = ""; //force it
 		var address = core.getWsUrl();
 		assert.equal(address, "http://" + process.env.DOMAIN_NAME + ":3000");
 	});
-	it("should return localhost if NGINX_OFF is set to 'true' as an env variable", function () {
-		process.env.NGINX_OFF = "true"; //force it
+	it("should return localhost if HAPROXY_OFF is set to 'true' as an env variable", function () {
+		process.env.HAPROXY_OFF = "true"; //force it
 		var address = core.getWsUrl();
 		assert.equal(address, "http://localhost:" + process.env.HTTP_PORT);
 	});
@@ -431,5 +431,41 @@ describe("#findAliveCoreAllocation()", function () {
 		},];
 		var result = core.findAliveCoreAllocation(allocations, userId);
 		assert.equal(result.ID, "8425245674");
+	});
+});
+
+
+describe("#getUniquePorts()", function () {
+	it("should throw if the parameters are invalid", function () {
+		var didThrow = false;
+		try {
+			var result = core.getUniquePorts(3, 1, 0);
+		}
+		catch (err) {
+			didThrow = true;
+		}
+		assert.equal(didThrow, true);
+	});
+
+	it("should throw if you request for more unique numbers than possible", function () {
+		var didThrow = false;
+		try {
+			var result = core.getUniquePorts(0, 1, 5);
+		}
+		catch (err) {
+			didThrow = true;
+		}
+		assert.equal(didThrow, true);
+	});
+
+	it("should return all unique numbers", function () {
+		var result = core.getUniquePorts(13, 15, 3);
+		assert.equal(result.length, 3);
+		var found13 = result.indexOf(13) !== -1;
+		var found14 = result.indexOf(14) !== -1;
+		var found15 = result.indexOf(15) !== -1;
+		assert.equal(found13, true);
+		assert.equal(found14, true);
+		assert.equal(found15, true);
 	});
 });

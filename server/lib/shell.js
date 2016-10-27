@@ -25,20 +25,25 @@ module.exports = {
 		self = this; //keep a consistent context around
 		io = socketIo;
 		//set up AWS SDK. assume this EC2 instance has an IAM role so we don't need to put in extra credentials
-		ec2 = new AWS.EC2();
-		/*ec2.describeSecurityGroups({}, function (err, data) {
+		/*ec2 = new AWS.EC2();
+		var params = {
+			GroupId: "",
+
+		}
+		console.log(ec2.modifyInstanceAttribute);
+		ec2.describeSecurityGroups({}, function (err, data) {
 			console.log(data.SecurityGroups[16].IpPermissions);
 			console.log(data.SecurityGroups[16].IpPermissionsEgress);
-		});*/
+		});
 		//make a security group because why not
 		var params = {
-			Description: "Im generated!",
+			Description: "Im computer generated!",
 			GroupName: "Please delete me"
 		};
 		ec2.createSecurityGroup(params, function (err, data) {
 			console.log(err);
 			console.log(data);
-		});
+		});*/
 		consuler.setKeyValue("manticore/filler", "Keep me here please!", function () {
 			callback();
 		});
@@ -114,42 +119,37 @@ module.exports = {
 			needle.post(postUrl, pairs, function (err, res) {
 			});
 
-			//if NGINX_OFF was not set to "true". write the file and reload nginx
-			core.checkNginxFlag(function () {
-				//create an nginx file and write it so that nginx notices it
+			//if HAPROXY_OFF was not set to "true". write the file and reload haproxy
+			core.checkHaProxyFlag(function () {
+				//create an haproxy file and write it so that haproxy notices it
 				//use the pairs because that has information about what addresses to use
 				//NOTE: the user that runs manticore should own this directory or it may not write to the file!
-				logger.debug("Updating Nginx conf files");
-				var nginxFiles = core.generateNginxFiles(pairs);
-			    fs.writeFile(process.env.NGINX_MAIN_DIRECTORY+"/manticore.conf", nginxFiles[0], function (err) {
+				logger.debug("Updating HAProxy conf file");
+				var file = core.generateHAProxyConfig(pairs);
+
+			    fs.writeFile("/etc/haproxy/haproxy.cfg", file, function (err) {
 			    	if (err) {
 			    		logger.error(err);
 			    	}
-				    //the file for TCP server blocks
-				    fs.writeFile(process.env.NGINX_TCP_DIRECTORY+"/manticore.conf", nginxFiles[1], function (err) {
-				    	if (err) {
-			    			logger.error(err);
+			    	//done! restart HAProxy
+			    	exec("sudo service haproxy reload", function (err, stdout, stderr) {
+			    		if (stdout) {
+			    			logger.debug(stdout);
 			    		}
-				    	//done! restart nginx
-				    	exec("sudo service nginx reload", function (err, stdout, stderr) {
-				    		if (stdout) {
-				    			logger.debug(stdout);
-				    		}
-				    		if (stderr) {
-				    			logger.error(stderr);
-				    		}
-				    	});
-				    }); 
+			    		if (stderr) {
+			    			logger.error(stderr);
+			    		}
+			    	});
 			    }); 
 
-			}, function () {//NGINX_OFF is set to true. do nothing
+			}, function () {//HAPROXY_OFF is set to true. do nothing
 			});
 		}
 	},
 	requestCore: function (userId, body) {
 		//store the userId and request info in the database. wait for this app to find it
 		//also generate unique strings to append to the external IP address that will
-		//be given to users. NGINX will map those IPs to the correct internal IP addresses
+		//be given to users. HAProxy will map those IPs to the correct internal IP addresses
 		//of core and hmi
 		//generate random letters and numbers for the user and hmi addresses
 		//get all keys in the KV store and find their external address prefixes

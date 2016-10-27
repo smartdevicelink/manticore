@@ -19,14 +19,6 @@ app.use(bodyParser.urlencoded({extended: true})); //for parsing application/x-ww
 //expose everything in public. The main index.html file should exist inside public but not inside html/
 app.use(express.static(rootLocation));
 
-//if NGINX_MAIN_DIRECTORY or NGINX_TCP_DIRECTORY aren't specified, use the defaults here
-if (!process.env.NGINX_MAIN_DIRECTORY) {
-    process.env.NGINX_MAIN_DIRECTORY = "/etc/nginx/conf.d";
-} 
-if (!process.env.NGINX_TCP_DIRECTORY) {
-    process.env.NGINX_TCP_DIRECTORY = "/etc/nginx/tcp.d";
-} 
-
 //start the server
 (function () {
     var server = http.listen(process.env.HTTP_PORT, function () {
@@ -37,18 +29,10 @@ if (!process.env.NGINX_TCP_DIRECTORY) {
         logger.debug("POST_CONNECTION_ADDR: " + process.env.POST_CONNECTION_ADDR);
         logger.debug("DOMAIN_NAME: " + process.env.DOMAIN_NAME);
         logger.debug("HTTP_PORT: " + process.env.HTTP_PORT);
-        logger.debug("NGINX_HTTP_LISTEN: " + process.env.NGINX_HTTP_LISTEN);
-        logger.debug("NGINX_TCP_LISTEN: " + process.env.NGINX_TCP_LISTEN);
-        logger.debug("NGINX_OFF: " + process.env.NGINX_OFF);
-        logger.debug("NGINX_MAIN_DIRECTORY: " + process.env.NGINX_MAIN_DIRECTORY);
-        logger.debug("NGINX_TCP_DIRECTORY: " + process.env.NGINX_TCP_DIRECTORY);
-        logger.debug("AWS_REGION: " + process.env.AWS_REGION);
-        if (process.env.NGINX_MAIN_DIRECTORY === process.env.NGINX_TCP_DIRECTORY) {
-            logger.error("NGINX_MAIN_DIRECTORY and NGINX_TCP_DIRECTORY cannot be the same!");
-        }
-        if (process.env.NGINX_HTTP_LISTEN === process.env.NGINX_TCP_LISTEN) {
-            logger.error("NGINX_HTTP_LISTEN and NGINX_TCP_LISTEN cannot be the same!");
-        }     
+        logger.debug("TCP_PORT_RANGE_START: " + process.env.TCP_PORT_RANGE_START);   
+        logger.debug("TCP_PORT_RANGE_END: " + process.env.TCP_PORT_RANGE_END);   
+        logger.debug("HAPROXY_HTTP_LISTEN: " + process.env.HAPROXY_HTTP_LISTEN);   
+        logger.debug("HAPROXY_OFF: " + process.env.HAPROXY_OFF);   
         //let shell.js handle the websocket server
         controller(app, io);
     });

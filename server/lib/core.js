@@ -1,6 +1,6 @@
 //functionality of manticore without asynchronous behavior nor dependencies for unit testing
 var fs = require('fs');
-var nginx = require('./NginxTemplate.js');
+var haproxy = require('./HAProxyTemplate.js');
 var nomader = require('nomad-helper');
 var ip = require('ip');
 var logger = require('../lib/logger');
@@ -78,11 +78,33 @@ module.exports = {
 		for (let i = 0; i < cores.length; i++) {
 			//pass in what is repesenting the user in order to name the service
 			//pass in the external address prefix of core so that when the user tries to connect to it
-			//from outside the network nginx can route that IP address to the correct internal one
-			addHmiGenericGroup(job, cores[i], process.env.NGINX_HTTP_LISTEN);
+			//from outside the network haproxy can route that IP address to the correct internal one
+			addHmiGenericGroup(job, cores[i], process.env.HAPROXY_HTTP_LISTEN);
 		}	
 	},
-	generateNginxFiles: function (pairs) {
+	generateHAProxyConfig: function (pairs) {
+		var pairs = pairs.pairs;
+		//for each pair, extract connection information and add them to HAProxy config file
+		//put TCP blocks in a separate file
+		var file = haproxy();
+		file.setMainPort(process.env.HAPROXY_HTTP_LISTEN)
+			.setWebAppAddress(ip.address() + ":" + process.env.HTTP_PORT);
+
+		//generate a number of unique ports equal to the number of pairs
+		var uniquePorts = getUniquePorts(process.env.TCP_PORT_RANGE_START, 
+			process.env.TCP_PORT_RANGE_END, pairs.length);
+		//add the routes routes
+		for (let i = 0; i < pairs.length; i++) {
+			//generate a random port number in a range specified by environment variables
+			//to pick as an exposed port for a TCP connection
+			let pair = pairs[i];
+			file.addHttpRoute(pair.userAddressExternal, pair.userAddressInternal)
+				.addHttpRoute(pair.hmiAddressExternal, pair.hmiAddressInternal)
+				.addTcpRoute(uniquePorts[i], pair.tcpAddressInternal)
+		}
+		return file.generate();
+	},
+	/*generateNginxFiles: function (pairs) {
 		var pairs = pairs.pairs;
 		//for each pair, extract connection information and add them to nginx config file
 		//put TCP blocks in a separate file
@@ -99,7 +121,7 @@ module.exports = {
 			fileMain.get(),
 			fileTcp.get()
 		];
-	},
+	},*/
 	getUniqueString: function (blackList, generatorFunc) {
 		//use generatorFunc to keep creating new strings until
 		//there is one that isn't part of the blackList, and return it
@@ -124,13 +146,13 @@ module.exports = {
 		}
 		return addresses;
 	},
-	checkNginxFlag: function (nginxOnFunc, nginxOffFunc) {
-		//invoke the callback function only if NGINX_OFF is not set to "true"
-		if (process.env.NGINX_OFF !== "true") {
-			nginxOnFunc();
+	checkHaProxyFlag: function (proxyOnFunc, proxyOffFunc) {
+		//invoke the callback function only if HAPROXY_OFF is not set to "true"
+		if (process.env.HAPROXY_OFF !== "true") {
+			proxyOnFunc();
 		}
 		else {
-			nginxOffFunc();
+			proxyOffFunc();
 		}
 	},
 	checkJobs: function (job, jobsFunc, noJobsFunc) {
@@ -152,10 +174,10 @@ module.exports = {
 	},
 	parseKvUserId: parseKvUserId,
 	getWsUrl: function () {
-		if (process.env.NGINX_OFF === "true") { //no nginx
+		if (process.env.HAPROXY_OFF === "true") { //no haproxy
 			return "http://localhost:" + process.env.HTTP_PORT;	
 		}
-		else { //nginx enabled
+		else { //haproxy enabled
 			return "http://" + process.env.DOMAIN_NAME + ":3000";
 		}
 	},
@@ -171,8 +193,34 @@ module.exports = {
 			}
 		}
 		return null; //return null if nothing matches
-	}
+	},
+	//returns an array of unique numbers within a specified range
+	getUniquePorts: getUniquePorts
 }
+
+function getUniquePorts (lowerBound, upperBound, listLength) {
+		var possibilityNumber = upperBound - lowerBound + 1;
+		if (upperBound < lowerBound) {
+			throw "upper bound is less than lower bound";
+		}
+		if (possibilityNumber < listLength) {
+			//the user is asking for more unique numbers than are possible given the bounds
+			throw "Not possible to give " + listLength + " unique port numbers given the bounds";
+		}
+		//when mass generating numbers like these, don't leave it up to probability to find a unique number
+		//so, generate all possible numbers and remove elements when you make the list of unique ports
+		var possibilities = [];
+		for (let i = lowerBound; i <= upperBound; i++) {
+			possibilities.push(i);
+		}
+		var ports = [];
+		for (let i = 0; i < listLength; i++) {
+			let portIndex = Math.floor(Math.random()*possibilities.length);
+			ports.push(possibilities[portIndex]);
+			possibilities.splice(portIndex, 1);
+		}
+		return ports;
+	}
 
 function parseKvUserId (userId) {
 	var userIdParts = userId.split("manticore/requests/");
@@ -201,7 +249,7 @@ function addCoreGroup (job, userId, request) {
 
 	job.addService(groupName, "core-master", "core-master");
 	//include the userId's tag for ID purposes
-	//also include the user, hmi, and tcp external addresses for nginx
+	//also include the user, hmi, and tcp external addresses for haproxy
 	//store all this information into one tag as a stringified JSON
 	var obj = {
 		userId: userId,
@@ -214,7 +262,7 @@ function addCoreGroup (job, userId, request) {
 	job.setPortLabel(groupName, "core-master", "core-master", "hmi");
 }
 
-function addHmiGenericGroup (job, core, nginxPort) {
+function addHmiGenericGroup (job, core, haproxyPort) {
 	//parse the JSON from the tag
 	var tagObj = JSON.parse(core.Tags[0]);
 
@@ -231,18 +279,18 @@ function addHmiGenericGroup (job, core, nginxPort) {
 	job.setMemory(groupName, "hmi-master", 150);
 	job.setDisk(groupName, "hmi-master", 30);
 	job.setLogs(groupName, "hmi-master", 1, 10);
-	//the address to pass into HMI will depend on whether the NGINX_OFF flag is on
-	//by default, use the external addresses so that nginx routes users to the HMI correctly
-	//if NGINX_OFF is true, then give the HMI the internal address of core and connect that way
-	//NGINX_OFF being true assumes everything is accessible on the same network and should only
+	//the address to pass into HMI will depend on whether the HAPROXY_OFF flag is on
+	//by default, use the external addresses so that haproxy routes users to the HMI correctly
+	//if HAPROXY_OFF is true, then give the HMI the internal address of core and connect that way
+	//HAPROXY_OFF being true assumes everything is accessible on the same network and should only
 	//be used for the ease of local development
 
-	if (process.env.NGINX_OFF !== "true") { //nginx enabled
+	if (process.env.HAPROXY_OFF !== "true") { //haproxy enabled
 		//the address from the tags is just the prefix. add the domain/subdomain name too
 		var fullAddress = tagObj.hmiToCorePrefix + "." + process.env.DOMAIN_NAME;
-		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddress + ":" + nginxPort);
+		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddress + ":" + haproxyPort);
 	}
-	else { //no nginx
+	else { //no haproxy
 		//directly connect to core
 		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", core.Address + ":" + core.Port);
 	}
