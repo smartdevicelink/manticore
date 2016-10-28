@@ -160,20 +160,21 @@ module.exports = {
 				charset: 'alphanumeric',
 				capitalization: 'lowercase'
 			}
-			var options2 = {
-				length: 4,
-				charset: 'numeric'
-			}
 
 			var func1 = randomString.generate.bind(undefined, options1);
 			const userToHmiAddress = core.getUniqueString(addresses, func1); //userAddress prefix
 			const hmiToCoreAddress = core.getUniqueString(addresses, func1); //hmiAddress prefix
-			//since SOME APPS have character limits (15) use a smaller random string generator for the TCP address
-			var func2 = randomString.generate.bind(undefined, options2);
-			const userToCoreAddress = core.getUniqueString(addresses, func2); //tcpAddress prefix
+
+			//since we must have one TCP port open per connection to SDL core (it's a long story)
+			//generate a number within reasonable bounds and isn't already used by other core connections
+			//WARNING: this does not actually check if the port is used on the OS! please make sure the
+			//port range specified in the environment variables are all open!
+			var usedPorts = core.getPortsFromUserRequests(results);
+			const tcpPortExternal = core.getUniquePort(process.env.TCP_PORT_RANGE_START, 
+				process.env.TCP_PORT_RANGE_END, usedPorts);
 			body.userToHmiPrefix = userToHmiAddress;
 			body.hmiToCorePrefix = hmiToCoreAddress;
-			body.userToCorePrefix = userToCoreAddress;
+			body.tcpPortExternal = tcpPortExternal;
 			logger.debug("Store request " + userId);
 			consuler.setKeyValue("manticore/requests/" + userId, JSON.stringify(body));
 		});

@@ -51,10 +51,10 @@ module.exports = {
 					user: hmiTagObj.userId,
 					userAddressInternal: hmis[i].Address + ":" + hmis[i].Port,
 					hmiAddressInternal: corePair.Address + ":" + corePair.Port,
-					tcpAddressInternal: corePair.Address + ":" + coreTagObj.tcpPort,
+					tcpAddressInternal: corePair.Address + ":" + coreTagObj.tcpPortInternal,
 					userAddressExternal: coreTagObj.userToHmiPrefix,
 					hmiAddressExternal: coreTagObj.hmiToCorePrefix,
-					tcpAddressExternal: coreTagObj.userToCorePrefix
+					tcpPortExternal: coreTagObj.tcpPortExternal
 				}
 				pairs.push(body);
 			}
@@ -91,8 +91,9 @@ module.exports = {
 			.setWebAppAddress(ip.address() + ":" + process.env.HTTP_PORT);
 
 		//generate a number of unique ports equal to the number of pairs
-		var uniquePorts = getUniquePorts(process.env.TCP_PORT_RANGE_START, 
-			process.env.TCP_PORT_RANGE_END, pairs.length);
+		//FIX
+		/*var uniquePorts = getUniquePort(process.env.TCP_PORT_RANGE_START, 
+			process.env.TCP_PORT_RANGE_END, pairs.length);*/
 		//add the routes routes
 		for (let i = 0; i < pairs.length; i++) {
 			//generate a random port number in a range specified by environment variables
@@ -100,28 +101,10 @@ module.exports = {
 			let pair = pairs[i];
 			file.addHttpRoute(pair.userAddressExternal, pair.userAddressInternal)
 				.addHttpRoute(pair.hmiAddressExternal, pair.hmiAddressInternal)
-				.addTcpRoute(uniquePorts[i], pair.tcpAddressInternal)
+				.addTcpRoute(pair.tcpPortExternal, pair.tcpAddressInternal)
 		}
 		return file.generate();
 	},
-	/*generateNginxFiles: function (pairs) {
-		var pairs = pairs.pairs;
-		//for each pair, extract connection information and add them to nginx config file
-		//put TCP blocks in a separate file
-		var fileMain = nginx();
-		var fileTcp = nginx();
-		fileMain.server(process.env.NGINX_HTTP_LISTEN, true, null, ip.address() + ":" + process.env.HTTP_PORT, false); //manticore web server of this machine
-		for (let i = 0; i < pairs.length; i++) {
-			let pair = pairs[i];
-			fileMain.server(process.env.NGINX_HTTP_LISTEN, false, pair.userAddressExternal, pair.userAddressInternal, false) //route user to hmi
-				.server(process.env.NGINX_HTTP_LISTEN, false, pair.hmiAddressExternal, pair.hmiAddressInternal, true); //route hmi to core (websocket)
-			fileTcp.tcp(process.env.NGINX_TCP_LISTEN, pair.tcpAddressExternal, pair.tcpAddressInternal); //route user app to core
-		}
-		return [
-			fileMain.get(),
-			fileTcp.get()
-		];
-	},*/
 	getUniqueString: function (blackList, generatorFunc) {
 		//use generatorFunc to keep creating new strings until
 		//there is one that isn't part of the blackList, and return it
@@ -141,10 +124,19 @@ module.exports = {
 				let value = JSON.parse(keys[i].Value);
 				addresses.push(value.userToHmiPrefix);
 				addresses.push(value.hmiToCorePrefix);
-				addresses.push(value.userToCorePrefix);
 			}
 		}
 		return addresses;
+	},
+	getPortsFromUserRequests: function (keys) {
+		var ports = [];
+		if (keys !== undefined) {
+			for (let i = 0; i < keys.length; i++) {
+				let value = JSON.parse(keys[i].Value);
+				ports.push(value.tcpPortExternal);
+			}
+		}
+		return ports;
 	},
 	checkHaProxyFlag: function (proxyOnFunc, proxyOffFunc) {
 		//invoke the callback function only if HAPROXY_OFF is not set to "true"
@@ -195,32 +187,33 @@ module.exports = {
 		return null; //return null if nothing matches
 	},
 	//returns an array of unique numbers within a specified range
-	getUniquePorts: getUniquePorts
+	getUniquePort: getUniquePort
 }
 
-function getUniquePorts (lowerBound, upperBound, listLength) {
-		var possibilityNumber = upperBound - lowerBound + 1;
-		if (upperBound < lowerBound) {
-			throw "upper bound is less than lower bound";
-		}
-		if (possibilityNumber < listLength) {
-			//the user is asking for more unique numbers than are possible given the bounds
-			throw "Not possible to give " + listLength + " unique port numbers given the bounds";
-		}
-		//when mass generating numbers like these, don't leave it up to probability to find a unique number
-		//so, generate all possible numbers and remove elements when you make the list of unique ports
-		var possibilities = [];
-		for (let i = lowerBound; i <= upperBound; i++) {
-			possibilities.push(i);
-		}
-		var ports = [];
-		for (let i = 0; i < listLength; i++) {
-			let portIndex = Math.floor(Math.random()*possibilities.length);
-			ports.push(possibilities[portIndex]);
-			possibilities.splice(portIndex, 1);
-		}
-		return ports;
+//warning: may be slow
+//computation time proportional to <possibilityNumber> * <blackList.length>
+function getUniquePort (lowerBound, upperBound, blackList) {
+	var possibilityNumber = upperBound - lowerBound + 1;
+	if (upperBound < lowerBound) {
+		throw "Upper bound is less than lower bound";
 	}
+	//when mass generating numbers like these, don't leave it up to probability to find a unique number
+	//generate all possible numbers and remove elements based on the blacklist
+	var possibilities = [];
+	for (let i = lowerBound; i <= upperBound; i++) {
+		possibilities.push(i);
+	}
+	//remove blacklist numbers
+	possibilities = possibilities.filter(function (num) {
+		return blackList.indexOf(num) === -1;
+	});
+	if (possibilities.length === 0) {
+		//no possible number can be made
+		throw "No possible number can be created given the blacklist";
+	}
+	var randomIndex = Math.floor(Math.random()*possibilities.length);
+	return possibilities[randomIndex];
+}
 
 function parseKvUserId (userId) {
 	var userIdParts = userId.split("manticore/requests/");
@@ -253,10 +246,10 @@ function addCoreGroup (job, userId, request) {
 	//store all this information into one tag as a stringified JSON
 	var obj = {
 		userId: userId,
-		tcpPort: "${NOMAD_PORT_tcp}",
+		tcpPortInternal: "${NOMAD_PORT_tcp}",
 		userToHmiPrefix: request.userToHmiPrefix,
 		hmiToCorePrefix: request.hmiToCorePrefix,
-		userToCorePrefix: request.userToCorePrefix
+		tcpPortExternal: request.tcpPortExternal
 	};
 	job.addTag(groupName, "core-master", "core-master", JSON.stringify(obj));
 	job.setPortLabel(groupName, "core-master", "core-master", "hmi");

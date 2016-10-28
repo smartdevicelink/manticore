@@ -32,10 +32,10 @@ describe("#findPairs()", function () {
 	it("should return an empty array if no pairs are found", function () {
 		let coreTagObj = {
 			userId: "userId",
-			tcpPort: "44300",
+			tcpPortInternal: "44300",
+			tcpPortExternal: "12345",
 			userToHmiPrefix: "userToHmi1",
-			hmiToCorePrefix: "hmiToCore1",
-			userToCorePrefix: "userToCore1"
+			hmiToCorePrefix: "hmiToCore1"
 		};
 		let hmiTagObj = {
 			userId: "userId2"
@@ -56,24 +56,24 @@ describe("#findPairs()", function () {
 	//use this data for the next two tests
 	let coreTagObj1 = {
 		userId: "userId1",
-		tcpPort: "44300",
+		tcpPortInternal: "44300",
+		tcpPortExternal: "12522",
 		userToHmiPrefix: "userToHmi1",
 		hmiToCorePrefix: "hmiToCore1",
-		userToCorePrefix: "userToCore1"
 	};
 	let coreTagObj2 = {
 		userId: "userId3",
-		tcpPort: "12345",
+		tcpPortInternal: "12345",
+		tcpPortExternal: "27486",
 		userToHmiPrefix: "userToHmi2",
 		hmiToCorePrefix: "hmiToCore2",
-		userToCorePrefix: "userToCore2"
 	};
 	let coreTagObj3 = {
 		userId: "userId2",
-		tcpPort: "25252",
+		tcpPortInternal: "25252",
+		tcpPortExternal: "88888",
 		userToHmiPrefix: "userToHmi3",
 		hmiToCorePrefix: "hmiToCore3",
-		userToCorePrefix: "userToCore3"
 	};
 	let hmiTagObj1 = {userId: "userId1"};
 	let hmiTagObj2 = {userId: "userId2"};
@@ -117,7 +117,7 @@ describe("#findPairs()", function () {
 		assert(pairs[0].userAddressInternal === "127.0.0.4:8687");
 		assert(pairs[0].userAddressExternal === "userToHmi1");
 		assert(pairs[0].hmiAddressExternal === "hmiToCore1");
-		assert(pairs[0].tcpAddressExternal === "userToCore1");
+		assert(pairs[0].tcpPortExternal === "12522");
 
 		assert(pairs[1].user === "userId2");
 		assert(pairs[1].tcpAddressInternal === "127.0.0.3:25252");
@@ -125,7 +125,7 @@ describe("#findPairs()", function () {
 		assert(pairs[1].userAddressInternal === "127.0.0.5:1234");
 		assert(pairs[1].userAddressExternal === "userToHmi3");
 		assert(pairs[1].hmiAddressExternal === "hmiToCore3");
-		assert(pairs[1].tcpAddressExternal === "userToCore3");
+		assert(pairs[1].tcpPortExternal === "88888");
 	});
 
 	it("should invoke callback for every HMI not paired with core", function (done) {
@@ -163,22 +163,41 @@ describe("#getAddressesFromUserRequests()", function () {
 			LockIndex: 0,
 			Key: 'manticore/1234567890abcdef',
 			Flags: 0,
-			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmiPrefix":"fr0231rj23t","hmiToCorePrefix":"t20tg84j3t","userToCorePrefix":"5410"}'
+			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmiPrefix":"fr0231rj23t","hmiToCorePrefix":"t20tg84j3t","tcpPort":"5410"}'
 		},
 		{
 			LockIndex: 0,
 			Key: 'manticore/1234567890abcdef',
 			Flags: 0,
-			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmiPrefix":"g345yg36","hmiToCorePrefix":"2juh542q5jui6","userToCorePrefix":"9372"}'
+			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmiPrefix":"g345yg36","hmiToCorePrefix":"2juh542q5jui6","tcpPort":"9372"}'
 		}];
 		var addresses = core.getAddressesFromUserRequests(testData);
-		assert(addresses.length === 6, "there are 6 addresses. found " + addresses.length);
+		assert(addresses.length === 4, "there are 4 addresses. found " + addresses.length);
 		assert(addresses[0] === "fr0231rj23t");
 		assert(addresses[1] === "t20tg84j3t");
-		assert(addresses[2] === "5410");
-		assert(addresses[3] === "g345yg36");
-		assert(addresses[4] === "2juh542q5jui6");
-		assert(addresses[5] === "9372");
+		assert(addresses[2] === "g345yg36");
+		assert(addresses[3] === "2juh542q5jui6");
+	});
+});
+
+describe("#getPortsFromUserRequests()", function () {
+	it("should retrieve all ports from all keys in manticore", function () {
+		var testData = [{
+			LockIndex: 0,
+			Key: 'manticore/1234567890abcdef',
+			Flags: 0,
+			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmiPrefix":"fr0231rj23t","hmiToCorePrefix":"t20tg84j3t","tcpPortExternal":"5410"}'
+		},
+		{
+			LockIndex: 0,
+			Key: 'manticore/1234567890abcdef',
+			Flags: 0,
+			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmiPrefix":"g345yg36","hmiToCorePrefix":"2juh542q5jui6","tcpPortExternal":"9372"}'
+		}];
+		var addresses = core.getPortsFromUserRequests(testData);
+		assert(addresses.length === 2, "there are 2 ports. found " + addresses.length);
+		assert(addresses[0] === "5410");
+		assert(addresses[1] === "9372");
 	});
 });
 
@@ -223,14 +242,12 @@ describe("#addHmisToJob()", function () {
 			tcpPort: "44300",
 			userToHmiPrefix: "userToHmi1",
 			hmiToCorePrefix: "hmiToCore1",
-			userToCorePrefix: "userToCore1"
 		};
 		let coreTagObj2 = {
 			userId: "userId3",
 			tcpPort: "12345",
 			userToHmiPrefix: "userToHmi2",
 			hmiToCorePrefix: "hmiToCore2",
-			userToCorePrefix: "userToCore2"
 		};
 		var job = nomader.createJob("hmi");
 		var cores = [{
@@ -435,11 +452,11 @@ describe("#findAliveCoreAllocation()", function () {
 });
 
 
-describe("#getUniquePorts()", function () {
+describe("#getUniquePort()", function () {
 	it("should throw if the parameters are invalid", function () {
 		var didThrow = false;
 		try {
-			var result = core.getUniquePorts(3, 1, 0);
+			var result = core.getUniquePort(3, 1, []);
 		}
 		catch (err) {
 			didThrow = true;
@@ -447,10 +464,10 @@ describe("#getUniquePorts()", function () {
 		assert.equal(didThrow, true);
 	});
 
-	it("should throw if you request for more unique numbers than possible", function () {
+	it("should throw if you request for more unique numbers than possible given the blacklist", function () {
 		var didThrow = false;
 		try {
-			var result = core.getUniquePorts(0, 1, 5);
+			var result = core.getUniquePort(2, 4, [2,5,6,4,2,3]);
 		}
 		catch (err) {
 			didThrow = true;
@@ -458,14 +475,8 @@ describe("#getUniquePorts()", function () {
 		assert.equal(didThrow, true);
 	});
 
-	it("should return all unique numbers", function () {
-		var result = core.getUniquePorts(13, 15, 3);
-		assert.equal(result.length, 3);
-		var found13 = result.indexOf(13) !== -1;
-		var found14 = result.indexOf(14) !== -1;
-		var found15 = result.indexOf(15) !== -1;
-		assert.equal(found13, true);
-		assert.equal(found14, true);
-		assert.equal(found15, true);
+	it("should return a unique number", function () {
+		var result = core.getUniquePort(13, 15, [14, 15]);
+		assert.equal(result, 13);
 	});
 });
