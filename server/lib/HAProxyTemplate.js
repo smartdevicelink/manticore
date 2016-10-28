@@ -55,7 +55,7 @@ frontend main
 	for (let i = 0; i < this.httpMaps.length; i++) {
 		let map = this.httpMaps[i];
 		this.file += `
-	acl http-front-${i} hdr_end(host) -i ${map.from}:${this.mainPort}`;	
+	acl http-front-${i} hdr_end(host) -i ${map.from}.${process.env.DOMAIN_NAME}:${this.mainPort}`;	
 	}
 
 	//set up the redirections to the (currently nonexisting) backends
