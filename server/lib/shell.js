@@ -132,7 +132,7 @@ module.exports = {
 			    		logger.error(err);
 			    	}
 			    	//done! restart HAProxy
-			    	exec("sudo service haproxy reload", function (err, stdout, stderr) {
+			    	exec("sudo service haproxy restart", function (err, stdout, stderr) {
 			    		if (stdout) {
 			    			logger.debug(stdout);
 			    		}
