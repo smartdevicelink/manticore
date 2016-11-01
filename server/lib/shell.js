@@ -132,15 +132,14 @@ module.exports = {
 			    		logger.error(err);
 			    	}
 			    	//done! reload HAProxy
-			    	console.log(file);
-			    	exec("sudo service haproxy reload", function (err, stdout, stderr) {
+			    	/*exec("sudo service haproxy reload", function (err, stdout, stderr) {
 			    		if (stdout) {
 			    			logger.debug(stdout);
 			    		}
 			    		if (stderr) {
 			    			logger.error(stderr);
 			    		}
-			    	});
+			    	});*/
 			    }); 
 
 			}, function () {//HAPROXY_OFF is set to true. do nothing
