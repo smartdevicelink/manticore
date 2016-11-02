@@ -159,7 +159,6 @@ module.exports = {
 		//generate random letters and numbers for the user and hmi addresses
 		//get all keys in the KV store and find their external address prefixes
 		consuler.getKeyAll("manticore/requests/", function (results) {
-			console.log(results); 
 			var addresses = core.getAddressesFromUserRequests(results);
 			var options1 = {
 				length: 12,
