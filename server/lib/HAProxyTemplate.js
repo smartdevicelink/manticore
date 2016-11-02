@@ -68,7 +68,7 @@ frontend main
 	this.file += `
 	default_backend app
 `;
-
+/*
 	//now add the TCP frontends
 	for (let i = 0; i < this.tcpMaps.length; i++) {
 		let map = this.tcpMaps[i];
@@ -79,7 +79,7 @@ frontend tcp-front-${i}
 	default_backend tcp-back-${i}
 `;
 	}
-
+*/
 	//next, specify the backends
 	//the web app backend
 	this.file += `
@@ -97,7 +97,7 @@ backend http-back-${i}
 	server http-server-${i} ${map.to}
 `;	
 	}
-
+/*
 	//tcp backends
 	for (let i = 0; i < this.tcpMaps.length; i++) {
 		let map = this.tcpMaps[i];
@@ -106,6 +106,18 @@ backend tcp-back-${i}
 	mode tcp
 	server tcp-server-${i} ${map.to}
 `;	
+	}
+*/
+	//tcp proxying, from front to back, using the listen directive
+	for (let i = 0; i < this.tcpMaps.length; i++) {
+		let map = this.tcpMaps[i];
+		this.file += `
+listen tcp-${i}
+	bind *:${map.port}
+	mode tcp
+	option tcplog
+	server tcp-server-${i} ${map.to}
+`;
 	}
 
     return this.file;
