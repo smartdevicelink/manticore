@@ -480,3 +480,68 @@ describe("#getUniquePort()", function () {
 		assert.equal(result, 13);
 	});
 });
+
+describe("#oneAtATime()", function () {
+	it("should invoke one time if one invocation happens", function (done) {
+		var invokes = 0;
+		core.oneAtATime(function (finish) {
+			invokes++;
+			//do something asynchronous here
+			setTimeout(function () {
+				finish();
+			}, 300);
+		}, function () {
+			//done executing
+			assert.equal(invokes, 1);
+			done();
+		});
+	});
+
+	it("should invoke two times if two invocations happens", function (done) {
+		var invokes = 0;
+		core.oneAtATime(function (finish) {
+			invokes++;
+			//do something asynchronous here
+			setTimeout(function () {
+				finish();
+			}, 300);
+		}, function () {
+			//done executing
+			assert.equal(invokes, 2);
+			done();
+		});
+		//this function shouldn't have callbacks invoked
+		core.oneAtATime(function (finish) {
+			invokes++;
+			//do something asynchronous here
+			setTimeout(function () {
+				finish();
+			}, 300);
+		}, function () {
+			//done executing
+			assert.equal(invokes, 2);
+			done();
+		});
+	});
+
+	it("should (probably) invoke two times if more than two invocations happens", function (done) {
+		var invokes = 0;
+		core.oneAtATime(function (finish) {
+			invokes++;
+			//do something asynchronous here
+			setTimeout(function () {
+				finish();
+			}, 300);
+		}, function () {
+			//done executing
+			assert.equal(invokes, 2);
+			done();
+		});
+		//these functions shouldn't have callbacks invoked
+		core.oneAtATime(function (finish) {	}, function () { });
+		core.oneAtATime(function (finish) {	}, function () { });
+		core.oneAtATime(function (finish) {	}, function () { });
+		core.oneAtATime(function (finish) {	}, function () { });
+		core.oneAtATime(function (finish) {	}, function () { });
+	});
+});

@@ -131,16 +131,20 @@ module.exports = {
 			    	if (err) {
 			    		logger.error(err);
 			    	}
-			    	//done! reload HAProxy
-			    	var cmd = exec("sudo service haproxy reload", function (err, stdout, stderr) {
-			    		if (stdout) {
-			    			logger.debug(stdout);
-			    		}
-			    		if (stderr) {
-			    			logger.error(stderr);
-			    		}
+			    	//done! send a request to reload HAProxy
+			    	core.oneAtATime(function (done) {
+			    		exec("sudo service haproxy reload", function (err, stdout, stderr) {
+				    		if (stdout) {
+				    			logger.debug(stdout);
+				    		}
+				    		if (stderr) {
+				    			logger.error(stderr);
+				    		}
+				    		done(); //this function is done
+				    	});
+			    	}, function (){
+			    		//done executing. don't do anything
 			    	});
-			    	console.log(cmd.pid);
 			    }); 
 
 			}, function () {//HAPROXY_OFF is set to true. do nothing

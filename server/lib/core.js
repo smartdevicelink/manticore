@@ -187,7 +187,36 @@ module.exports = {
 		return null; //return null if nothing matches
 	},
 	//returns an array of unique numbers within a specified range
-	getUniquePort: getUniquePort
+	getUniquePort: getUniquePort,
+	oneAtATime: oneAtATime
+}
+
+function oneAtATime (accept, stop) {
+	//add a requests property to this function object that keeps track of 
+	//this function being invoked
+	var self = oneAtATime;
+	if (self.requests === undefined) { //initialize
+		self.requests = 0;
+	}
+	self.requests++; //this function will attempt to execute
+	if (self.requests > 1) { //this function is already being executed and isn't done yet. stop
+		return;
+	}
+	//this function is the only one executing. invoke the callback and prevent this function
+	//from executing again
+	accept(function () { 
+		//a "done" function. when this gets invoked, this function is done executing
+		//if there are additional requests that have happened in the time this was executing
+		//then invoke oneAtATime again
+		if (self.requests > 1) {
+			self.requests = 0;
+			oneAtATime(accept, stop);
+		}
+		else { //this function is done being invoked
+			self.requests = 0;
+			stop();
+		}
+	});
 }
 
 //warning: may be slow
