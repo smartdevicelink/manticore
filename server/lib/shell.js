@@ -159,67 +159,57 @@ module.exports = {
 		//generate random letters and numbers for the user and hmi addresses
 		//get all keys in the KV store and find their external address prefixes
 		consuler.getKeyAll("manticore/requests/", function (results) {
-			var addresses = core.getAddressesFromUserRequests(results);
-			var options1 = {
-				length: 12,
-				charset: 'alphanumeric',
-				capitalization: 'lowercase'
-			}
+			//do not store a new request in the KV store if the request already exists
+			//pass in the prefix to the value we want to check exists
+			core.checkUniqueRequest("manticore/requests/" + userId, results, function () {
+				//if HAPROXY_OFF is set to true then the external addresses mean nothing
+				//don't bother computing what they should be
+				core.checkHaProxyFlag(function () { //HAPROXY on
+					var addresses = core.getAddressesFromUserRequests(results);
+					var options1 = {
+						length: 12,
+						charset: 'alphanumeric',
+						capitalization: 'lowercase'
+					}
 
-			var func1 = randomString.generate.bind(undefined, options1);
-			const userToHmiAddress = core.getUniqueString(addresses, func1); //userAddress prefix
-			const hmiToCoreAddress = core.getUniqueString(addresses, func1); //hmiAddress prefix
+					var func1 = randomString.generate.bind(undefined, options1);
+					const userToHmiAddress = core.getUniqueString(addresses, func1); //userAddress prefix
+					const hmiToCoreAddress = core.getUniqueString(addresses, func1); //hmiAddress prefix
 
-			//since we must have one TCP port open per connection to SDL core (it's a long story)
-			//generate a number within reasonable bounds and isn't already used by other core connections
-			//WARNING: this does not actually check if the port is used on the OS! please make sure the
-			//port range specified in the environment variables are all open!
-			var usedPorts = core.getPortsFromUserRequests(results);
-			const tcpPortExternal = core.getUniquePort(process.env.TCP_PORT_RANGE_START, 
-				process.env.TCP_PORT_RANGE_END, usedPorts);
-			body.userToHmiPrefix = userToHmiAddress;
-			body.hmiToCorePrefix = hmiToCoreAddress;
-			body.tcpPortExternal = tcpPortExternal;
-			logger.debug("Store request " + userId);
-			consuler.setKeyValue("manticore/requests/" + userId, JSON.stringify(body));
+					//since we must have one TCP port open per connection to SDL core (it's a long story)
+					//generate a number within reasonable bounds and isn't already used by other core connections
+					//WARNING: this does not actually check if the port is used on the OS! please make sure the
+					//port range specified in the environment variables are all open!
+					var usedPorts = core.getPortsFromUserRequests(results);
+					const tcpPortExternal = core.getUniquePort(process.env.TCP_PORT_RANGE_START, 
+						process.env.TCP_PORT_RANGE_END, usedPorts);
+					body.userToHmiPrefix = userToHmiAddress;
+					body.hmiToCorePrefix = hmiToCoreAddress;
+					body.tcpPortExternal = tcpPortExternal;	
+				
+					logger.debug("Store request " + userId);
+					consuler.setKeyValue("manticore/requests/" + userId, JSON.stringify(body));
+					
+				}, function () { //HAPROXY off
+					logger.debug("Store request " + userId);
+					consuler.setKeyValue("manticore/requests/" + userId, JSON.stringify(body));
+				});
+
+			});
+
 		});
 
 	},
 	//send back connection information in order for the client to make a websocket connection to
 	//receive sdl_core logs
 	requestLogs: function (userId, callback) {
-		//point the user to the appropriate address
-		var address = core.getWsUrl();
-		//use the userId to generate a unique ID intended for the socket connection
-		var connectionId = userId;
-		logger.debug("Connection ID Generated:" + connectionId);
 		//make sure there is an allocation for core intended for this user before 
 		//starting up a connection
 		nomader.getAllocations("core", nomadAddress, function (res) {
 			//we know which allocation to find because the TaskGroup name has the client ID
 			//make sure the allocation is alive, which indicates it's the one that's running core
 			var allocation = core.findAliveCoreAllocation(res.allocations, userId);
-			if (allocation === null) {
-				//core isn't available to stream logs
-				logger.debug("Core isn't available for streaming for connection ID " + userId);
-				callback(null);
-			}
-			else {
-				//we can stream logs! return the appropriate connection details
-				//pass back the address and connectionID to connect to the websocket server
-				var connectionInfo = {
-					url: address,
-					connectionId: connectionId
-				}
-				logger.debug("Sending connection information to user " + userId);
-				logger.debug("Address: " + connectionInfo.url);
-				logger.debug("Connection ID: " + connectionInfo.connectionId);
-				callback(connectionInfo);
-				var taskName; //get the task name
-				for (var obj in allocation.TaskStates) {
-					taskName = obj;
-					break;
-				}
+			var connectionInfo = core.handleAllocation(allocation, userId, function (taskName) {
 				//start streaming logs to the client once they connect using the connection details
 				var custom = io.of('/' + userId);
 				custom.on('connection', function (socket) {
@@ -230,8 +220,8 @@ module.exports = {
 						socket.emit("logs", data);
 					});	
 				});
-			}
-
+			});
+			callback(connectionInfo); //get back connection info and pass it to client
 		});
 
 	},

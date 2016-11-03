@@ -91,9 +91,6 @@ module.exports = {
 			.setWebAppAddress(ip.address() + ":" + process.env.HTTP_PORT);
 
 		//generate a number of unique ports equal to the number of pairs
-		//FIX
-		/*var uniquePorts = getUniquePort(process.env.TCP_PORT_RANGE_START, 
-			process.env.TCP_PORT_RANGE_END, pairs.length);*/
 		//add the routes routes
 		for (let i = 0; i < pairs.length; i++) {
 			//generate a random port number in a range specified by environment variables
@@ -186,9 +183,53 @@ module.exports = {
 		}
 		return null; //return null if nothing matches
 	},
+	handleAllocation: function (allocation, userId, callback) {
+		//point the user to the appropriate address
+		var address = this.getWsUrl();
+		//use the userId to generate a unique ID intended for the socket connection
+		logger.debug("Connection ID Generated:" + userId);
+		var connectionInfo = null;
+
+		if (allocation === null) {
+			//core isn't available to stream logs
+			logger.debug("Core isn't available for streaming for connection ID " + userId);
+		}
+		else {
+			//we can stream logs! return the appropriate connection details
+			//pass back the address and connectionID to connect to the websocket server
+			connectionInfo = {
+				url: address,
+				connectionId: userId
+			}
+			logger.debug("Sending connection information to user " + userId);
+			logger.debug("Address: " + connectionInfo.url);
+			logger.debug("Connection ID: " + connectionInfo.connectionId);
+			var taskName; //get the task name
+			for (var obj in allocation.TaskStates) {
+				taskName = obj;
+				break;
+			}
+			callback(taskName); //send the taskName back too
+		}
+		return connectionInfo;
+	},
 	//returns an array of unique numbers within a specified range
 	getUniquePort: getUniquePort,
-	oneAtATime: oneAtATime
+	oneAtATime: oneAtATime,
+	checkUniqueRequest: function (userId, requests, callback) {
+		if (requests === undefined) {
+			requests = [];
+		}
+		//callback only if there is no request with the given id found in the KV store
+		for (let i = 0; i < requests.length; i++) {
+			if (requests[i].Key === userId) {
+				logger.debug("Duplicate request from " + userId);
+				return;
+			}
+		}
+		//made it to the end of the loop. callback
+		callback();
+	}
 }
 
 function oneAtATime (accept, stop) {

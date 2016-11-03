@@ -227,8 +227,8 @@ describe("#generateHAProxyConfig()", function () {
 		var frontends = file.match(/frontend/g);
 		//there's one additional backend that isn't caught by this regex. assume it exists
 		var backends = file.match(/server.*server/g); 
-		assert(frontends.length === 3, "there are 3 front ends. found " + frontends.length);
-		assert(backends.length + 1 === 7, "there are 7 back ends. found " + backends.length);
+		assert(frontends.length === 1, "there is 1 front end. found " + frontends.length);
+		assert(backends.length + 1 === 7, "there are 7 http back ends. found " + backends.length);
 	});
 
 });
@@ -452,6 +452,35 @@ describe("#findAliveCoreAllocation()", function () {
 });
 
 
+describe("#handleAllocation()", function () {
+	it("should return null if no alive allocation", function () {
+		var userId = "12345";
+
+		var result = core.handleAllocation(null, userId, function () {
+
+		});
+		assert.equal(result, null);
+	});
+	it("should return connection info if there's an allocation", function (done) {
+		var userId = "12345";
+
+		var allocation1 = { 
+			ID: '96e2c9e8-863d-940a-79ed-b7160eba1eb5',
+			TaskGroup: 'core-610',
+			ClientStatus: 'running',
+			TaskStates: { 'core-master': { State: 'running', Events: [Object] } },
+		}
+
+		var result = core.handleAllocation(allocation1, userId, function (taskName) {
+			assert.equal(taskName, 'core-master');
+			done();
+		});
+		assert.equal(result.connectionId, userId);
+		assert.notEqual(result.url, undefined);
+	});
+});
+
+
 describe("#getUniquePort()", function () {
 	it("should throw if the parameters are invalid", function () {
 		var didThrow = false;
@@ -543,5 +572,32 @@ describe("#oneAtATime()", function () {
 		core.oneAtATime(function (finish) {	}, function () { });
 		core.oneAtATime(function (finish) {	}, function () { });
 		core.oneAtATime(function (finish) {	}, function () { });
+	});
+});
+
+describe("#checkUniqueRequest()", function () {
+	it("should invoke the function if there's not a duplicate request", function (done) {
+		var userId = "1234";
+		var requests1 = [
+			{Key: "4242"},
+			{Key: "3561"},
+			{Key: "6442"},
+			{Key: "6480"}
+		];
+		var requests2 = [
+			{Key: "4242"},
+			{Key: "3561"},
+			{Key: "1234"},
+			{Key: "6480"}
+		];
+		//a little sketchy
+		var result = core.checkUniqueRequest(userId, requests2, function () {
+			assert.fail("", "", "should not have been called");
+		});
+		core.checkUniqueRequest(userId, requests1, function () {
+			done();
+		});
+
+		assert.equal(result, undefined);
 	});
 });
