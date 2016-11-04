@@ -1,5 +1,5 @@
 general:
-	build_dir: server
+    build_dir: server
 test:
-	override:
-		- ./server/node_modules/mocha/bin/mocha server/test/test-core.js
+    override:
+        - ./server/node_modules/mocha/bin/mocha server/test/test-core.js
