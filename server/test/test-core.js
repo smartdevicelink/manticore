@@ -1,3 +1,5 @@
+"use strict";
+
 var mocha = require('mocha');
 var assert = require('assert');
 var core = require('../lib/core.js');
