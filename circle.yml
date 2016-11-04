@@ -2,4 +2,4 @@ general:
     build_dir: server
 test:
     override:
-        - ls
+        - ./node_modules/mocha/bin/mocha test/test-core.js
