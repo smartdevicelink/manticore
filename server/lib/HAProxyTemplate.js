@@ -91,7 +91,7 @@ backend app
 	for (let i = 0; i < this.webAppAddresses.length; i++) {
 		let webAppAddress = this.webAppAddresses[i];
 		this.file += `
-	server webapp_${i} ${this.webAppAddress} check`;	
+	server webapp_${i} ${webAppAddress} check`;	
 	}
 
 	//add spacing

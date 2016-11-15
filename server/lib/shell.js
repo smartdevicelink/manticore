@@ -137,7 +137,7 @@ module.exports = {
 			    	}
 			    	//done! send a request to reload HAProxy
 			    	core.oneAtATime(function (done) {
-			    		exec("sudo service haproxy reload", function (err, stdout, stderr) {
+			    		exec(process.env.HAPROXY_INITD + " reload", function (err, stdout, stderr) {
 				    		if (stdout) {
 				    			logger.debug(stdout);
 				    		}
