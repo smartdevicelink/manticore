@@ -146,7 +146,7 @@ module.exports = {
 			    				HAPROXY_PID: process.env.HAPROXY_PID,
 			    			}
 			    		}
-			    		exec("/bin/bash haproxy-reload.sh", envs, function (err, stdout, stderr) {
+			    		exec("/bin/bash /usr/app/server/lib/haproxy-reload.sh", envs, function (err, stdout, stderr) {
 				    		if (stdout) {
 				    			logger.debug(stdout);
 				    		}
