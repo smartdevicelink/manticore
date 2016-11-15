@@ -75,6 +75,7 @@ function buildManticoreJobFile () {
 		console.log("Job submitted");
 		console.log(result);
 	});
+	fs.writeFileSync("output.json", JSON.stringify(job.getJob(), null, 4));
 	//console.log(job.getJob().Job.TaskGroups[0]);
 }
 
