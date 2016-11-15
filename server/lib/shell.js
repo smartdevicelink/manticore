@@ -131,7 +131,7 @@ module.exports = {
 				logger.debug("Updating HAProxy conf file");
 				var file = core.generateHAProxyConfig(pairs, manticores);
 
-			    fs.writeFile("/etc/haproxy/haproxy.cfg", file, function (err) {
+			    fs.writeFile(process.env.HAPROXY_CONFIG, file, function (err) {
 			    	if (err) {
 			    		logger.error(err);
 			    	}
