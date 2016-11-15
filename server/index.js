@@ -34,7 +34,8 @@ app.use(express.static(rootLocation));
         logger.debug("HAPROXY_HTTP_LISTEN: " + process.env.HAPROXY_HTTP_LISTEN);   
         logger.debug("HAPROXY_OFF: " + process.env.HAPROXY_OFF);   
         logger.debug("HAPROXY_CONFIG: " + process.env.HAPROXY_CONFIG);   
-        logger.debug("HAPROXY_INITD: " + process.env.HAPROXY_INITD);   
+        logger.debug("HAPROXY_SBIN: " + process.env.HAPROXY_SBIN);   
+        logger.debug("HAPROXY_PID: " + process.env.HAPROXY_PID);   
         //let shell.js handle the websocket server
         controller(app, io);
     });

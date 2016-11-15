@@ -15,7 +15,8 @@ console.log("TCP_PORT_RANGE_END: " + process.env.TCP_PORT_RANGE_END);
 console.log("HAPROXY_HTTP_LISTEN: " + process.env.HAPROXY_HTTP_LISTEN);   
 console.log("HAPROXY_OFF: " + process.env.HAPROXY_OFF);   
 console.log("HAPROXY_CONFIG: " + process.env.HAPROXY_CONFIG);   
-console.log("HAPROXY_INITD: " + process.env.HAPROXY_INITD);   
+console.log("HAPROXY_EXEC: " + process.env.HAPROXY_EXEC);   
+console.log("HAPROXY_PID: " + process.env.HAPROXY_PID);   
 
 var nomadAddress = process.env.CLIENT_AGENT_IP + ":4646";
 
@@ -54,7 +55,8 @@ function buildManticoreJobFile () {
 		"HAPROXY_HTTP_LISTEN",
 		"HAPROXY_OFF",
 		"HAPROXY_CONFIG",
-		"HAPROXY_INITD"
+		"HAPROXY_EXEC",
+		"HAPROXY_PID"
 	]);
 	job.addService(groupName, taskName, serviceName);
 	job.setPortLabel(groupName, taskName, serviceName, "http");
@@ -75,7 +77,8 @@ function buildManticoreJobFile () {
 	//expect HAPROXY config to be in /etc/haproxy/haproxy.cfg. it will be mounted in HAPROXY_CONFIG
 	//mount the script for controlling the reloading of HAProxy. it will be mounted in HAPROXY_INITD
 	job.addVolume(groupName, taskName, "/etc/haproxy/haproxy.cfg:" + process.env.HAPROXY_CONFIG);
-	job.addVolume(groupName, taskName, "/etc/init.d/haproxy:" + process.env.HAPROXY_INITD);
+	job.addVolume(groupName, taskName, "/usr/sbin/haproxy:" + process.env.HAPROXY_EXEC);
+	job.addVolume(groupName, taskName, "/var/run/haproxy.pid:" + process.env.HAPROXY_PID);
 	job.submitJob(nomadAddress, function (result) {
 		console.log("Job submitted");
 		console.log(result);

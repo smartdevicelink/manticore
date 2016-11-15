@@ -137,7 +137,16 @@ module.exports = {
 			    	}
 			    	//done! send a request to reload HAProxy
 			    	core.oneAtATime(function (done) {
-			    		exec(process.env.HAPROXY_INITD + " reload", function (err, stdout, stderr) {
+			    		//generate the command to use to reload haproxy. since we are in a docker container
+			    		//we need to mimic the behavior of the reload command of the init.d script on the host
+			    		var envs = {
+			    			env: {
+			    				HAPROXY_CONFIG: process.env.HAPROXY_CONFIG,
+			    				HAPROXY_EXEC: process.env.HAPROXY_EXEC,
+			    				HAPROXY_PID: process.env.HAPROXY_PID,
+			    			}
+			    		}
+			    		exec("bash haproxy-reload.sh", envs, function (err, stdout, stderr) {
 				    		if (stdout) {
 				    			logger.debug(stdout);
 				    		}
