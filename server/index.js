@@ -1,5 +1,5 @@
-//load the environment variables from the .env file in the same directory
-require('dotenv').config();
+//load the environment variables from the .env file in the same directory (remove when using docker containers)
+//require('dotenv').config();
 //modules
 var express = require('express');
 var bodyParser = require('body-parser');
