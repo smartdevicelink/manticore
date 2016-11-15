@@ -89,8 +89,11 @@ module.exports = {
 			//services updated. get information about core and hmi if possible
 			let cores = services.filter("core-master");
 			let hmis = services.filter("hmi-master");
+			let manticores = services.filter("manticore-service");
+
 			logger.debug("Core services: " + cores.length);
 			logger.debug("Hmi services: " + hmis.length);
+			logger.debug("Manticore services: " + manticores.length);
 			//for every core service, ensure it has a corresponding HMI
 			var job = nomader.createJob("hmi");
 			core.addHmisToJob(job, cores);
@@ -123,9 +126,10 @@ module.exports = {
 			core.checkHaProxyFlag(function () {
 				//create an haproxy file and write it so that haproxy notices it
 				//use the pairs because that has information about what addresses to use
+				//also use manticores because that has information about where the manticores are
 				//NOTE: the user that runs manticore should own this directory or it may not write to the file!
 				logger.debug("Updating HAProxy conf file");
-				var file = core.generateHAProxyConfig(pairs);
+				var file = core.generateHAProxyConfig(pairs, manticores);
 
 			    fs.writeFile("/etc/haproxy/haproxy.cfg", file, function (err) {
 			    	if (err) {

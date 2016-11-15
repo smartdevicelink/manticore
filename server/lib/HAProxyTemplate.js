@@ -7,7 +7,7 @@ module.exports = function () {
 //function constructor for making HAProxy conf files
 function HAProxyTemplate () {
 	this.mainPort;
-	this.webAppAddress;
+	this.webAppAddresses = [];
 	this.tcpMaps = [];
 	this.httpMaps = [];
     this.file = getTemplate();
@@ -19,9 +19,9 @@ HAProxyTemplate.prototype.setMainPort = function (port) {
 	return this;
 };
 
-//the port used to redirect all HTTP connections to places such as the web app and the HMI
-HAProxyTemplate.prototype.setWebAppAddress = function (address) {
-	this.webAppAddress = address;
+//the ports of all the manticore web servers
+HAProxyTemplate.prototype.addWebAppAddress = function (address) {
+	this.webAppAddresses.push(address);
 	return this;
 };
 
@@ -81,13 +81,22 @@ frontend tcp-front-${i}
 	}
 */
 	//next, specify the backends
-	//the web app backend
+	//the manticore web app backends
 	this.file += `
 backend app
-	mode http
-	server webapp ${this.webAppAddress}
-`;
+	balance roundrobin
+	option httpchk
+	mode http`;
 
+	for (let i = 0; i < this.webAppAddresses.length; i++) {
+		let webAppAddress = this.webAppAddresses[i];
+		this.file += `
+	server webapp_${i} ${this.webAppAddress} check`;	
+	}
+
+	//add spacing
+	this.file += `
+`;	
 	//http backends
 	for (let i = 0; i < this.httpMaps.length; i++) {
 		let map = this.httpMaps[i];

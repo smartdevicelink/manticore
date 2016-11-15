@@ -82,13 +82,17 @@ module.exports = {
 			addHmiGenericGroup(job, cores[i], process.env.HAPROXY_HTTP_LISTEN);
 		}	
 	},
-	generateHAProxyConfig: function (pairs) {
+	generateHAProxyConfig: function (pairs, manticores) {
 		var pairs = pairs.pairs;
 		//for each pair, extract connection information and add them to HAProxy config file
 		//put TCP blocks in a separate file
 		var file = haproxy();
-		file.setMainPort(process.env.HAPROXY_HTTP_LISTEN)
-			.setWebAppAddress(ip.address() + ":" + process.env.HTTP_PORT);
+		file.setMainPort(process.env.HAPROXY_HTTP_LISTEN);
+
+		for (let i = 0; i < manticores.length; i++) {
+			var manticore = manticores[i];
+			file.addWebAppAddress(manticore.Address + ":" + manticore.Port);
+		}
 
 		//generate a number of unique ports equal to the number of pairs
 		//add the routes routes

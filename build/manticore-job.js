@@ -14,6 +14,7 @@ console.log("TCP_PORT_RANGE_START: " + process.env.TCP_PORT_RANGE_START);
 console.log("TCP_PORT_RANGE_END: " + process.env.TCP_PORT_RANGE_END);   
 console.log("HAPROXY_HTTP_LISTEN: " + process.env.HAPROXY_HTTP_LISTEN);   
 console.log("HAPROXY_OFF: " + process.env.HAPROXY_OFF);   
+console.log("HAPROXY_CONFIG: " + process.env.HAPROXY_CONFIG);   
 
 var nomadAddress = process.env.CLIENT_AGENT_IP + ":4646";
 
@@ -75,7 +76,7 @@ function buildManticoreJobFile () {
 		console.log("Job submitted");
 		console.log(result);
 	});
-	fs.writeFileSync("output.json", JSON.stringify(job.getJob(), null, 4));
+	//fs.writeFileSync("output.json", JSON.stringify(job.getJob(), null, 4));
 	//console.log(job.getJob().Job.TaskGroups[0]);
 }
 
