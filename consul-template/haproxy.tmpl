@@ -1,0 +1,57 @@
+global
+    log 127.0.0.1 local2
+    chroot /var/lib/haproxy
+    pidfile /var/run/haproxy.pid
+    maxconn 4000
+    user haproxy
+    group haproxy
+    daemon
+    stats socket /var/lib/haproxy/stats
+
+
+defaults
+    mode http
+    log global
+    option httplog
+    option dontlognull
+    option http-server-close
+    option forwardfor except 127.0.0.0/8
+    option redispatch
+    retries 3
+    timeout http-request 10s
+    timeout queue 1m
+    timeout connect 10s
+    timeout client 1m
+    timeout server 1m
+    timeout http-keep-alive 10s
+    timeout check 10s
+    maxconn 3000
+
+
+frontend main
+    bind *:{{key "haproxy/mainPort"}}
+    mode http
+    {{range ls "haproxy/data/httpFront"}}
+    acl http-front-{{.Key}} hdr_end(host) -i {{.Value}}.{{key "haproxy/domainName"}}.{{key "haproxy/mainPort"}}{{end}}
+    {{range ls "haproxy/data/httpFront"}}
+    use_backend http-back-{{.Key}} if http-front-{{.Key}}{{end}}
+    default_backend app
+
+backend app
+    balance roundrobin
+    option httpchk
+    mode http
+    {{range ls "haproxy/data/webAppAddresses"}}
+    server webapp-{{.Key}} {{.Value}} check {{end}}
+
+{{range ls "haproxy/data/httpBack"}}
+backend http-back-{{.Key}}
+    mode http
+    server http-server-{{.Key}} {{.Value}} {{end}}
+
+{{range ls "haproxy/data/tcpMaps"}}
+listen tcp-{{.Key}}
+    bind *:{{.Key}}
+    mode tcp
+    option tcplog
+    server tcp-server-{{.Key}} {{.Value}} {{end}}

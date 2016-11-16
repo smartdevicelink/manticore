@@ -45,8 +45,14 @@ module.exports = {
 			console.log(data);
 		});*/
 		consuler.setKeyValue("manticore/filler", "Keep me here please!", function () {
-			callback();
+			//set some values we know from environment variables for haproxy configurations
+			consuler.setKeyValue("haproxy/mainPort", process.env.HAPROXY_HTTP_LISTEN, function () {
+				consuler.setKeyValue("haproxy/domainName", process.env.DOMAIN_NAME, function () {
+					callback();
+				});	
+			});	
 		});
+
 	},
 	startWatches: function (postUrl) {
 		//set a watch for the KV store
@@ -119,9 +125,35 @@ module.exports = {
 			};
 			//post all pairs at once
 			logger.info(pairs);
+			//currently doesn't really do anything
 			needle.post(postUrl, pairs, function (err, res) {
 			});
 
+//TEMPORARY START
+				var template = core.generateHAProxyConfig(pairs, manticores);
+				consuler.delKey("haproxy/data", function () {
+					//make the async calls. store all data from the template inside haproxy/data/
+					for (let i = 0; i < template.webAppAddresses.length; i++) {
+						var item = template.webAppAddresses[i];
+						(function (index) {
+							consuler.setKeyValue("haproxy/data/webAppAddresses/" + index, item, function (){});
+						})(i);
+					}	
+					for (let i = 0; i < template.tcpMaps.length; i++) {
+						var item = template.tcpMaps[i];
+						(function (index){
+							consuler.setKeyValue("haproxy/data/tcpMaps/" + item.port, item.to, function (){});
+						})(i);
+					}	
+					for (let i = 0; i < template.httpMaps.length; i++) {
+						var item = template.httpMaps[i];
+						(function (index) {
+							consuler.setKeyValue("haproxy/data/httpFront/" + index, item.from, function (){});
+							consuler.setKeyValue("haproxy/data/httpBack/" + index, item.to, function (){});
+						})(i);
+					}				
+				});
+//TEMPORARY END
 			//if HAPROXY_OFF was not set to "true". write the file and reload haproxy
 			core.checkHaProxyFlag(function () {
 				//create an haproxy file and write it so that haproxy notices it
@@ -129,8 +161,35 @@ module.exports = {
 				//also use manticores because that has information about where the manticores are
 				//NOTE: the user that runs manticore should own this directory or it may not write to the file!
 				logger.debug("Updating HAProxy conf file");
-				var file = core.generateHAProxyConfig(pairs, manticores);
+				var template = core.generateHAProxyConfig(pairs, manticores);
+				//use the HAProxyTemplate file to submit information to the KV store so that
+				//consul-template can use that information to generate an HAProxy configuration
+				//replace existing data in the KV store
+				consuler.delKey("haproxy/data", function () {
+					//make the async calls. store all data from the template inside haproxy/data/
+					for (let i = 0; i < template.webAppAddresses.length; i++) {
+						var item = template.webAppAddresses[i];
+						(function (index) {
+							consuler.setKeyValue("haproxy/data/webAppAddresses/webapp-" + index, item, function (){});
+						})(i);
+					}	
+					for (let i = 0; i < template.tcpMaps.length; i++) {
+						var item = template.tcpMaps[i];
+						(function (index){
+							consuler.setKeyValue("haproxy/data/tcpMaps/" + item.port, item.to, function (){});
+						})(i);
+					}	
+					for (let i = 0; i < template.httpMaps.length; i++) {
+						var item = template.httpMaps[i];
+						(function (index) {
+							consuler.setKeyValue("haproxy/data/httpFront/http-front-" + index, item.from, function (){});
+							consuler.setKeyValue("haproxy/data/httpBack/http-server-" + index, item.to, function (){});
+						})(i);
+					}				
+				});
 
+
+				/*
 			    fs.writeFile(process.env.HAPROXY_CONFIG, file, function (err) {
 			    	if (err) {
 			    		logger.error(err);
@@ -159,6 +218,7 @@ module.exports = {
 			    		//done executing. don't do anything
 			    	});
 			    }); 
+				*/
 
 			}, function () {//HAPROXY_OFF is set to true. do nothing
 			});

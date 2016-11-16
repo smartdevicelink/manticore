@@ -104,7 +104,7 @@ module.exports = {
 				.addHttpRoute(pair.hmiAddressExternal, pair.hmiAddressInternal)
 				.addTcpRoute(pair.tcpPortExternal, pair.tcpAddressInternal)
 		}
-		return file.generate();
+		return file;
 	},
 	getUniqueString: function (blackList, generatorFunc) {
 		//use generatorFunc to keep creating new strings until
