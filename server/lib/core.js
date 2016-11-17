@@ -311,7 +311,7 @@ function addCoreGroup (job, userId, request) {
 	//set resource limitations
 	job.setCPU(groupName, "core-master", 100);
 	job.setMemory(groupName, "core-master", 25);
-	job.setMbits(groupName, "core-master", 2);
+	job.setMbits(groupName, "core-master", 1);
 	job.setEphemeralDisk(groupName, 50, false, false);
 	job.setLogs(groupName, "core-master", 2, 10);
 
@@ -345,7 +345,7 @@ function addHmiGenericGroup (job, core, haproxyPort) {
 	//set resource limitations
 	job.setCPU(groupName, "hmi-master", 50);
 	job.setMemory(groupName, "hmi-master", 150);
-	job.setMbits(groupName, "core-master", 2);
+	job.setMbits(groupName, "core-master", 1);
 	job.setEphemeralDisk(groupName, 30, false, false);
 	job.setLogs(groupName, "hmi-master", 1, 10);
 	//the address to pass into HMI will depend on whether the HAPROXY_OFF flag is on
