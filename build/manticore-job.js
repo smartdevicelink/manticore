@@ -71,6 +71,7 @@ function buildManticoreJobFile () {
 	//set resource constraints
 	job.setCPU(groupName, taskName, 100);
 	job.setMemory(groupName, taskName, 100);
+	job.setMbits(groupName, taskName, 2);
 	job.setEphemeralDisk(groupName, 150, false, false);
 	job.setLogs(groupName, taskName, 10, 5);
 	//TODO: ADD CONSTRAINTS USING METADATA DEFINED IN THE CLIENT AGENT

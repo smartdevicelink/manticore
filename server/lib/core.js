@@ -311,6 +311,7 @@ function addCoreGroup (job, userId, request) {
 	//set resource limitations
 	job.setCPU(groupName, "core-master", 100);
 	job.setMemory(groupName, "core-master", 25);
+	job.setMbits(groupName, "core-master", 2);
 	job.setEphemeralDisk(groupName, 50, false, false);
 	job.setLogs(groupName, "core-master", 2, 10);
 
