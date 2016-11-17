@@ -201,8 +201,8 @@ describe("#getPortsFromUserRequests()", function () {
 	});
 });
 
-describe("#generateHAProxyConfig()", function () {
-	it("should generate HAProxy config file meant for HTTP and for TCP proxying", function () {
+describe("#generateProxyData()", function () {
+	it("should generate proxy data meant for HTTP and for TCP proxying", function () {
 		var testData = {
 			pairs: [{
 				user: "3456789yduc2nj3f",
@@ -211,24 +211,24 @@ describe("#generateHAProxyConfig()", function () {
 				tcpAddressInternal: "127.0.0.1:6000",
 				userAddressExternal: "15uyh6176",
 				hmiAddressExternal: "a4a4y43yq53",
-				tcpAddressExternal: "2742"
-			},{
-				user: "3456789yduc2nj3f",
-				userAddressInternal: "127.0.0.1:4000",
-				hmiAddressInternal: "127.0.0.1:5000",
-				tcpAddressInternal: "127.0.0.1:6000",
-				userAddressExternal: "15uyh6176",
-				hmiAddressExternal: "a4a4y43yq53",
-				tcpAddressExternal: "2742"
+				tcpPortExternal: "2742"
 			}]
 		};
-		var file = core.generateHAProxyConfig(testData);
-		//there should be 4 server blocks. check for server_name as a string
-		var frontends = file.match(/frontend/g);
-		//there's one additional backend that isn't caught by this regex. assume it exists
-		var backends = file.match(/server.*server/g); 
-		assert(frontends.length === 1, "there is 1 front end. found " + frontends.length);
-		assert(backends.length + 1 === 7, "there are 7 http back ends. found " + backends.length);
+		var manticoreData = [{
+			Address: "test:2000",
+			Port: 20
+		}];
+		var file = core.generateProxyData(testData, manticoreData);
+		assert.equal(file.webAppAddresses.length, 1);
+		assert.equal(file.webAppAddresses[0], manticoreData[0].Address + ":" + manticoreData[0].Port);
+		assert.equal(file.tcpMaps.length, 1);
+		assert.equal(file.tcpMaps[0].port, testData.pairs[0].tcpPortExternal);
+		assert.equal(file.tcpMaps[0].to, testData.pairs[0].tcpAddressInternal);
+		assert.equal(file.httpMaps.length, 2);
+		assert.equal(file.httpMaps[0].from, testData.pairs[0].userAddressExternal);
+		assert.equal(file.httpMaps[0].to, testData.pairs[0].userAddressInternal);
+		assert.equal(file.httpMaps[1].from, testData.pairs[0].hmiAddressExternal);
+		assert.equal(file.httpMaps[1].to, testData.pairs[0].hmiAddressInternal);
 	});
 
 });

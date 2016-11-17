@@ -14,9 +14,6 @@ console.log("TCP_PORT_RANGE_START: " + process.env.TCP_PORT_RANGE_START);
 console.log("TCP_PORT_RANGE_END: " + process.env.TCP_PORT_RANGE_END);   
 console.log("HAPROXY_HTTP_LISTEN: " + process.env.HAPROXY_HTTP_LISTEN);   
 console.log("HAPROXY_OFF: " + process.env.HAPROXY_OFF);   
-console.log("HAPROXY_CONFIG: " + process.env.HAPROXY_CONFIG);   
-console.log("HAPROXY_EXEC: " + process.env.HAPROXY_EXEC);   
-console.log("HAPROXY_PID: " + process.env.HAPROXY_PID);   
 
 var nomadAddress = process.env.CLIENT_AGENT_IP + ":4646";
 
@@ -53,10 +50,7 @@ function buildManticoreJobFile () {
 		"TCP_PORT_RANGE_START",
 		"TCP_PORT_RANGE_END",
 		"HAPROXY_HTTP_LISTEN",
-		"HAPROXY_OFF",
-		"HAPROXY_CONFIG",
-		"HAPROXY_EXEC",
-		"HAPROXY_PID"
+		"HAPROXY_OFF"
 	]);
 	job.addService(groupName, taskName, serviceName);
 	job.setPortLabel(groupName, taskName, serviceName, "http");

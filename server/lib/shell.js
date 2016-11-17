@@ -129,18 +129,15 @@ module.exports = {
 			needle.post(postUrl, pairs, function (err, res) {
 			});
 
-			//if HAPROXY_OFF was not set to "true". write the file and reload haproxy
+			//if HAPROXY_OFF was not set to "true"
 			core.checkHaProxyFlag(function () {
-				//create an haproxy file and write it so that haproxy notices it
-				//use the pairs because that has information about what addresses to use
-				//also use manticores because that has information about where the manticores are
-				//NOTE: the user that runs manticore should own this directory or it may not write to the file!
-				logger.debug("Updating HAProxy conf file");
-				var template = core.generateHAProxyConfig(pairs, manticores);
+				logger.debug("Updating KV Store with data for proxy!");
+				var template = core.generateProxyData(pairs, manticores);
 				//use the HAProxyTemplate file to submit information to the KV store so that
+				//use the pairs because that has information about what addresses to use
 				//consul-template can use that information to generate an HAProxy configuration
 				//replace existing data in the KV store
-				//WARNING: THIS COULD BE DANGEROUS
+				//WARNING: THIS COULD BE DANGEROUS. possibly use consul locks to limit redundancy of writes
 				consuler.delKeyAll("haproxy/data", function () {
 					//make the async calls. store all data from the template inside haproxy/data/
 					for (let i = 0; i < template.webAppAddresses.length; i++) {
@@ -163,38 +160,6 @@ module.exports = {
 						})(i);
 					}				
 				});
-
-
-				/*
-			    fs.writeFile(process.env.HAPROXY_CONFIG, file, function (err) {
-			    	if (err) {
-			    		logger.error(err);
-			    	}
-			    	//done! send a request to reload HAProxy
-			    	core.oneAtATime(function (done) {
-			    		//generate the command to use to reload haproxy. since we are in a docker container
-			    		//we need to mimic the behavior of the reload command of the init.d script on the host
-			    		var envs = {
-			    			env: {
-			    				HAPROXY_CONFIG: process.env.HAPROXY_CONFIG,
-			    				HAPROXY_EXEC: process.env.HAPROXY_EXEC,
-			    				HAPROXY_PID: process.env.HAPROXY_PID,
-			    			}
-			    		}
-			    		exec("/bin/bash /usr/app/server/lib/haproxy-reload.sh", envs, function (err, stdout, stderr) {
-				    		if (stdout) {
-				    			logger.debug(stdout);
-				    		}
-				    		if (stderr) {
-				    			logger.error(stderr);
-				    		}
-				    		done(); //this function is done
-				    	});
-			    	}, function (){
-			    		//done executing. don't do anything
-			    	});
-			    }); 
-				*/
 
 			}, function () {//HAPROXY_OFF is set to true. do nothing
 			});

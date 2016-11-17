@@ -82,7 +82,7 @@ module.exports = {
 			addHmiGenericGroup(job, cores[i], process.env.HAPROXY_HTTP_LISTEN);
 		}	
 	},
-	generateHAProxyConfig: function (pairs, manticores) {
+	generateProxyData: function (pairs, manticores) {
 		var pairs = pairs.pairs;
 		//for each pair, extract connection information and add them to HAProxy config file
 		//put TCP blocks in a separate file

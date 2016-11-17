@@ -32,10 +32,7 @@ app.use(express.static(rootLocation));
         logger.debug("TCP_PORT_RANGE_START: " + process.env.TCP_PORT_RANGE_START);   
         logger.debug("TCP_PORT_RANGE_END: " + process.env.TCP_PORT_RANGE_END);   
         logger.debug("HAPROXY_HTTP_LISTEN: " + process.env.HAPROXY_HTTP_LISTEN);   
-        logger.debug("HAPROXY_OFF: " + process.env.HAPROXY_OFF);   
-        logger.debug("HAPROXY_CONFIG: " + process.env.HAPROXY_CONFIG);   
-        logger.debug("HAPROXY_SBIN: " + process.env.HAPROXY_SBIN);   
-        logger.debug("HAPROXY_PID: " + process.env.HAPROXY_PID);   
+        logger.debug("HAPROXY_OFF: " + process.env.HAPROXY_OFF);     
         //let shell.js handle the websocket server
         controller(app, io);
     });
