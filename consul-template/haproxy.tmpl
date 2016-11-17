@@ -43,7 +43,7 @@ backend app
     option httpchk get /check
     http-check expect string OK 
     {{range ls "haproxy/data/webAppAddresses"}}
-    server webapp-{{.Key}} {{.Value}} {{end}} 
+    server webapp-{{.Key}} {{.Value}} {{end}} check
 
 
 {{range ls "haproxy/data/httpBack"}}
