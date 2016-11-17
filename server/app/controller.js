@@ -72,6 +72,11 @@ module.exports = function (app, io) {
 		res.json(builds);
 	});
 
+	//for HTTP health checking only
+	app.get('/check', function (req, res) {
+		res.sendStatus(200);
+	});
+
 	//delete a core passing in an id
 	app.delete('/v1/cores/:id', function (req, res) {
 		//do something with req.params.id
