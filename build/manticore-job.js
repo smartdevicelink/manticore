@@ -69,11 +69,6 @@ function buildManticoreJobFile () {
 	job.setEphemeralDisk(groupName, 150, false, false);
 	job.setLogs(groupName, taskName, 10, 5);
 	//TODO: ADD CONSTRAINTS USING METADATA DEFINED IN THE CLIENT AGENT
-	//expect HAPROXY config to be in /etc/haproxy/haproxy.cfg. it will be mounted in HAPROXY_CONFIG
-	//mount the script for controlling the reloading of HAProxy. it will be mounted in HAPROXY_INITD
-	job.addVolume(groupName, taskName, "/etc/haproxy/haproxy.cfg:" + process.env.HAPROXY_CONFIG);
-	job.addVolume(groupName, taskName, "/usr/sbin/haproxy:" + process.env.HAPROXY_EXEC);
-	job.addVolume(groupName, taskName, "/var/run/haproxy.pid:" + process.env.HAPROXY_PID);
 	job.submitJob(nomadAddress, function (result) {
 		console.log("Job submitted");
 		console.log(result);
