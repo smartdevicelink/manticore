@@ -49,9 +49,9 @@ backend http-back-{{.Key}}
     mode http
     server http-server-{{.Key}} {{.Value}} {{end}}
 
-{{range ls "haproxy/data/tcpMaps"}}
-listen tcp-{{.Key}}
+{{$length := ls "haproxy/data/tcpMaps"|len|add 0}}{{range $i := loop 0 $length}}{{with index (ls "haproxy/data/tcpMaps") $i}}
+listen tcp-{{$i}}
     bind *:{{.Key}}
     mode tcp
     option tcplog
-    server tcp-server-{{.Key}} {{.Value}} {{end}}
+    server tcp-server-{{$i}} {{.Value}} {{end}}{{end}}
