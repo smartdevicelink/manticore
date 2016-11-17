@@ -140,6 +140,7 @@ module.exports = {
 				//use the HAProxyTemplate file to submit information to the KV store so that
 				//consul-template can use that information to generate an HAProxy configuration
 				//replace existing data in the KV store
+				//WARNING: THIS COULD BE DANGEROUS
 				consuler.delKeyAll("haproxy/data", function () {
 					//make the async calls. store all data from the template inside haproxy/data/
 					for (let i = 0; i < template.webAppAddresses.length; i++) {
