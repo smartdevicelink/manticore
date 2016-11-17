@@ -40,8 +40,8 @@ frontend main
 backend app
     balance roundrobin
     mode http
-    option httpchk get /check
-    http-check expect string OK 
+    option httpchk GET /
+    http-check expect status 200
     {{range ls "haproxy/data/webAppAddresses"}}
     server webapp-{{.Key}} {{.Value}} {{end}} check
 
