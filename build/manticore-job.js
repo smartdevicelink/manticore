@@ -68,7 +68,11 @@ function buildManticoreJobFile () {
 	job.setMbits(groupName, taskName, 2);
 	job.setEphemeralDisk(groupName, 150, false, false);
 	job.setLogs(groupName, taskName, 10, 5);
-	//TODO: ADD CONSTRAINTS USING METADATA DEFINED IN THE CLIENT AGENT
+	job.addConstraint({
+		LTarget: "${meta.manticore}",
+		Operand: "=",
+		RTarget: "1"
+	}, groupName);
 	job.submitJob(nomadAddress, function (result) {
 		console.log("Job submitted");
 		console.log(result);

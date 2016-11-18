@@ -308,6 +308,11 @@ function addCoreGroup (job, userId, request) {
 	job.addPort(groupName, "core-master", true, "hmi", 8087);
 	job.addPort(groupName, "core-master", true, "tcp", 12345);
 	job.addEnv(groupName, "core-master", "DOCKER_IP", "${NOMAD_IP_hmi}");
+	job.addConstraint({
+		LTarget: "${meta.core}",
+		Operand: "=",
+		RTarget: "1"
+	}, groupName);
 	//set resource limitations
 	job.setCPU(groupName, "core-master", 100);
 	job.setMemory(groupName, "core-master", 25);
@@ -342,6 +347,11 @@ function addHmiGenericGroup (job, core, haproxyPort) {
 	job.addTask(groupName, "hmi-master");
 	job.setImage(groupName, "hmi-master", "crokita/discovery-generic-hmi:master");
 	job.addPort(groupName, "hmi-master", true, "user", 8080);
+	job.addConstraint({
+		LTarget: "${meta.core}",
+		Operand: "=",
+		RTarget: "1"
+	}, groupName);
 	//set resource limitations
 	job.setCPU(groupName, "hmi-master", 50);
 	job.setMemory(groupName, "hmi-master", 150);
