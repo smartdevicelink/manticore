@@ -30,7 +30,7 @@ function buildManticoreJobFile () {
 	var taskName = "manticore-task";
 	var serviceName = "manticore-service";
 	job.addGroup(groupName);
-	job.setType("system");
+	job.setType("service");
 	//update one manticore at a time every 10 seconds
 	job.setUpdate(1, 10000000000);
 	job.setCount(groupName, 1);
