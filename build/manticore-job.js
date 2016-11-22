@@ -73,8 +73,12 @@ function buildManticoreJobFile () {
 		Operand: "=",
 		RTarget: "1"
 	}, groupName);
-	job.submitJob(nomadAddress, function (result) {
+	/*job.submitJob(nomadAddress, function (result) {
 		console.log("Job submitted");
+		console.log(result);
+	});*/
+	job.planJob(nomadAddress, "manticore", function (result) {
+		console.log("Job planned")
 		console.log(result);
 	});
 	//fs.writeFileSync("output.json", JSON.stringify(job.getJob(), null, 4));
