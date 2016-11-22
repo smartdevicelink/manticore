@@ -30,7 +30,7 @@ function buildManticoreJobFile () {
 	var taskName = "manticore-task";
 	var serviceName = "manticore-service";
 	job.addGroup(groupName);
-	job.setType("service");
+	job.setType("system");
 	//update one manticore at a time every 10 seconds
 	job.setUpdate(1, 10000000000);
 	job.setCount(groupName, 1);
@@ -73,14 +73,16 @@ function buildManticoreJobFile () {
 		Operand: "=",
 		RTarget: "1"
 	}, groupName);
-	/*job.submitJob(nomadAddress, function (result) {
+	job.submitJob(nomadAddress, function (result) {
 		console.log("Job submitted");
 		console.log(result);
-	});*/
+	});
+	/*
 	job.planJob(nomadAddress, "manticore", function (result) {
 		console.log("Job planned")
 		console.log(result.FailedTGAllocs);
 	});
+	*/
 	//fs.writeFileSync("output.json", JSON.stringify(job.getJob(), null, 4));
 	//console.log(job.getJob().Job.TaskGroups[0]);
 }
