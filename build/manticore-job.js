@@ -79,7 +79,7 @@ function buildManticoreJobFile () {
 	});*/
 	job.planJob(nomadAddress, "manticore", function (result) {
 		console.log("Job planned")
-		console.log(result.Annotations.DesiredTGUpdates);
+		console.log(result);
 	});
 	//fs.writeFileSync("output.json", JSON.stringify(job.getJob(), null, 4));
 	//console.log(job.getJob().Job.TaskGroups[0]);
