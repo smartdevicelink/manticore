@@ -28,6 +28,22 @@ describe("#expect()", function () {
 	});
 });
 
+describe("#expectation()", function () {
+	it("should return an object with a send function to invoke", function () {
+		var expecting = core.expectation(3, function(){});
+		assert(typeof expecting.send === "function", "send is a function. Found " + (typeof expecting.send))
+	});
+	it("should invoke the callback after the send function is called 3 times", function (done){
+
+		var expecting = core.expectation(3, function () {
+			done();
+		});
+		expecting.send();
+		expecting.send();
+		expecting.send();
+	});
+});
+
 describe("#findPairs()", function () {
 	it("should return an empty array if no pairs are found", function () {
 		let coreTagObj = {
@@ -599,5 +615,70 @@ describe("#checkUniqueRequest()", function () {
 		});
 
 		assert.equal(result, undefined);
+	});
+});
+
+describe("#updateWaitingList()", function () {
+	it("should output the empty object if no requests and no waiting data", function () {
+		var requests = [];
+		var waitingData = {};
+		var updated = core.updateWaitingList(requests, waitingData);
+		assert.equal(JSON.stringify(updated), JSON.stringify({}));
+	});
+	it("should output the empty object if no requests but there is waiting data", function () {
+		var requests = [];
+		var waitingData = {
+			"123": 2,
+			"246": 3,
+			"643": 4
+		};
+		var updated = core.updateWaitingList(requests, waitingData);
+		assert.equal(JSON.stringify(updated), JSON.stringify({}));
+	});
+	it("should add a new request to waitingData with the highest index out of the group", function () {
+		var requests = ["123"];
+		var waitingData = {};
+		var updated = core.updateWaitingList(requests, waitingData);
+		assert.equal(JSON.stringify(updated), JSON.stringify({"123":1}));
+
+		updated = core.updateWaitingList(["123", "544"], updated);
+		assert.equal(updated["544"], 2);
+	});
+});
+
+describe("#findLowestIndexedKey()", function () {
+	it("should callback the key with the lowest index", function () {
+		var waitingData = {
+			"123": 2,
+			"236": 7,
+			"137": 1,
+			"878": 4
+		};
+		core.findLowestIndexedKey(waitingData, function (key) {
+			assert.equal(key, "137");
+		});
+	});
+	it("should not callback if the input is the empty object", function () {
+		var waitingData = {};
+		core.findLowestIndexedKey(waitingData, function (key) {
+			assert.fail(null, null, "This function should not have been called");
+		});
+	});
+});
+
+describe("#filterObjectKeys()", function () {
+	it("should keep keys from the object found in the array", function () {
+		var waitingData = {
+			"123": 2,
+			"236": 7,
+			"137": 1,
+			"878": 4
+		};
+		var claimedKeys = ["123", "137"];
+		var results = core.filterObjectKeys(waitingData, claimedKeys);
+		assert.equal(results["123"], 2);
+		assert.equal(results["236"], undefined);
+		assert.equal(results["137"], 1);
+		assert.equal(results["878"], undefined);
 	});
 });

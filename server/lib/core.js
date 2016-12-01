@@ -26,6 +26,21 @@ module.exports = {
 			}
 		}
 	},
+	//generalized version of expect()
+	expectation: function (count, callback) {
+		check();
+		return {
+			send: function () {
+				count--;
+				check();
+			}
+		}
+		function check () {
+			if (count === 0) {
+				callback();
+			}
+		}
+	},
 	findPairs: function (cores, hmis, callback) {
 		//for each HMI found, find its paired core, determine who that core belongs to, 
 		//and send the connection information to the owner
@@ -233,6 +248,61 @@ module.exports = {
 		}
 		//made it to the end of the loop. callback
 		callback();
+	},
+	updateWaitingList: function (requests, waitingData) {
+		//find the highest index in the waiting list (last in line)
+		var highestIndex = 0;
+		for (var key in waitingData) {
+			var index = waitingData[key];
+			if (index > highestIndex) {
+				highestIndex = index;
+			} 
+		}
+		//check if each request is in the waiting list
+		for (let i = 0; i < requests.length; i++) {
+			if (!waitingData[requests[i]]) {
+				//request not in waiting list. add it with a value of the highest number in the
+				//list to indicate a last position in line
+				waitingData[requests[i]] = highestIndex + 1;
+				//we have a new highest index
+				highestIndex++;
+			}
+		}
+		//now check if each request in the waiting list exists in the requests. if it doesn't, remove it
+		for (var key in waitingData) {
+			if (requests.indexOf(key) === -1) {//not found
+				delete waitingData[key];
+			}
+		}
+		//return updated waiting list.
+		return waitingData;
+	},
+	//send back the key with the lowest index. if there are no keys, don't send back anything
+	findLowestIndexedKey: function (obj, callback) {
+		var lowestIndex = Infinity;
+		var lowestKey = null;
+		for (var key in obj) {
+			var value = obj[key];
+			if (value < lowestIndex) {
+				lowestIndex = value;
+				lowestKey = key;
+			}
+		}
+		if (lowestKey) {
+			callback(lowestKey);			
+		}
+	},
+	addCoreGroup: addCoreGroup,
+	addHmiGenericGroup: addHmiGenericGroup,
+	filterObjectKeys: function (obj, array) {
+		//keep an object if the key is found in the array
+		var filtered = {};
+		for (var key in obj) {
+			if (array.indexOf(key) !== -1) {
+				filtered[key] = obj[key];
+			}
+		}
+		return filtered;
 	}
 }
 
