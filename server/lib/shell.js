@@ -292,7 +292,7 @@ module.exports = {
 			var pairs = core.findPairs(cores, hmis, function (userId) {
 				//remove user from KV store because the HMI has no paired core which
 				//indicates that the user exited the HMI page and is done with their instance
-				self.deleteKey(C.keys.request + "/" + userId, function () {});
+				self.deleteKey(C.keys.data.claimed + "/" + userId, function () {});
 			});
 			pairs = {
 				pairs: pairs
