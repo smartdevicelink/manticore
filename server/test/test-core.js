@@ -2,6 +2,7 @@ var mocha = require('mocha');
 var assert = require('assert');
 var core = require('../lib/core.js');
 var nomader = require('nomad-helper');
+var functionite = require('functionite');
 
 describe("#expect()", function () {
 	it("should return an object with a send function to invoke", function () {
@@ -368,19 +369,33 @@ describe("#checkJobs()", function () {
 	});
 });
 
-describe("#filterKeys()", function () {
-	it("should include keys that contain the target string", function () {
-		var targetString = "requests/";
+describe("#transformKeys()", function () {
+	it("should include keys that contain the target string (keys from recursive get all)", function () {
+		var targetString = "requests";
+		var keys = [
+			{Key: "requests/1234", Value: "k"},
+			{Key: "requests/13hb", Value: "i"},
+			{Key: "filler", Value: "l"},
+			{Key: "requests/abcd", Value: "s"}
+		];
+		keys = core.transformKeys(keys, targetString, false);
+		assert.equal(keys["1234"], "k");
+		assert.equal(keys["13hb"], "i");
+		assert.equal(keys["abcd"], "s");
+	});
+
+	it("should include keys that contain the target string (keys from watch)", function () {
+		var targetString = "requests";
 		var keys = [
 			"requests/1234",
 			"requests/13hb",
 			"filler",
 			"requests/abcd"
 		]
-		keys = core.filterKeys(keys, targetString);
-		assert.equal(keys[0], "requests/1234");
-		assert.equal(keys[1], "requests/13hb");
-		assert.equal(keys[2], "requests/abcd");
+		keys = core.transformKeys(keys, targetString, true);
+		assert.equal(keys[0], "1234");
+		assert.equal(keys[1], "13hb");
+		assert.equal(keys[2], "abcd");
 	});
 });
 
@@ -619,29 +634,33 @@ describe("#checkUniqueRequest()", function () {
 });
 
 describe("#updateWaitingList()", function () {
-	it("should output the empty object if no requests and no waiting data", function () {
+	it("should output the empty object if no requests and no waiting/claimed data", function () {
 		var requests = [];
 		var waitingData = {};
-		var updated = core.updateWaitingList(requests, waitingData);
+		var claimedData = {};
+		var updated = core.updateWaitingList(requests, waitingData, claimedData);
 		assert.equal(JSON.stringify(updated), JSON.stringify({}));
 	});
-	it("should output the empty object if no requests but there is waiting data", function () {
+	it("should output the empty object if no requests but there is waiting/claimed data", function () {
 		var requests = [];
 		var waitingData = {
 			"123": 2,
-			"246": 3,
 			"643": 4
 		};
-		var updated = core.updateWaitingList(requests, waitingData);
+		var claimedData = {
+			"246": 3
+		};
+		var updated = core.updateWaitingList(requests, waitingData, claimedData);
 		assert.equal(JSON.stringify(updated), JSON.stringify({}));
 	});
 	it("should add a new request to waitingData with the highest index out of the group", function () {
-		var requests = ["123"];
+		var requests = ["123", "244"];
 		var waitingData = {};
-		var updated = core.updateWaitingList(requests, waitingData);
+		var claimedData = {"244":""};
+		var updated = core.updateWaitingList(requests, waitingData, claimedData);
 		assert.equal(JSON.stringify(updated), JSON.stringify({"123":1}));
 
-		updated = core.updateWaitingList(["123", "544"], updated);
+		updated = core.updateWaitingList(["123", "544"], updated, claimedData);
 		assert.equal(updated["544"], 2);
 	});
 });
@@ -674,7 +693,10 @@ describe("#filterObjectKeys()", function () {
 			"137": 1,
 			"878": 4
 		};
-		var claimedKeys = ["123", "137"];
+		var claimedKeys = {
+			"123": "", 
+			"137": ""
+		};
 		var results = core.filterObjectKeys(waitingData, claimedKeys);
 		assert.equal(results["123"], 2);
 		assert.equal(results["236"], undefined);

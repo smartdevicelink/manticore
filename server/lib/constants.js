@@ -11,11 +11,11 @@ module.exports = {
 			request: "manticore/requests/data",
 			waiting: "manticore/waiting/data",
 			claimed: "manticore/claimed/data",
-		}
+		},
 		//filler keys that are kept next to a list so that we receive change notifications if the list is empty
 		fillers: {
-			request: "manticore/requests/filler"
-			waiting: "manticore/waiting/filler"
+			request: "manticore/requests/filler",
+			waiting: "manticore/waiting/filler",
 			claimed: "manticore/claimed/filler"
 		},
 		//information specific to the construction of the config file

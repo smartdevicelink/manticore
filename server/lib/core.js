@@ -172,13 +172,43 @@ module.exports = {
 			jobsFunc();
 		}
 	},
-	filterKeys: function (keys, targetString) {
+	transformKeys: function (keys, targetString, isArrayOfStrings) {
 		//remove all keys that do not contain the targetString
-		keys = keys.filter(containTest);
-		return keys;
-		function containTest (element) {
-			return element.includes(targetString);
+		/* set isArrayOfStrings to false if the keys are in this format:
+		{
+			Key: ...
+			Value: ...
 		}
+		set isArrayOfStrings to true if the keys are in this format:
+		["key1", "key2", "key3",...]
+		*/
+		
+		if (isArrayOfStrings) {
+			var filtered = keys.filter(function (element) {
+				return element.includes(targetString);
+			});
+			//now trim the prefixes of the filtered keys using the targetString
+			for (let i = 0; i < filtered.length; i++) {
+				filtered[i] = filtered[i].split(targetString + "/")[1];
+			}
+			return filtered;
+		}
+		else {
+			var filtered = keys.filter(function (element) {
+				return element.Key.includes(targetString);
+			});
+			//now trim the prefixes of the filtered keys using the targetString
+			for (let i = 0; i < filtered.length; i++) {
+				filtered[i].Key = filtered[i].Key.split(targetString + "/")[1];
+			}
+			//additionally, convert the array of KV objects into an object hash
+			var KV = {};
+			for (let i = 0; i < filtered.length; i++) {
+				KV[filtered[i].Key] = filtered[i].Value;
+			}
+			return KV;
+		}
+
 	},
 	parseKvUserId: parseKvUserId,
 	getWsUrl: function () {
@@ -249,7 +279,7 @@ module.exports = {
 		//made it to the end of the loop. callback
 		callback();
 	},
-	updateWaitingList: function (requests, waitingData) {
+	updateWaitingList: function (requests, waitingData, claimedData) {
 		//find the highest index in the waiting list (last in line)
 		var highestIndex = 0;
 		for (var key in waitingData) {
@@ -258,19 +288,27 @@ module.exports = {
 				highestIndex = index;
 			} 
 		}
-		//check if each request is in the waiting list
+		//check if each request is in the waiting list OR claimed list
 		for (let i = 0; i < requests.length; i++) {
-			if (!waitingData[requests[i]]) {
-				//request not in waiting list. add it with a value of the highest number in the
+			if (waitingData[requests[i]] === undefined && claimedData[requests[i]] === undefined) {
+				//request not in waiting/claimed list. add it with a value of the highest number in the
 				//list to indicate a last position in line
 				waitingData[requests[i]] = highestIndex + 1;
 				//we have a new highest index
 				highestIndex++;
 			}
 		}
-		//now check if each request in the waiting list exists in the requests. if it doesn't, remove it
+		//now check if each request in the waiting list OR claimed list exists in the requests
+		//if it doesn't, remove it
+		var combinedData = {};
 		for (var key in waitingData) {
-			if (requests.indexOf(key) === -1) {//not found
+			combinedData[key] = waitingData[key];
+		}
+		for (var key in claimedData) {
+			combinedData[key] = claimedData[key];
+		}
+		for (var key in combinedData) {
+			if (requests.indexOf(key) === -1) {//not found. remove from waiting list
 				delete waitingData[key];
 			}
 		}
@@ -294,11 +332,11 @@ module.exports = {
 	},
 	addCoreGroup: addCoreGroup,
 	addHmiGenericGroup: addHmiGenericGroup,
-	filterObjectKeys: function (obj, array) {
-		//keep an object if the key is found in the array
+	filterObjectKeys: function (obj, compareObj) {
+		//keep an object if the key is found in the comparing object
 		var filtered = {};
 		for (var key in obj) {
-			if (array.indexOf(key) !== -1) {
+			if (compareObj[key] !== undefined) {
 				filtered[key] = obj[key];
 			}
 		}
