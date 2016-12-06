@@ -121,8 +121,6 @@ module.exports = {
 					//lock.release(); //done
 				});
 				for (var key in updated) {
-					logger.debug(key);
-					logger.debug(updated[key]);
 					consuler.setKeyValue(C.keys.data.waiting + "/" + key, ""+updated[key], function () {
 						expectingUpdate.send();
 					});
@@ -144,8 +142,7 @@ module.exports = {
 			.pass(function (waitingKV, callback) {
 				core.findLowestIndexedKey(waitingKV, function (lowKey) {
 					lowestKey = lowKey;
-					logger.debug("LOWEST KEY");
-					logger.debug(lowestKey);
+					logger.debug("Lowest key is " + lowestKey);
 					callback(); //a key has been found. continue onward
 				});
 			}) 
@@ -215,6 +212,8 @@ module.exports = {
 				//filter out requestKeys based on the claimedKeys list
 				//convert list to one that has a similar structure to 
 				var filteredKeys = core.filterObjectKeys(requestKV, claimedKV);
+				logger.debug("Constructing job file based on claimed list");
+				logger.debug(claimedKV);
 				//make a job file
 				var job = nomader.createJob("core");
 				for (var key in filteredKeys) {

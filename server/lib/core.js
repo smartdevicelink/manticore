@@ -233,6 +233,10 @@ module.exports = {
 		return null; //return null if nothing matches
 	},
 	handleAllocation: function (allocation, userId, callback) {
+		//TODO: getWsUrl is incorrect. in local development mode you should get
+		//the address of the manticore server that is handling the request. check allocation
+		//for information and use that instead
+		logger.debug(JSON.stringify(allocation, null, 4));
 		//point the user to the appropriate address
 		var address = this.getWsUrl();
 		//use the userId to generate a unique ID intended for the socket connection
