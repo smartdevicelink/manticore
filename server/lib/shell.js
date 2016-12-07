@@ -10,6 +10,7 @@ var fs = require('fs');
 var ip = require('ip');
 var logger = require('../lib/logger');
 var C = require('./constants.js'); //location of constants such as strings
+var WaitingList = require('./WaitingList.js'); //represents the waiting list in the KV store
 var AWS = require('aws-sdk');
 var functionite = require('functionite');
 AWS.config.update({region: process.env.AWS_REGION});
@@ -50,7 +51,6 @@ module.exports = {
 		functionite()
 		.toss(consuler.setKeyValue, C.keys.fillers.request, "Keep me here please!")
 		.toss(consuler.setKeyValue, C.keys.fillers.waiting, "Keep me here please!")
-		.toss(consuler.setKeyValue, C.keys.fillers.claimed, "Keep me here please!")
 		.toss(consuler.setKeyValue, C.keys.haproxy.mainPort, process.env.HAPROXY_HTTP_LISTEN)
 		.toss(consuler.setKeyValue, C.keys.haproxy.domainName, process.env.DOMAIN_NAME)
 		.toss(function () {
@@ -62,10 +62,127 @@ module.exports = {
 		//set up watches for the KV store
 		consuler.watchKVStore(C.keys.request, requestsWatch);
 		consuler.watchKVStore(C.keys.waiting, waitingWatch);
-		consuler.watchKVStore(C.keys.claimed, claimedWatch);
 		//set up a watch for all services
 		consuler.watchServices(serviceWatch);
 
+		function requestsWatch (requestKeyArray) {
+			//trim the prefixes of the requestKeyArray
+			for (let i = 0; i < requestKeyArray.length; i++) {
+				requestKeyArray[i] = requestKeyArray[i].split(C.keys.data.request + "/")[1];
+			}
+			//get waiting key and value
+			functionite()
+			.pass(consuler.getKeyValue, C.keys.data.waiting)
+			.pass(function (waitingValue) {
+				var waitingHash = WaitingList(waitingValue);
+				waitingHash.update(requestKeyArray);
+				logger.debug("Waiting list update");
+				logger.debug(waitingHash.get());
+				//update manticore/waiting/data using the updated object generated
+				consuler.setKeyValue(C.keys.data.waiting, waitingHash.get(), function () {});
+			})
+			.go()
+		}
+
+		function waitingWatch () {
+			//waiting list updated
+			//get the request with the lowest index (front of waiting list)
+			consuler.getKeyValue(C.keys.data.waiting, function (waitingObj) {
+				waitingHash = WaitingList(waitingObj);
+				logger.debug("Find next in waiting list");
+				
+				waitingHash.nextInQueue(function (lowestKey) {
+					//there is a request that needs to claim a core
+					logger.debug("Lowest key found:");
+					logger.debug(lowestKey);
+					attemptCoreAllocation(lowestKey, waitingHash);
+				}, function () {
+					//there are no more requests that could claim a core
+					//submit updated core job
+					logger.debug("No more unclaimed in waiting list");
+					functionite()
+					.pass(consuler.getKeyAll, C.keys.request)
+					.pass(functionite(core.transformKeys), C.keys.data.request) 
+					.pass(function (requestKV) {
+						//set up a job file for cores to actually run
+						var coreJob = nomader.createJob("core");
+						var filteredRequests = waitingHash.filterRequests(requestKV);
+						logger.debug("filtered requests");
+						logger.debug(filteredRequests);
+
+						for (var key in filteredRequests) {
+							var request = JSON.parse(filteredRequests[key]);
+							core.addCoreGroup(coreJob, key, request);
+						}
+						updateJobs(coreJob);
+					})
+					.go()
+				});
+			});
+
+			function attemptCoreAllocation (lowestKey, waitingHash) {
+				//get request keys and values
+				functionite()
+				.pass(consuler.getKeyAll, C.keys.request)
+				.pass(functionite(core.transformKeys), C.keys.data.request) 
+				.pass(function (requestKV) {
+					//since we are testing if the user from the waiting list can claim core/hmi
+					//we must include that information for this test!
+					waitingHash.setClaimed(lowestKey, true);
+					//check if it is possible to run an additional core AND hmi
+					//since we aren't ACTUALLY running core or hmi we can simply
+					//add both new core and hmi tasks at once even though the hmi job depends on
+					//information from a core task successfully allocated
+
+					//only include requests that have claimed a core/hmi or are attempting to claim one
+					var job = nomader.createJob("cores-and-hmis");
+					//set up a job file for cores to actually run in the case we are able to
+					var coreJob = nomader.createJob("core");
+					var filteredRequests = waitingHash.filterRequests(requestKV);
+					logger.debug("filtered requests");
+					logger.debug(filteredRequests);
+
+					for (var key in filteredRequests) {
+						var request = JSON.parse(filteredRequests[key]);
+						core.addCoreGroup(job, key, request);
+						core.addCoreGroup(coreJob, key, request);
+						//add an HMI to this test job file
+						core.addHmiGenericGroup(job, {
+							Tags: [`{"userId":"${key}","hmiToCorePrefix":"asdf1234"}`],
+							Address: "127.0.0.1",
+							Port: 3000
+						}, process.env.HAPROXY_HTTP_LISTEN);
+					}
+
+					//test submission!
+					job.planJob(nomadAddress, "cores-and-hmis", function (results) {
+						core.checkHasResources(results, function () {
+							logger.debug("Core and HMI can be allocated!");
+							//now actually submit the job file and update the waiting list! 
+							consuler.setKeyValue(C.keys.data.waiting, waitingHash.get(), function (){});
+							updateJobs(coreJob);
+						}, function () {
+							//error: cannot allocate. don't update consul KV store
+							logger.debug("Core and HMI cannot be allocated!");
+						});
+					});
+				})
+				.go()
+			}
+
+			function updateJobs (coreJob) {
+				core.checkJobs(coreJob, function () {//there are tasks. submit the job
+					logger.debug("Core tasks exist");
+					coreJob.submitJob(nomadAddress, function (result) {
+						logger.debug(result);
+					});
+				}, function () { //there are no tasks. delete the job
+					logger.debug("No core tasks");
+					self.deleteJob("core", function () {});
+				});
+			}
+		}
+/*
 		function requestsWatch (keys) {
 			//if keys is undefined, set it to an empty array
 			//get waiting list keys
@@ -90,17 +207,17 @@ module.exports = {
 				logger.debug(waitingKV);
 				logger.debug("Claimed");
 				logger.debug(claimedKV);
-				//var lock = consuler.lock(C.keys.waiting + "/"); //lock the directory
-				//lock.on('acquire', function () {
-					var updated = core.updateWaitingList(requestKeys, waitingKV, claimedKV);
+				var lock = consuler.lock(C.keys.waiting + "/"); //lock the directory
+				lock.on('acquire', function () {
+					var updated = core.updateWaitingClaimedList(requestKeys, waitingKV, claimedKV);
 					logger.debug("Updated waiting list:");
 					logger.debug(updated);
 					//delete everything in manticore/waiting/data and update it using the updated object generated
 					consuler.delKeyAll(C.keys.data.waiting, function () {
 						callback(updated); //pass updated to the next function
 					});
-				//});
-				/*lock.on('error', function (err) {
+				});
+				lock.on('error', function (err) {
 					logger.debug(err);
 				});
 				lock.on('retry', function () {
@@ -109,7 +226,7 @@ module.exports = {
 				lock.on('end', function () {
 					logger.debug("done trying to get lock");
 				});
-				lock.acquire(); //attempt to get the lock*/
+				lock.acquire(); //attempt to get the lock
 			})
 			.pass(function (updated) {
 				var count = 0; //find out number of keys in updated
@@ -128,141 +245,7 @@ module.exports = {
 			}).go()
 		}
 
-		function waitingWatch (keys) {
-			//waiting list updated
-			//get the request with the lowest index (front of waiting list)
-			//get information from requests, waiting AND claimed list. we need all of it
-			var requestsKV;
-			var claimedKV;
-			var lowestKey;
-
-			functionite()
-			.pass(consuler.getKeyAll, C.keys.waiting)
-			.pass(functionite(core.transformKeys), C.keys.data.waiting, false)
-			.pass(function (waitingKV, callback) {
-				core.findLowestIndexedKey(waitingKV, function (lowKey) {
-					lowestKey = lowKey;
-					logger.debug("Lowest key is " + lowestKey);
-					callback(); //a key has been found. continue onward
-				});
-			}) 
-			.pass(consuler.getKeyAll, C.keys.request)
-			.pass(functionite(core.transformKeys), C.keys.data.request, false)
-			.pass(function (requestKeys, callback) {
-				requestsKV = requestKeys;
-				callback(); //populated requestsKV. continue
-			})
-			.pass(consuler.getKeyAll, C.keys.claimed)
-			.pass(functionite(core.transformKeys), C.keys.data.claimed, false)
-			.pass(function (claimedKeys, callback) {
-				claimedKV = claimedKeys;
-				//since we are testing if the user from the waiting list can be in claimed
-				//we must also add that to claimedKV!
-				claimedKV[lowestKey] = "";
-				callback();
-			})
-			.pass(function () {
-				//check if it is possible to run an additional core AND hmi
-				//since we aren't ACTUALLY running core or hmi we can simply
-				//add both new core and hmi tasks at once even though the hmi job depends on
-				//information from a core task successfully allocated
-
-				//make a job file
-				var job = nomader.createJob("core");
-				var filteredKeys = core.filterObjectKeys(requestsKV, claimedKV);
-				for (var key in filteredKeys) {
-					var request = JSON.parse(filteredKeys[key]);
-					core.addCoreGroup(job, key, request);
-				}
-				//add an HMI to this job file. use any data
-				core.addHmiGenericGroup(job, {
-					Tags: ['{"userId":"12345","hmiToCorePrefix":"asdf1234"}'],
-					Address: "127.0.0.1",
-					Port: 3000
-				}, process.env.HAPROXY_HTTP_LISTEN);
-				//test submission!
-				job.planJob(nomadAddress, "core", function (results) {
-					if (results.FailedTGAllocs === null) { 
-						//no suspectible errors in allocating this
-						//remove id from waiting and add to claimed
-						functionite()
-						.pass(consuler.delKey, C.keys.data.waiting + "/" + lowestKey)
-						.toss(consuler.setKeyValue, C.keys.data.claimed + "/" + lowestKey, "")
-						.toss(function (){logger.debug("Dun")})
-						.go();
-					}
-				});
-			}).go();
-		}
-
-		function claimedWatch (keys) {
-			//claimed list updated
-			//submit the job file using the information from the requests list
-			var requestKV;
-			functionite()
-			.pass(consuler.getKeyAll, C.keys.request)
-			.pass(functionite(core.transformKeys), C.keys.data.request, false)
-			.pass(function (requestKeys, callback) {
-				requestKV = requestKeys;
-				callback();
-			})
-			.pass(consuler.getKeyAll, C.keys.claimed)
-			.pass(functionite(core.transformKeys), C.keys.data.claimed, false)
-			.pass(function (claimedKV) {
-				//filter out requestKeys based on the claimedKeys list
-				//convert list to one that has a similar structure to 
-				var filteredKeys = core.filterObjectKeys(requestKV, claimedKV);
-				logger.debug("Constructing job file based on claimed list");
-				logger.debug(claimedKV);
-				//make a job file
-				var job = nomader.createJob("core");
-				for (var key in filteredKeys) {
-					var request = JSON.parse(filteredKeys[key]);
-					core.addCoreGroup(job, key, request);
-				}
-				core.checkJobs(job, function () {//there are tasks. submit the job
-					logger.debug("Core tasks exist");
-					job.submitJob(nomadAddress, function (result) {
-						logger.debug(result);
-					});
-				}, function () { //there are no tasks. delete the job
-					logger.debug("No core tasks");
-					self.deleteJob("core", function () {});
-				});
-			})
-			.go();
-		}
-
-		/*function keysWatch (keys) {
-			//if keys is undefined, set it to an empty array
-			keys = keys || [];
-			var requestKeys = core.transformKeys(keys, "manticore/requests/");
-			var waitingKeys = core.transformKeys(keys, "manticore/waiting/");
-			logger.debug("KV store update (after filtering)");
-			logger.debug(requestKeys);
-
-			//set up an expectation that we want the values of <keys.length> keys.
-			//send a callback function about what to do once we get all the values
-			var expecting = core.expect(requestKeys.length, function (job) {
-				core.checkJobs(job, function () {//there are tasks. submit the job
-					logger.debug("Core tasks exist");
-					job.submitJob(nomadAddress, function (result) {
-						logger.debug(result);
-					});
-				}, function () { //there are no tasks. delete the job
-					logger.debug("No core tasks");
-					self.deleteJob("core", function () {});
-				});
-			});
-			for (let i = 0; i < requestKeys.length; i++) {
-				//go through each key and get their value. send the value to expecting
-				//expecting will keep track of how many more keys are left
-				consuler.getKeyValue(requestKeys[i], function (value) {
-					expecting.send(requestKeys[i], value);
-				});
-			}		
-		}*/
-
+*/
 		function serviceWatch (services) {
 			logger.debug("Services update");
 			//services updated. get information about core and hmi if possible
@@ -291,7 +274,7 @@ module.exports = {
 			var pairs = core.findPairs(cores, hmis, function (userId) {
 				//remove user from KV store because the HMI has no paired core which
 				//indicates that the user exited the HMI page and is done with their instance
-				self.deleteKey(C.keys.data.claimed + "/" + userId, function () {});
+				self.deleteKey(C.keys.data.request + "/" + userId, function () {});
 			});
 			pairs = {
 				pairs: pairs

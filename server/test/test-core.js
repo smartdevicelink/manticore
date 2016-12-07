@@ -4,31 +4,6 @@ var core = require('../lib/core.js');
 var nomader = require('nomad-helper');
 var functionite = require('functionite');
 
-describe("#expect()", function () {
-	it("should return an object with a send function to invoke", function () {
-		var expecting = core.expect(3, function(){});
-		assert(typeof expecting.send === "function", "send is a function. Found " + (typeof expecting.send))
-	});
-	it("should invoke the callback after the send function is called 3 times and return a job", function (done){
-		var key1 = "manticore/1234567890abcdef";
-		var key2 = "manticore/abc";
-		var key3 = "manticore/123";
-		var value = {
-			Value: {}
-		};
-		value.Value = JSON.stringify(value.Value);
-
-		var expecting = core.expect(3, function (job) {
-			var groups = job.getJob().Job.TaskGroups;
-			assert(groups.length === 3, "There are 3 group tasks. Found " + groups.length);
-			done();
-		});
-		expecting.send(key1, value);
-		expecting.send(key2, value);
-		expecting.send(key3, value);
-	});
-});
-
 describe("#expectation()", function () {
 	it("should return an object with a send function to invoke", function () {
 		var expecting = core.expectation(3, function(){});
@@ -378,45 +353,26 @@ describe("#transformKeys()", function () {
 			{Key: "filler", Value: "l"},
 			{Key: "requests/abcd", Value: "s"}
 		];
-		keys = core.transformKeys(keys, targetString, false);
+		keys = core.transformKeys(keys, targetString);
 		assert.equal(keys["1234"], "k");
 		assert.equal(keys["13hb"], "i");
 		assert.equal(keys["abcd"], "s");
-	});
-
-	it("should include keys that contain the target string (keys from watch)", function () {
-		var targetString = "requests";
-		var keys = [
-			"requests/1234",
-			"requests/13hb",
-			"filler",
-			"requests/abcd"
-		]
-		keys = core.transformKeys(keys, targetString, true);
-		assert.equal(keys[0], "1234");
-		assert.equal(keys[1], "13hb");
-		assert.equal(keys[2], "abcd");
-	});
-});
-
-describe("#parseKvUserId()", function () {
-	it("should strip off manticore/requests/ from the string", function () {
-		var userId = "manticore/requests/2135494ygth";
-		userId = core.parseKvUserId(userId);
-		assert.equal(userId, "2135494ygth");
 	});
 });
 
 describe("#getWsUrl()", function () {
 	it("should return domain name if HAPROXY_OFF is not set to 'true' as an env variable", function () {
 		process.env.HAPROXY_OFF = ""; //force it
+		process.env.HAPROXY_HTTP_LISTEN = 3000;
 		var address = core.getWsUrl();
-		assert.equal(address, "http://" + process.env.DOMAIN_NAME + ":3000");
+		assert.equal(address, "http://" + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN);
 	});
 	it("should return localhost if HAPROXY_OFF is set to 'true' as an env variable", function () {
 		process.env.HAPROXY_OFF = "true"; //force it
+		process.env.NOMAD_IP_http = "127.0.0.1";
+		process.env.NOMAD_HOST_PORT_http = 32000;
 		var address = core.getWsUrl();
-		assert.equal(address, "http://localhost:" + process.env.HTTP_PORT);
+		assert.equal(address, `http://${process.env.NOMAD_IP_http}:${process.env.NOMAD_HOST_PORT_http}`);
 	});
 });
 
@@ -541,71 +497,6 @@ describe("#getUniquePort()", function () {
 	});
 });
 
-describe("#oneAtATime()", function () {
-	it("should invoke one time if one invocation happens", function (done) {
-		var invokes = 0;
-		core.oneAtATime(function (finish) {
-			invokes++;
-			//do something asynchronous here
-			setTimeout(function () {
-				finish();
-			}, 300);
-		}, function () {
-			//done executing
-			assert.equal(invokes, 1);
-			done();
-		});
-	});
-
-	it("should invoke two times if two invocations happens", function (done) {
-		var invokes = 0;
-		core.oneAtATime(function (finish) {
-			invokes++;
-			//do something asynchronous here
-			setTimeout(function () {
-				finish();
-			}, 300);
-		}, function () {
-			//done executing
-			assert.equal(invokes, 2);
-			done();
-		});
-		//this function shouldn't have callbacks invoked
-		core.oneAtATime(function (finish) {
-			invokes++;
-			//do something asynchronous here
-			setTimeout(function () {
-				finish();
-			}, 300);
-		}, function () {
-			//done executing
-			assert.equal(invokes, 2);
-			done();
-		});
-	});
-
-	it("should (probably) invoke two times if more than two invocations happens", function (done) {
-		var invokes = 0;
-		core.oneAtATime(function (finish) {
-			invokes++;
-			//do something asynchronous here
-			setTimeout(function () {
-				finish();
-			}, 300);
-		}, function () {
-			//done executing
-			assert.equal(invokes, 2);
-			done();
-		});
-		//these functions shouldn't have callbacks invoked
-		core.oneAtATime(function (finish) {	}, function () { });
-		core.oneAtATime(function (finish) {	}, function () { });
-		core.oneAtATime(function (finish) {	}, function () { });
-		core.oneAtATime(function (finish) {	}, function () { });
-		core.oneAtATime(function (finish) {	}, function () { });
-	});
-});
-
 describe("#checkUniqueRequest()", function () {
 	it("should invoke the function if there's not a duplicate request", function (done) {
 		var userId = "1234";
@@ -633,74 +524,25 @@ describe("#checkUniqueRequest()", function () {
 	});
 });
 
-describe("#updateWaitingList()", function () {
-	it("should output the empty object if no requests and no waiting/claimed data", function () {
-		var requests = [];
-		var waitingData = {};
-		var claimedData = {};
-		var updated = core.updateWaitingList(requests, waitingData, claimedData);
-		assert.equal(JSON.stringify(updated), JSON.stringify({}));
-	});
-	it("should output the empty object if no requests but there is waiting/claimed data", function () {
-		var requests = [];
-		var waitingData = {
-			"123": 2,
-			"643": 4
+describe("#checkHasResources()", function () {
+	it("should invoke the first function if there is FailedTGAllocs is null", function (done) {
+		var results = {
+			FailedTGAllocs: null
 		};
-		var claimedData = {
-			"246": 3
-		};
-		var updated = core.updateWaitingList(requests, waitingData, claimedData);
-		assert.equal(JSON.stringify(updated), JSON.stringify({}));
-	});
-	it("should add a new request to waitingData with the highest index out of the group", function () {
-		var requests = ["123", "244"];
-		var waitingData = {};
-		var claimedData = {"244":""};
-		var updated = core.updateWaitingList(requests, waitingData, claimedData);
-		assert.equal(JSON.stringify(updated), JSON.stringify({"123":1}));
-
-		updated = core.updateWaitingList(["123", "544"], updated, claimedData);
-		assert.equal(updated["544"], 2);
-	});
-});
-
-describe("#findLowestIndexedKey()", function () {
-	it("should callback the key with the lowest index", function () {
-		var waitingData = {
-			"123": 2,
-			"236": 7,
-			"137": 1,
-			"878": 4
-		};
-		core.findLowestIndexedKey(waitingData, function (key) {
-			assert.equal(key, "137");
+		core.checkHasResources(results, function () {
+			done();
+		}, function () {
+			assert.fail(null, null, "The first function should've been called");
 		});
 	});
-	it("should not callback if the input is the empty object", function () {
-		var waitingData = {};
-		core.findLowestIndexedKey(waitingData, function (key) {
-			assert.fail(null, null, "This function should not have been called");
+	it("should invoke the second function if FailedTGAllocs exists", function (done) {
+		var results = {
+			FailedTGAllocs: {}
+		};
+		core.checkHasResources(results, function () {
+			assert.fail(null, null, "The second function should've been called");
+		}, function () {
+			done();
 		});
-	});
-});
-
-describe("#filterObjectKeys()", function () {
-	it("should keep keys from the object found in the array", function () {
-		var waitingData = {
-			"123": 2,
-			"236": 7,
-			"137": 1,
-			"878": 4
-		};
-		var claimedKeys = {
-			"123": "", 
-			"137": ""
-		};
-		var results = core.filterObjectKeys(waitingData, claimedKeys);
-		assert.equal(results["123"], 2);
-		assert.equal(results["236"], undefined);
-		assert.equal(results["137"], 1);
-		assert.equal(results["878"], undefined);
 	});
 });

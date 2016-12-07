@@ -6,27 +6,6 @@ var ip = require('ip');
 var logger = require('../lib/logger');
 
 module.exports = {
-	expect: function (callbackNumber, callback) {
-		let count = callbackNumber;
-
-		var job = nomader.createJob("core");
-		if (count === 0) { //is 0 is passed in, callback immediately
-			callback(job); 
-		}
-		return {
-			send: function (key, value) {
-				count--;
-				//the value is actually an object. extract the information
-				var request = JSON.parse(value.Value);
-				addCoreGroup(job, parseKvUserId(key), request);
-				if (count === 0) { //no more keys to parse through
-					//submit the job by invoking the function passed in
-					callback(job);
-				}
-			}
-		}
-	},
-	//generalized version of expect()
 	expectation: function (count, callback) {
 		check();
 		return {
@@ -172,48 +151,26 @@ module.exports = {
 			jobsFunc();
 		}
 	},
-	transformKeys: function (keys, targetString, isArrayOfStrings) {
-		//remove all keys that do not contain the targetString
-		/* set isArrayOfStrings to false if the keys are in this format:
-		{
-			Key: ...
-			Value: ...
+	transformKeys: function (keys, targetString) {
+		var filtered = keys.filter(function (element) {
+			return element.Key.includes(targetString);
+		});
+		//now trim the prefixes of the filtered keys using the targetString
+		for (let i = 0; i < filtered.length; i++) {
+			filtered[i].Key = filtered[i].Key.split(targetString + "/")[1];
 		}
-		set isArrayOfStrings to true if the keys are in this format:
-		["key1", "key2", "key3",...]
-		*/
-		
-		if (isArrayOfStrings) {
-			var filtered = keys.filter(function (element) {
-				return element.includes(targetString);
-			});
-			//now trim the prefixes of the filtered keys using the targetString
-			for (let i = 0; i < filtered.length; i++) {
-				filtered[i] = filtered[i].split(targetString + "/")[1];
-			}
-			return filtered;
+		//additionally, convert the array of KV objects into an object hash
+		var KV = {};
+		for (let i = 0; i < filtered.length; i++) {
+			KV[filtered[i].Key] = filtered[i].Value;
 		}
-		else {
-			var filtered = keys.filter(function (element) {
-				return element.Key.includes(targetString);
-			});
-			//now trim the prefixes of the filtered keys using the targetString
-			for (let i = 0; i < filtered.length; i++) {
-				filtered[i].Key = filtered[i].Key.split(targetString + "/")[1];
-			}
-			//additionally, convert the array of KV objects into an object hash
-			var KV = {};
-			for (let i = 0; i < filtered.length; i++) {
-				KV[filtered[i].Key] = filtered[i].Value;
-			}
-			return KV;
-		}
-
+		return KV;
 	},
-	parseKvUserId: parseKvUserId,
 	getWsUrl: function () {
 		if (process.env.HAPROXY_OFF === "true") { //no haproxy
-			return "http://localhost:" + process.env.HTTP_PORT;	
+			//given we are in a nomad-scheduled docker container, use the
+			//environment variables nomad gives us to return the correct address of this manticore
+			return `http://${process.env.NOMAD_IP_http}:${process.env.NOMAD_HOST_PORT_http}`;	
 		}
 		else { //haproxy enabled
 			return "http://" + process.env.DOMAIN_NAME + ":3000";
@@ -233,16 +190,16 @@ module.exports = {
 		return null; //return null if nothing matches
 	},
 	handleAllocation: function (allocation, userId, callback) {
-		//TODO: getWsUrl is incorrect. in local development mode you should get
-		//the address of the manticore server that is handling the request. check allocation
-		//for information and use that instead
-		logger.debug(JSON.stringify(allocation, null, 4));
 		//point the user to the appropriate address
 		var address = this.getWsUrl();
+		logger.debug("Address:");
+		logger.debug(address);
 		//use the userId to generate a unique ID intended for the socket connection
 		logger.debug("Connection ID Generated:" + userId);
 		var connectionInfo = null;
-
+		//TODO: will getwsurl not work if multiple manticores are running while under HAproxy?
+		//set the load balancer to something other than round robin so logs don't get streamed to 
+		//wrong manticore?
 		if (allocation === null) {
 			//core isn't available to stream logs
 			logger.debug("Core isn't available for streaming for connection ID " + userId);
@@ -268,7 +225,6 @@ module.exports = {
 	},
 	//returns an array of unique numbers within a specified range
 	getUniquePort: getUniquePort,
-	oneAtATime: oneAtATime,
 	checkUniqueRequest: function (userId, requests, callback) {
 		if (requests === undefined) {
 			requests = [];
@@ -283,97 +239,16 @@ module.exports = {
 		//made it to the end of the loop. callback
 		callback();
 	},
-	updateWaitingList: function (requests, waitingData, claimedData) {
-		//find the highest index in the waiting list (last in line)
-		var highestIndex = 0;
-		for (var key in waitingData) {
-			var index = waitingData[key];
-			if (index > highestIndex) {
-				highestIndex = index;
-			} 
-		}
-		//check if each request is in the waiting list OR claimed list
-		for (let i = 0; i < requests.length; i++) {
-			if (waitingData[requests[i]] === undefined && claimedData[requests[i]] === undefined) {
-				//request not in waiting/claimed list. add it with a value of the highest number in the
-				//list to indicate a last position in line
-				waitingData[requests[i]] = highestIndex + 1;
-				//we have a new highest index
-				highestIndex++;
-			}
-		}
-		//now check if each request in the waiting list OR claimed list exists in the requests
-		//if it doesn't, remove it
-		var combinedData = {};
-		for (var key in waitingData) {
-			combinedData[key] = waitingData[key];
-		}
-		for (var key in claimedData) {
-			combinedData[key] = claimedData[key];
-		}
-		for (var key in combinedData) {
-			if (requests.indexOf(key) === -1) {//not found. remove from waiting list
-				delete waitingData[key];
-			}
-		}
-		//return updated waiting list.
-		return waitingData;
-	},
-	//send back the key with the lowest index. if there are no keys, don't send back anything
-	findLowestIndexedKey: function (obj, callback) {
-		var lowestIndex = Infinity;
-		var lowestKey = null;
-		for (var key in obj) {
-			var value = obj[key];
-			if (value < lowestIndex) {
-				lowestIndex = value;
-				lowestKey = key;
-			}
-		}
-		if (lowestKey) {
-			callback(lowestKey);			
-		}
-	},
 	addCoreGroup: addCoreGroup,
 	addHmiGenericGroup: addHmiGenericGroup,
-	filterObjectKeys: function (obj, compareObj) {
-		//keep an object if the key is found in the comparing object
-		var filtered = {};
-		for (var key in obj) {
-			if (compareObj[key] !== undefined) {
-				filtered[key] = obj[key];
-			}
+	checkHasResources: function (results, pass, fail) {
+		if (results.FailedTGAllocs === null) { 
+			pass();
 		}
-		return filtered;
-	}
-}
-
-function oneAtATime (accept, stop) {
-	//add a requests property to this function object that keeps track of 
-	//this function being invoked
-	var self = oneAtATime;
-	if (self.requests === undefined) { //initialize
-		self.requests = 0;
-	}
-	self.requests++; //this function will attempt to execute
-	if (self.requests > 1) { //this function is already being executed and isn't done yet. stop
-		return;
-	}
-	//this function is the only one executing. invoke the callback and prevent this function
-	//from executing again
-	accept(function () { 
-		//a "done" function. when this gets invoked, this function is done executing
-		//if there are additional requests that have happened in the time this was executing
-		//then invoke oneAtATime again
-		if (self.requests > 1) {
-			self.requests = 0;
-			oneAtATime(accept, stop);
+		else {
+			fail();
 		}
-		else { //this function is done being invoked
-			self.requests = 0;
-			stop();
-		}
-	});
+	}
 }
 
 //warning: may be slow
@@ -399,11 +274,6 @@ function getUniquePort (lowerBound, upperBound, blackList) {
 	}
 	var randomIndex = Math.floor(Math.random()*possibilities.length);
 	return possibilities[randomIndex];
-}
-
-function parseKvUserId (userId) {
-	var userIdParts = userId.split("manticore/requests/");
-	return userIdParts.join("");
 }
 
 function addCoreGroup (job, userId, request) {

@@ -4,19 +4,16 @@ module.exports = {
 		//locations of pieces of data meant for a certain purpose
 		request: "manticore/requests",
 		waiting: "manticore/waiting",
-		claimed: "manticore/claimed",
 		haproxy: "haproxy/data",
 		//data keys store actual data related to users
 		data: {
 			request: "manticore/requests/data",
-			waiting: "manticore/waiting/data",
-			claimed: "manticore/claimed/data",
+			waiting: "manticore/waiting/data"
 		},
 		//filler keys that are kept next to a list so that we receive change notifications if the list is empty
 		fillers: {
 			request: "manticore/requests/filler",
-			waiting: "manticore/waiting/filler",
-			claimed: "manticore/claimed/filler"
+			waiting: "manticore/waiting/filler"
 		},
 		//information specific to the construction of the config file
 		haproxy: {
