@@ -525,7 +525,7 @@ describe("#checkUniqueRequest()", function () {
 });
 
 describe("#checkHasResources()", function () {
-	it("should invoke the first function if there is FailedTGAllocs is null", function (done) {
+	it("should invoke the first function if FailedTGAllocs is null", function (done) {
 		var results = {
 			FailedTGAllocs: null
 		};
@@ -544,5 +544,73 @@ describe("#checkHasResources()", function () {
 		}, function () {
 			done();
 		});
+	});
+});
+
+describe("#compareJobStates()", function () {
+	it("should return false if both jobs are null or have 0 task groups", function () {
+		var job1 = null;
+		var job2 = null;
+
+		var result = core.compareJobStates(job1, job2);
+		assert.equal(result, false);
+
+		job1 = nomader.createJob("test");
+
+		result = core.compareJobStates(job1, job2);
+		assert.equal(result, false);
+
+		job2 = nomader.createJob("test2");
+
+		result = core.compareJobStates(job1, job2);
+		assert.equal(result, false);
+
+		job1 = null;
+
+		result = core.compareJobStates(job1, job2);
+		assert.equal(result, false);
+	});
+
+	it("should return false if both jobs have the same task group names", function () {
+		//warning: the task groups must be in the same order!
+		var job1 = nomader.createJob("test");
+		job1.addGroup("testing123");
+		job1.addGroup("testing234");
+		job1.addGroup("testing987");
+
+		var job2 = nomader.createJob("test2");
+		job2.addGroup("testing123");
+		job2.addGroup("testing234");
+		job2.addGroup("testing987");
+
+		var result = core.compareJobStates(job1, job2);
+		assert.equal(result, false);
+	});
+
+	it("should return true if both jobs have different task group names", function () {
+		//warning: the task groups must be in the same order!
+		var job1 = nomader.createJob("test");
+		job1.addGroup("testing123");
+		job1.addGroup("testing234");
+		job1.addGroup("testing987");
+
+		var job2 = nomader.createJob("test2");
+
+		var result = core.compareJobStates(job1, job2);
+		assert.equal(result, true);
+
+		job2.addGroup("testing123");
+
+		result = core.compareJobStates(job1, job2);
+		assert.equal(result, true);
+
+		job2.addGroup("testing234");
+
+		result = core.compareJobStates(job1, job2);
+		assert.equal(result, true);
+
+		job2.addGroup("testing111");
+		result = core.compareJobStates(job1, job2);
+		assert.equal(result, true);
 	});
 });

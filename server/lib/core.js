@@ -248,6 +248,45 @@ module.exports = {
 		else {
 			fail();
 		}
+	},
+	//WARNING: assumes that the taskgroups are in order!
+	compareJobStates: function (job1, job2) {
+		var infoChanged = false;
+
+		//first check how many task groups are in each job
+		var jobCount1 = 0;
+		var jobCount2 = 0;
+
+		if (job1 && job1.getJob().Job && job1.getJob().Job.TaskGroups) {
+			jobCount1 = job1.getJob().Job.TaskGroups.length;
+		}
+		if (job2 && job2.getJob().Job && job2.getJob().Job.TaskGroups) {
+			jobCount2 = job2.getJob().Job.TaskGroups.length;
+		}
+
+		if (jobCount1 !== jobCount2) {
+			infoChanged = true; //task group count isn't the same
+		}
+		else if (jobCount1 !== 0 && jobCount2 !== 0) {
+			//we may not be able to access TaskGroups if either task group count is 0
+			//this if statement protects this method
+			var groups1 = job1.getJob().Job.TaskGroups;
+			var groups2 = job2.getJob().Job.TaskGroups;
+			for (let i = 0; i < groups1.length; i++) {
+				logger.debug(groups1[i].Name);
+				if (groups1[i].Name !== groups2[i].Name) {
+					infoChanged = true;
+				}
+			}
+			for (let i = 0; i < groups2.length; i++) {
+				logger.debug(groups2[i].Name);
+				if (groups2[i].Name !== groups1[i].Name) {
+					infoChanged = true;
+				}
+			}					
+		}
+
+		return infoChanged;
 	}
 }
 

@@ -66,6 +66,7 @@ module.exports = {
 		consuler.watchServices(serviceWatch);
 
 		function requestsWatch (requestKeyArray) {
+			logger.debug("request watch hit");
 			//trim the prefixes of the requestKeyArray
 			for (let i = 0; i < requestKeyArray.length; i++) {
 				requestKeyArray[i] = requestKeyArray[i].split(C.keys.data.request + "/")[1];
@@ -85,9 +86,22 @@ module.exports = {
 		}
 
 		function waitingWatch () {
+			logger.debug("waiting watch hit");
 			//waiting list updated
 			//get the request with the lowest index (front of waiting list)
-			consuler.getKeyValue(C.keys.data.waiting, function (waitingObj) {
+
+			var requestKV;
+			//get request keys and values
+			functionite()
+			.pass(consuler.getKeyAll, C.keys.request)
+			.pass(functionite(core.transformKeys), C.keys.data.request)
+			.pass(function (requestKeys, callback) {
+				//store requestKeys for future use
+				requestKV = requestKeys;
+				callback();
+			})
+			.toss(consuler.getKeyValue, C.keys.data.waiting)
+			.pass(function (waitingObj, callback) {
 				waitingHash = WaitingList(waitingObj);
 				logger.debug("Find next in waiting list");
 				
@@ -100,85 +114,53 @@ module.exports = {
 					//there are no more requests that could claim a core
 					//submit updated core job
 					logger.debug("No more unclaimed in waiting list");
-					functionite()
-					.pass(consuler.getKeyAll, C.keys.request)
-					.pass(functionite(core.transformKeys), C.keys.data.request) 
-					.pass(function (requestKV) {
-						//set up a job file for cores to actually run
-						var coreJob = nomader.createJob("core");
-						var filteredRequests = waitingHash.filterRequests(requestKV);
-						logger.debug("filtered requests");
-						logger.debug(filteredRequests);
-
-						for (var key in filteredRequests) {
-							var request = JSON.parse(filteredRequests[key]);
-							core.addCoreGroup(coreJob, key, request);
-						}
-						updateJobs(coreJob);
-					})
-					.go()
-				});
-			});
+					//set up a job file for cores to actually run
+					var coreJob = createCoreJob(waitingHash, requestKV);
+					updateJobs(coreJob, "core");
+				});				
+			})
+			.go();
 
 			function attemptCoreAllocation (lowestKey, waitingHash) {
-				//get request keys and values
-				functionite()
-				.pass(consuler.getKeyAll, C.keys.request)
-				.pass(functionite(core.transformKeys), C.keys.data.request) 
-				.pass(function (requestKV) {
-					//since we are testing if the user from the waiting list can claim core/hmi
-					//we must include that information for this test!
-					waitingHash.setClaimed(lowestKey, true);
-					//check if it is possible to run an additional core AND hmi
-					//since we aren't ACTUALLY running core or hmi we can simply
-					//add both new core and hmi tasks at once even though the hmi job depends on
-					//information from a core task successfully allocated
+				//since we are testing if the user from the waiting list can claim core/hmi
+				//we must include that information for this test!
+				waitingHash.setClaimed(lowestKey, true);
+				//check if it is possible to run an additional core AND hmi
+				//since we aren't ACTUALLY running core or hmi we can simply
+				//add both new core and hmi tasks at once even though the hmi job depends on
+				//information from a core task successfully allocated
 
-					//only include requests that have claimed a core/hmi or are attempting to claim one
-					var job = nomader.createJob("cores-and-hmis");
-					//set up a job file for cores to actually run in the case we are able to
-					var coreJob = nomader.createJob("core");
-					var filteredRequests = waitingHash.filterRequests(requestKV);
-					logger.debug("filtered requests");
-					logger.debug(filteredRequests);
+				//only include requests that have claimed a core/hmi or are attempting to claim one
+				var job = nomader.createJob("cores-and-hmis");
+				var filteredRequests = waitingHash.filterRequests(requestKV);
+				logger.debug("filtered requests");
+				logger.debug(filteredRequests);
 
-					for (var key in filteredRequests) {
-						var request = JSON.parse(filteredRequests[key]);
-						core.addCoreGroup(job, key, request);
-						core.addCoreGroup(coreJob, key, request);
-						//add an HMI to this test job file
-						core.addHmiGenericGroup(job, {
-							Tags: [`{"userId":"${key}","hmiToCorePrefix":"asdf1234"}`],
-							Address: "127.0.0.1",
-							Port: 3000
-						}, process.env.HAPROXY_HTTP_LISTEN);
-					}
+				for (var key in filteredRequests) {
+					var request = JSON.parse(filteredRequests[key]);
+					core.addCoreGroup(job, key, request);
+					//add an HMI to this test job file
+					core.addHmiGenericGroup(job, {
+						Tags: [`{"userId":"${key}","hmiToCorePrefix":"asdf1234"}`],
+						Address: "127.0.0.1",
+						Port: 3000
+					}, process.env.HAPROXY_HTTP_LISTEN);
+				}
 
-					//test submission!
-					job.planJob(nomadAddress, "cores-and-hmis", function (results) {
-						core.checkHasResources(results, function () {
-							logger.debug("Core and HMI can be allocated!");
-							//now actually submit the job file and update the waiting list! 
-							consuler.setKeyValue(C.keys.data.waiting, waitingHash.get(), function (){});
-							updateJobs(coreJob);
-						}, function () {
-							//error: cannot allocate. don't update consul KV store
-							logger.debug("Core and HMI cannot be allocated!");
-						});
+				//test submission!
+				job.planJob(nomadAddress, "cores-and-hmis", function (results) {
+					core.checkHasResources(results, function () {
+						logger.debug("Core and HMI can be allocated!");
+						//now update the waiting list! 
+						consuler.setKeyValue(C.keys.data.waiting, waitingHash.get(), function (){});
+					}, function () {
+						//error: insufficient resources. update the job
+						logger.debug("Core and HMI cannot be allocated!");
+						//set next request in waiting list's claimed back to false and submit the job
+						waitingHash.setClaimed(lowestKey, false);
+						var coreJob = createCoreJob(waitingHash, requestKV);
+						updateJobs(coreJob, "core");
 					});
-				})
-				.go()
-			}
-
-			function updateJobs (coreJob) {
-				core.checkJobs(coreJob, function () {//there are tasks. submit the job
-					logger.debug("Core tasks exist");
-					coreJob.submitJob(nomadAddress, function (result) {
-						logger.debug(result);
-					});
-				}, function () { //there are no tasks. delete the job
-					logger.debug("No core tasks");
-					self.deleteJob("core", function () {});
 				});
 			}
 		}
@@ -261,15 +243,7 @@ module.exports = {
 			core.addHmisToJob(job, cores);
 			//submit the job. if there are no task groups then
 			//we want to remove the job completely. delete the job in that case
-			core.checkJobs(job, function () {//there are tasks
-				logger.debug("HMI tasks exist");
-				job.submitJob(nomadAddress, function (result) {
-					logger.debug(result);
-				});
-			}, function () { //there are no tasks
-				logger.debug("No HMI tasks");
-				self.deleteJob("hmi", function () {});
-			});
+			updateJobs(job, "hmi");
 
 			var pairs = core.findPairs(cores, hmis, function (userId) {
 				//remove user from KV store because the HMI has no paired core which
@@ -293,7 +267,7 @@ module.exports = {
 				//use the pairs because that has information about what addresses to use
 				//consul-template can use that information to generate an HAProxy configuration
 				//replace existing data in the KV store
-				//WARNING: THIS COULD BE DANGEROUS. possibly use consul locks to limit redundancy of writes
+				//TODO: are locks necessary here?
 				consuler.delKeyAll(C.keys.haproxy, function () {
 					//make the async calls. store all data from the template inside haproxy/data/
 					for (let i = 0; i < template.webAppAddresses.length; i++) {
@@ -405,4 +379,43 @@ module.exports = {
 			callback();
 		});
 	}
+}
+
+function createCoreJob (waitingHash, requestKV) {
+	var coreJob = nomader.createJob("core");
+	//filter requests out so only the ones in the waiting list that have claimed a core are returned
+	var filteredRequests = waitingHash.filterRequests(requestKV);
+	logger.debug("filtered requests");
+	logger.debug(filteredRequests);
+
+	for (var key in filteredRequests) {
+		var request = JSON.parse(filteredRequests[key]);
+		core.addCoreGroup(coreJob, key, request);
+	}
+	return coreJob;
+}
+
+function updateJobs (localJob, jobName, jobModifyIndex) {
+	//TEST: only submit the job if any information has changed?
+	nomader.findJob(jobName, nomadAddress, function (job) {
+		logger.debug("CHECKING CONTENTS FOR " + jobName);
+		var changed = core.compareJobStates(localJob, job);
+		if (!changed) {
+			logger.debug("Job files are the same!");
+		}
+		else {
+			logger.debug("Job files are different!");
+			//attempt to submit the updated job
+			core.checkJobs(localJob, function () {//there are tasks. submit the job
+				logger.debug(jobName + " tasks exist");
+				logger.debug(localJob.getJob().Job.TaskGroups.length);
+				localJob.submitJob(nomadAddress, function (result) {
+					logger.debug(result);
+				});
+			}, function () { //there are no tasks. delete the job
+				logger.debug("No " + jobName + " tasks");
+				self.deleteJob(jobName, function () {});
+			});
+		}
+	});
 }
