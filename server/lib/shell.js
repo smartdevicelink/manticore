@@ -263,6 +263,7 @@ module.exports = {
 			core.checkHaProxyFlag(function () {
 				logger.debug("Updating KV Store with data for proxy!");
 				var template = core.generateProxyData(pairs, manticores);
+				logger.error(JSON.stringify(template, null, 4));
 				//use the HAProxyTemplate file to submit information to the KV store so that
 				//use the pairs because that has information about what addresses to use
 				//consul-template can use that information to generate an HAProxy configuration
