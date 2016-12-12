@@ -273,7 +273,7 @@ module.exports = {
 					for (let i = 0; i < template.webAppAddresses.length; i++) {
 						var item = template.webAppAddresses[i];
 						(function (index) {
-							consuler.setKeyValue(C.keys.haproxy.webapp + "/" + index, item, function (){});
+							consuler.setKeyValue(C.keys.haproxy.webApp + "/" + index, item, function (){});
 						})(i);
 					}	
 					for (let i = 0; i < template.tcpMaps.length; i++) {
