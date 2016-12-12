@@ -33,7 +33,7 @@ function buildManticoreJobFile () {
 	job.setType("service");
 	//update one manticore at a time every 10 seconds
 	job.setUpdate(1, 10000000000);
-	job.setCount(groupName, 1);
+	job.setCount(groupName, 2);
 	//restart manticore if it has failed up to 3 times within 30 seconds, with 5 seconds between restart attempts
 	job.setRestartPolicy(groupName, 30000000000, 3, 5000000000, "delay"); 
 	job.addTask(groupName, taskName);

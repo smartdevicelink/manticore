@@ -43,7 +43,7 @@ backend app
     option httpchk GET /
     http-check expect status 200
     {{range ls "haproxy/data/webAppAddresses"}}
-    server webapp-{{.Key}} {{.Value}} {{end}} check
+    server webapp-{{.Key}} {{.Value}} check {{end}}
 
 
 {{range ls "haproxy/data/httpBack"}}

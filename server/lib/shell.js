@@ -267,7 +267,7 @@ module.exports = {
 				//use the pairs because that has information about what addresses to use
 				//consul-template can use that information to generate an HAProxy configuration
 				//replace existing data in the KV store
-				//TODO: are locks necessary here?
+				//TODO: use atomic operations to submit all this at once
 				consuler.delKeyAll(C.keys.haproxy, function () {
 					//make the async calls. store all data from the template inside haproxy/data/
 					for (let i = 0; i < template.webAppAddresses.length; i++) {
@@ -296,6 +296,8 @@ module.exports = {
 		}
 	},
 	requestCore: function (userId, body) {
+		userId = Math.floor(Math.random()*1000);
+		body.id = userId;
 		//store the userId and request info in the database. wait for this app to find it
 		//also generate unique strings to append to the external IP address that will
 		//be given to users. HAProxy will map those IPs to the correct internal IP addresses
