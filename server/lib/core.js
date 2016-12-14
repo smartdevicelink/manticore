@@ -335,7 +335,7 @@ function addCoreGroup (job, userId, request) {
 		RTarget: "1"
 	}, groupName);
 	//set resource limitations
-	job.setCPU(groupName, "core-master", 100);
+	job.setCPU(groupName, "core-master", 60);
 	job.setMemory(groupName, "core-master", 25);
 	job.setMbits(groupName, "core-master", 1);
 	job.setEphemeralDisk(groupName, 50, false, false);
@@ -374,8 +374,8 @@ function addHmiGenericGroup (job, core, haproxyPort) {
 		RTarget: "1"
 	}, groupName);
 	//set resource limitations
-	job.setCPU(groupName, "hmi-master", 50);
-	job.setMemory(groupName, "hmi-master", 150);
+	job.setCPU(groupName, "hmi-master", 40);
+	job.setMemory(groupName, "hmi-master", 70);
 	job.setMbits(groupName, "core-master", 1);
 	job.setEphemeralDisk(groupName, 30, false, false);
 	job.setLogs(groupName, "hmi-master", 1, 10);

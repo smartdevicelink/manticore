@@ -304,10 +304,11 @@ module.exports = {
 		//of core and hmi
 		//generate random letters and numbers for the user and hmi addresses
 		//get all keys in the KV store and find their external address prefixes
-		consuler.getKeyAll(C.keys.request + "/", function (results) {
+		//do not get the filler key/value!
+		consuler.getKeyAll(C.keys.data.request + "/", function (results) {
 			//do not store a new request in the KV store if the request already exists
 			//pass in the prefix to the value we want to check exists
-			core.checkUniqueRequest(C.keys.request + "/" + userId, results, function () {
+			core.checkUniqueRequest(C.keys.data.request + "/" + userId, results, function () {
 				//if HAPROXY_OFF is set to true then the external addresses mean nothing
 				//don't bother computing what they should be
 				core.checkHaProxyFlag(function () { //HAPROXY on
