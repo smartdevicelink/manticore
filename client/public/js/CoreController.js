@@ -32,6 +32,7 @@ function requestLogs() {
 		if (!socket && data !== null) {
 			//make a connection using the url given
 			var address = data.url + "/" + data.connectionId;
+			console.log(address);
 			socket = io(address);
 			socket.on('logs', function (data) {
 				console.log(data);
