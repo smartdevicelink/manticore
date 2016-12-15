@@ -361,11 +361,11 @@ describe("#transformKeys()", function () {
 });
 
 describe("#getWsUrl()", function () {
-	it("should return domain name if HAPROXY_OFF is not set to 'true' as an env variable", function () {
+	it("should return domain name if HAPROXY_OFF is not set to 'true' as an env variable (with HTTPS)", function () {
 		process.env.HAPROXY_OFF = ""; //force it
-		process.env.HAPROXY_HTTP_LISTEN = 3000;
+		process.env.HAPROXY_HTTP_LISTEN = 7777;
 		var address = core.getWsUrl();
-		assert.equal(address, "http://" + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN);
+		assert.equal(address, "https://" + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN);
 	});
 	it("should return localhost if HAPROXY_OFF is set to 'true' as an env variable", function () {
 		process.env.HAPROXY_OFF = "true"; //force it
