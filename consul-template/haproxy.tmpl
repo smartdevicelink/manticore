@@ -32,7 +32,7 @@ frontend main
     bind *:{{key "haproxy/mainPort"}}
     mode http
     {{range ls "haproxy/data/httpFront"}}
-    acl http-front-{{.Key}} hdr_end(host) -i {{.Value}}.{{key "haproxy/domainName"}}:{{key "haproxy/mainPort"}}{{end}}
+    acl http-front-{{.Key}} hdr_dom(host) {{.Value}}{{end}}
     {{range ls "haproxy/data/httpFront"}}
     use_backend http-back-{{.Key}} if http-front-{{.Key}}{{end}}
     default_backend app
