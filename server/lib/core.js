@@ -173,7 +173,7 @@ module.exports = {
 			return `http://${process.env.NOMAD_IP_http}:${process.env.NOMAD_HOST_PORT_http}`;	
 		}
 		else { //haproxy enabled. also assume https is being used
-			return "https://" + process.env.DOMAIN_NAME + ":3000";
+			return "https://" + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN;
 		}
 	},
 	findAliveCoreAllocation: function (allocations, targetID) {
