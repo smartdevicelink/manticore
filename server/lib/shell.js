@@ -352,7 +352,11 @@ module.exports = {
 	requestLogs: function (userId, callback) {
 		//make sure there is an allocation for core intended for this user before 
 		//starting up a connection
+		//this requests requires that the address must be from the client from which the allocation
+		//was placed. make sure this address is used on the streamLogs function!
 		nomader.getAllocations("core", nomadAddress, function (res) {
+			logger.error("hahahahahaha");
+			logger.error(JSON.stringify(res, null, 2));
 			//we know which allocation to find because the TaskGroup name has the client ID
 			//make sure the allocation is alive, which indicates it's the one that's running core
 			var allocation = core.findAliveCoreAllocation(res.allocations, userId);
