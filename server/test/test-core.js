@@ -365,7 +365,7 @@ describe("#getWsUrl()", function () {
 		process.env.HAPROXY_OFF = ""; //force it
 		process.env.HAPROXY_HTTP_LISTEN = 7777;
 		var address = core.getWsUrl();
-		assert.equal(address, "https://" + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN);
+		assert.equal(address, "https://" + process.env.DOMAIN_NAME + ":" + 443);
 	});
 	it("should return localhost if HAPROXY_OFF is set to 'true' as an env variable", function () {
 		process.env.HAPROXY_OFF = "true"; //force it

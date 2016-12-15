@@ -172,8 +172,9 @@ module.exports = {
 			//environment variables nomad gives us to return the correct address of this manticore
 			return `http://${process.env.NOMAD_IP_http}:${process.env.NOMAD_HOST_PORT_http}`;	
 		}
-		else { //haproxy enabled. also assume https is being used
-			return "https://" + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN;
+		else { //haproxy enabled. also assume https is being used and that the request is going
+			//through the ELB which means hitting port 443 on HTTPS
+			return "https://" + process.env.DOMAIN_NAME + ":443";
 		}
 	},
 	findAliveCoreAllocation: function (allocations, targetID) {
