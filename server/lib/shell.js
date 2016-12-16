@@ -352,27 +352,33 @@ module.exports = {
 	requestLogs: function (userId, callback) {
 		//make sure there is an allocation for core intended for this user before 
 		//starting up a connection
-		//this requests requires that the address must be from the client from which the allocation
+		//the log request requires that the address must be from the client from which the allocation
 		//was placed. make sure this address is used on the streamLogs function!
 		nomader.getAllocations("core", nomadAddress, function (res) {
-			logger.error("hahahahahaha");
-			logger.error(JSON.stringify(res, null, 2));
 			//we know which allocation to find because the TaskGroup name has the client ID
 			//make sure the allocation is alive, which indicates it's the one that's running core
 			var allocation = core.findAliveCoreAllocation(res.allocations, userId);
-			var connectionInfo = core.handleAllocation(allocation, userId, function (taskName) {
-				//start streaming logs to the client once they connect using the connection details
-				var custom = io.of('/' + userId);
-				custom.on('connection', function (socket) {
-					logger.debug("User connected! Stream core logs");
-					//get the stdout logs and stream them
-					nomader.streamLogs(allocation.ID, taskName, "stdout", nomadAddress, function (data) {
-						//this function gets invoked whenever new data arrives from core
-						socket.emit("logs", data);
-					});	
+			var nodeID = allocation.NodeID;
+			nomader.getNodeStatus(nodeID, nomadAddress, function (data) {
+				var targetedNomadAddress = data.HTTPAddr;
+				logger.error("Client agent address found:");
+				logger.error(targetedNomadAddress);
+
+				//get the client agent address using its node ID
+				var connectionInfo = core.handleAllocation(allocation, userId, function (taskName) {
+					//start streaming logs to the client once they connect using the connection details
+					var custom = io.of('/' + userId);
+					custom.on('connection', function (socket) {
+						logger.debug("User connected! Stream core logs");
+						//get the stdout logs and stream them
+						nomader.streamLogs(allocation.ID, taskName, "stdout", targetedNomadAddress, function (data) {
+							//this function gets invoked whenever new data arrives from core
+							socket.emit("logs", data);
+						});	
+					});
 				});
+				callback(connectionInfo); //get back connection info and pass it to client
 			});
-			callback(connectionInfo); //get back connection info and pass it to client
 		});
 
 	},

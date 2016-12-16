@@ -38,7 +38,7 @@ frontend main
     default_backend app
 
 backend app
-    balance roundrobin
+    balance source
     mode http
     option httpchk GET /
     http-check expect status 200
