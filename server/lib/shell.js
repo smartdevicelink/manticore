@@ -236,21 +236,16 @@ module.exports = {
 			let hmis = services.filter("hmi-master");
 			let manticores = services.filter("manticore-service");
 			
-			logger.error(JSON.stringify(services, null, 2));
-			logger.error(JSON.stringify(cores, null, 2));
-			logger.error(JSON.stringify(hmis, null, 2));
-			logger.error(JSON.stringify(manticores, null, 2));
-
 			logger.debug("Core services: " + cores.length);
 			logger.debug("Hmi services: " + hmis.length);
 			logger.debug("Manticore services: " + manticores.length);
 			//for every core service, ensure it has a corresponding HMI
 			var job = nomader.createJob("hmi");
-/*			core.addHmisToJob(job, cores);
+			core.addHmisToJob(job, cores);
 			//submit the job. if there are no task groups then
 			//we want to remove the job completely. delete the job in that case
 			updateJobs(job, "hmi");
-*/
+
 			var pairs = core.findPairs(cores, hmis, function (id) {
 				//remove user from KV store because the HMI has no paired core which
 				//indicates that the user exited the HMI page and is done with their instance
@@ -373,8 +368,8 @@ module.exports = {
 				var nodeID = allocation.NodeID;
 				nomader.getNodeStatus(nodeID, nomadAddress, function (data) {
 					var targetedNomadAddress = data.HTTPAddr;
-					logger.error("Client agent address found:");
-					logger.error(targetedNomadAddress);
+					logger.debug("Client agent address found:");
+					logger.debug(targetedNomadAddress);
 					//start streaming logs to the client once they connect using the connection details
 					var custom = io.of('/' + id);
 					custom.on('connection', function (socket) {
