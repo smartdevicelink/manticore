@@ -3,6 +3,7 @@ var assert = require('assert');
 var core = require('../lib/core.js');
 var nomader = require('nomad-helper');
 var functionite = require('functionite');
+var UserRequest = require('../lib/UserRequest.js');
 
 describe("#expectation()", function () {
 	it("should return an object with a send function to invoke", function () {
@@ -22,16 +23,11 @@ describe("#expectation()", function () {
 
 describe("#findPairs()", function () {
 	it("should return an empty array if no pairs are found", function () {
-		let coreTagObj = {
-			userId: "userId",
-			tcpPortInternal: "44300",
-			tcpPortExternal: "12345",
-			userToHmiPrefix: "userToHmi1",
-			hmiToCorePrefix: "hmiToCore1"
-		};
-		let hmiTagObj = {
-			userId: "userId2"
-		};
+		let coreTagObj = new UserRequest().generateDataCore();
+		coreTagObj.id = "userId";
+		let hmiTagObj = new UserRequest().generateDataHmi();
+		hmiTagObj.id = "userId2";
+
 		var cores = [{
 			Address: "127.0.0.1",
 			Tags: [JSON.stringify(coreTagObj)]
@@ -46,30 +42,42 @@ describe("#findPairs()", function () {
 	});
 
 	//use this data for the next two tests
-	let coreTagObj1 = {
-		userId: "userId1",
-		tcpPortInternal: "44300",
-		tcpPortExternal: "12522",
-		userToHmiPrefix: "userToHmi1",
-		hmiToCorePrefix: "hmiToCore1",
-	};
-	let coreTagObj2 = {
-		userId: "userId3",
-		tcpPortInternal: "12345",
-		tcpPortExternal: "27486",
-		userToHmiPrefix: "userToHmi2",
-		hmiToCorePrefix: "hmiToCore2",
-	};
-	let coreTagObj3 = {
-		userId: "userId2",
-		tcpPortInternal: "25252",
-		tcpPortExternal: "88888",
-		userToHmiPrefix: "userToHmi3",
-		hmiToCorePrefix: "hmiToCore3",
-	};
-	let hmiTagObj1 = {userId: "userId1"};
-	let hmiTagObj2 = {userId: "userId2"};
-	let hmiTagObj3 = {userId: "userId4"};
+	let coreTagObj1 = new UserRequest().generateDataCore();
+	coreTagObj1.id = "userId1";
+	coreTagObj1.tcpPortInternal = "44300";
+	coreTagObj1.tcpPortExternal = "12522";
+	coreTagObj1.userToHmiPrefix = "userToHmi1";
+	coreTagObj1.hmiToCorePrefix = "hmiToCore1";
+	coreTagObj1.brokerAddressPrefix = "broker1";
+
+	let coreTagObj2 = new UserRequest().generateDataCore();
+	coreTagObj2.id = "userId3";
+	coreTagObj2.tcpPortInternal = "12345";
+	coreTagObj2.tcpPortExternal = "27486";
+	coreTagObj2.userToHmiPrefix = "userToHmi2";
+	coreTagObj2.hmiToCorePrefix = "hmiToCore2";
+	coreTagObj2.brokerAddressPrefix = "broker2";
+
+	let coreTagObj3 = new UserRequest().generateDataCore();
+	coreTagObj3.id = "userId2";
+	coreTagObj3.tcpPortInternal = "25252";
+	coreTagObj3.tcpPortExternal = "88888";
+	coreTagObj3.userToHmiPrefix = "userToHmi3";
+	coreTagObj3.hmiToCorePrefix = "hmiToCore3";
+	coreTagObj3.brokerAddressPrefix = "broker3";
+
+	let hmiTagObj1 = new UserRequest().generateDataHmi();
+	hmiTagObj1.id = "userId1";
+	hmiTagObj1.brokerPortInternal = "9901";
+
+	let hmiTagObj2 = new UserRequest().generateDataHmi();
+	hmiTagObj2.id = "userId2";
+	hmiTagObj2.brokerPortInternal = "9902";
+
+	let hmiTagObj3 = new UserRequest().generateDataHmi();
+	hmiTagObj3.id = "userId4";
+	hmiTagObj3.brokerPortInternal = "9903";
+
 	let cores = [{
 		Address: "127.0.0.1",
 		Port: "1211",
@@ -103,26 +111,28 @@ describe("#findPairs()", function () {
 	it("should return 2 pairs that are found", function () {
 		var pairs = core.findPairs(cores, hmis);
 		assert(pairs.length === 2, "There are 2 pairs. Found " + pairs.length);
-		assert(pairs[0].user === "userId1");
+		assert(pairs[0].id === "userId1");
 		assert(pairs[0].tcpAddressInternal === "127.0.0.1:44300");
 		assert(pairs[0].hmiAddressInternal === "127.0.0.1:1211");
 		assert(pairs[0].userAddressInternal === "127.0.0.4:8687");
+		assert(pairs[0].brokerAddressInternal === "127.0.0.4:9901");
 		assert(pairs[0].userAddressExternal === "userToHmi1");
 		assert(pairs[0].hmiAddressExternal === "hmiToCore1");
 		assert(pairs[0].tcpPortExternal === "12522");
 
-		assert(pairs[1].user === "userId2");
+		assert(pairs[1].id === "userId2");
 		assert(pairs[1].tcpAddressInternal === "127.0.0.3:25252");
 		assert(pairs[1].hmiAddressInternal === "127.0.0.3:1213");
 		assert(pairs[1].userAddressInternal === "127.0.0.5:1234");
+		assert(pairs[1].brokerAddressInternal === "127.0.0.5:9902");
 		assert(pairs[1].userAddressExternal === "userToHmi3");
 		assert(pairs[1].hmiAddressExternal === "hmiToCore3");
 		assert(pairs[1].tcpPortExternal === "88888");
 	});
 
 	it("should invoke callback for every HMI not paired with core", function (done) {
-		var pairs = core.findPairs(cores, hmis, function (userId) {
-			assert(userId === "userId4", "userId4 has no core pair. Found " + userId);
+		var pairs = core.findPairs(cores, hmis, function (id) {
+			assert(id === "userId4", "userId4 has no core pair. Found " + id);
 			done();
 		});
 
@@ -151,45 +161,53 @@ describe("#getUniqueString()", function () {
 
 describe("#getAddressesFromUserRequests()", function () {
 	it("should retrieve all address prefixes from all keys in manticore", function () {
+		var request1 = UserRequest().generateDataInitial();
+		var request2 = UserRequest().generateDataInitial();
+
 		var testData = [{
 			LockIndex: 0,
 			Key: 'manticore/1234567890abcdef',
 			Flags: 0,
-			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmiPrefix":"fr0231rj23t","hmiToCorePrefix":"t20tg84j3t","tcpPort":"5410"}'
+			Value: request1.getString()
 		},
 		{
 			LockIndex: 0,
 			Key: 'manticore/1234567890abcdef',
 			Flags: 0,
-			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmiPrefix":"g345yg36","hmiToCorePrefix":"2juh542q5jui6","tcpPort":"9372"}'
+			Value: request2.getString()
 		}];
 		var addresses = core.getAddressesFromUserRequests(testData);
-		assert(addresses.length === 4, "there are 4 addresses. found " + addresses.length);
-		assert(addresses[0] === "fr0231rj23t");
-		assert(addresses[1] === "t20tg84j3t");
-		assert(addresses[2] === "g345yg36");
-		assert(addresses[3] === "2juh542q5jui6");
+		assert(addresses.length === 6, "there are 6 addresses. found " + addresses.length);
+		assert(addresses[0] === request1.userToHmiPrefix);
+		assert(addresses[1] === request1.hmiToCorePrefix);
+		assert(addresses[2] === request1.brokerAddressPrefix);
+		assert(addresses[3] === request2.userToHmiPrefix);
+		assert(addresses[4] === request2.hmiToCorePrefix);
+		assert(addresses[5] === request2.brokerAddressPrefix);
 	});
 });
 
-describe("#getPortsFromUserRequests()", function () {
-	it("should retrieve all ports from all keys in manticore", function () {
+describe("#getTcpPortsFromUserRequests()", function () {
+	it("should retrieve all TCP ports from all keys in manticore", function () {
+		var request1 = UserRequest().generateDataInitial();
+		var request2 = UserRequest().generateDataInitial();
+
 		var testData = [{
 			LockIndex: 0,
 			Key: 'manticore/1234567890abcdef',
 			Flags: 0,
-			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmiPrefix":"fr0231rj23t","hmiToCorePrefix":"t20tg84j3t","tcpPortExternal":"5410"}'
+			Value: request1.getString()
 		},
 		{
 			LockIndex: 0,
 			Key: 'manticore/1234567890abcdef',
 			Flags: 0,
-			Value: '{"url":"http://127.0.0.1:3000/v1/address","branch":{"hmi":"master","core":"master"},"hmiName":"ford","userToHmiPrefix":"g345yg36","hmiToCorePrefix":"2juh542q5jui6","tcpPortExternal":"9372"}'
+			Value: request2.getString()
 		}];
-		var addresses = core.getPortsFromUserRequests(testData);
+		var addresses = core.getTcpPortsFromUserRequests(testData);
 		assert(addresses.length === 2, "there are 2 ports. found " + addresses.length);
-		assert(addresses[0] === "5410");
-		assert(addresses[1] === "9372");
+		assert(addresses[0] === request1.tcpPortExternal);
+		assert(addresses[1] === request2.tcpPortExternal);
 	});
 });
 
@@ -201,9 +219,11 @@ describe("#generateProxyData()", function () {
 				userAddressInternal: "127.0.0.1:4000",
 				hmiAddressInternal: "127.0.0.1:5000",
 				tcpAddressInternal: "127.0.0.1:6000",
+				brokerAddressInternal: "127.0.0.1:7000",
 				userAddressExternal: "15uyh6176",
 				hmiAddressExternal: "a4a4y43yq53",
-				tcpPortExternal: "2742"
+				tcpPortExternal: "2742",
+				brokerAddressExternal: "9999"
 			}]
 		};
 		var manticoreData = [{
@@ -216,11 +236,13 @@ describe("#generateProxyData()", function () {
 		assert.equal(file.tcpMaps.length, 1);
 		assert.equal(file.tcpMaps[0].port, testData.pairs[0].tcpPortExternal);
 		assert.equal(file.tcpMaps[0].to, testData.pairs[0].tcpAddressInternal);
-		assert.equal(file.httpMaps.length, 2);
+		assert.equal(file.httpMaps.length, 3);
 		assert.equal(file.httpMaps[0].from, testData.pairs[0].userAddressExternal);
 		assert.equal(file.httpMaps[0].to, testData.pairs[0].userAddressInternal);
 		assert.equal(file.httpMaps[1].from, testData.pairs[0].hmiAddressExternal);
 		assert.equal(file.httpMaps[1].to, testData.pairs[0].hmiAddressInternal);
+		assert.equal(file.httpMaps[2].from, testData.pairs[0].brokerAddressExternal);
+		assert.equal(file.httpMaps[2].to, testData.pairs[0].brokerAddressInternal);
 	});
 
 });
@@ -229,78 +251,89 @@ describe("#addHmisToJob()", function () {
 	it("should create an hmi job based on the core job when HAPROXY_OFF isn't true", function () {
 		process.env.HAPROXY_OFF = "";
 		process.env.HAPROXY_HTTP_LISTEN = 3000;
-		let coreTagObj1 = {
-			userId: "userId1",
-			tcpPort: "44300",
-			userToHmiPrefix: "userToHmi1",
-			hmiToCorePrefix: "hmiToCore1",
-		};
-		let coreTagObj2 = {
-			userId: "userId3",
-			tcpPort: "12345",
-			userToHmiPrefix: "userToHmi2",
-			hmiToCorePrefix: "hmiToCore2",
-		};
+		var coreRequest1 = UserRequest().generateDataCore();
+		coreRequest1.id = "userId1";
+		coreRequest1.tcpPort = "44300";
+		coreRequest1.userToHmiPrefix = "userToHmi1";
+		coreRequest1.hmiToCorePrefix = "hmiToCore1";
+		coreRequest1.brokerAddressPrefix = "broker1";
+
+		var coreRequest2 = UserRequest().generateDataCore();
+		coreRequest2.id = "userId3";
+		coreRequest2.tcpPort = "12345";
+		coreRequest2.userToHmiPrefix = "userToHmi2";
+		coreRequest2.hmiToCorePrefix = "hmiToCore2";
+		coreRequest2.brokerAddressPrefix = "broker2";
+
 		var job = nomader.createJob("hmi");
 		var cores = [{
 			Address: "127.0.0.1",
 			Port: "1211",
-			Tags: [JSON.stringify(coreTagObj1)]
+			Tags: [coreRequest1.getString()]
 		},
 		{
 			Address: "127.0.0.2",
 			Port: "1212",
-			Tags: [JSON.stringify(coreTagObj2)]
+			Tags: [coreRequest2.getString()]
 		}];
 		core.addHmisToJob(job, cores);
-		//check env and userId in tag for each hmi task
-		var env1 = job.findTask("hmi-userId1", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
-		var env2 = job.findTask("hmi-userId3", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
+		//check env and id in tag for each hmi task
+		var env1a = job.findTask("hmi-userId1", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
+		var env1b = job.findTask("hmi-userId1", "hmi-master").Env.BROKER_WEBSOCKET_ADDR;
+		var env2a = job.findTask("hmi-userId3", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
+		var env2b = job.findTask("hmi-userId3", "hmi-master").Env.BROKER_WEBSOCKET_ADDR;
+
 		var tag1 = job.findTask("hmi-userId1", "hmi-master").Services[0].Tags[0];
 		var tag2 = job.findTask("hmi-userId3", "hmi-master").Services[0].Tags[0];
-		assert.equal(env1, "hmiToCore1." + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN);
-		assert.equal(env2, "hmiToCore2." + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN);
-		assert.equal(JSON.parse(tag1).userId, JSON.parse(cores[0].Tags[0]).userId);
-		assert.equal(JSON.parse(tag2).userId, JSON.parse(cores[1].Tags[0]).userId);
+		assert.equal(env1a, "hmiToCore1." + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN);
+		assert.equal(env1b, "broker1." + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN);
+		assert.equal(env2a, "hmiToCore2." + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN);
+		assert.equal(env2b, "broker2." + process.env.DOMAIN_NAME + ":" + process.env.HAPROXY_HTTP_LISTEN);
+		assert.equal(JSON.parse(tag1).id, JSON.parse(cores[0].Tags[0]).id);
+		assert.equal(JSON.parse(tag2).id, JSON.parse(cores[1].Tags[0]).id);
 	});
 
 	it("should create an hmi job based on the core job when HAPROXY_OFF is true", function () {
 		process.env.HAPROXY_OFF = "true";
-		let coreTagObj1 = {
-			userId: "userId1",
-			tcpPort: "44300",
-			userToHmiPrefix: "userToHmi1",
-			hmiToCorePrefix: "hmiToCore1",
-			userToCorePrefix: "userToCore1"
-		};
-		let coreTagObj2 = {
-			userId: "userId3",
-			tcpPort: "12345",
-			userToHmiPrefix: "userToHmi2",
-			hmiToCorePrefix: "hmiToCore2",
-			userToCorePrefix: "userToCore2"
-		};
+		var coreRequest1 = UserRequest().generateDataCore();
+		coreRequest1.id = "userId1";
+		coreRequest1.tcpPort = "44300";
+		coreRequest1.userToHmiPrefix = "userToHmi1";
+		coreRequest1.hmiToCorePrefix = "hmiToCore1";
+		coreRequest1.brokerAddressPrefix = "broker1";
+
+		var coreRequest2 = UserRequest().generateDataCore();
+		coreRequest2.id = "userId3";
+		coreRequest2.tcpPort = "12345";
+		coreRequest2.userToHmiPrefix = "userToHmi2";
+		coreRequest2.hmiToCorePrefix = "hmiToCore2";
+		coreRequest2.brokerAddressPrefix = "broker2";
+
 		var job = nomader.createJob("hmi");
 		var cores = [{
 			Address: "127.0.0.1",
 			Port: "1211",
-			Tags: [JSON.stringify(coreTagObj1)]
+			Tags: [coreRequest1.getString()]
 		},
 		{
 			Address: "127.0.0.2",
 			Port: "1212",
-			Tags: [JSON.stringify(coreTagObj2)]
+			Tags: [coreRequest2.getString()]
 		}];
 		core.addHmisToJob(job, cores);
 		//check env and userId in tag for each hmi task
-		var env1 = job.findTask("hmi-userId1", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
-		var env2 = job.findTask("hmi-userId3", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
+		var env1a = job.findTask("hmi-userId1", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
+		var env1b = job.findTask("hmi-userId1", "hmi-master").Env.BROKER_WEBSOCKET_ADDR;
+		var env2a = job.findTask("hmi-userId3", "hmi-master").Env.HMI_WEBSOCKET_ADDR;
+		var env2b = job.findTask("hmi-userId3", "hmi-master").Env.BROKER_WEBSOCKET_ADDR;
 		var tag1 = job.findTask("hmi-userId1", "hmi-master").Services[0].Tags[0];
 		var tag2 = job.findTask("hmi-userId3", "hmi-master").Services[0].Tags[0];
-		assert.equal(env1, cores[0].Address+":"+cores[0].Port);
-		assert.equal(env2, cores[1].Address+":"+cores[1].Port);
-		assert.equal(JSON.parse(tag1).userId, JSON.parse(cores[0].Tags[0]).userId);
-		assert.equal(JSON.parse(tag2).userId, JSON.parse(cores[1].Tags[0]).userId);
+		assert.equal(env1a, "${NOMAD_ADDR_broker}");
+		assert.equal(env1b, cores[0].Address+":"+cores[0].Port);
+		assert.equal(env2a, "${NOMAD_ADDR_broker}");
+		assert.equal(env2b, cores[1].Address+":"+cores[1].Port);
+		assert.equal(JSON.parse(tag1).id, JSON.parse(cores[0].Tags[0]).id);
+		assert.equal(JSON.parse(tag2).id, JSON.parse(cores[1].Tags[0]).id);
 	});
 });
 
@@ -365,7 +398,7 @@ describe("#getWsUrl()", function () {
 		process.env.HAPROXY_OFF = ""; //force it
 		process.env.HAPROXY_HTTP_LISTEN = 7777;
 		var address = core.getWsUrl();
-		assert.equal(address, "https://" + process.env.DOMAIN_NAME + ":" + 443);
+		assert.equal(address, "//" + process.env.DOMAIN_NAME);
 	});
 	it("should return localhost if HAPROXY_OFF is set to 'true' as an env variable", function () {
 		process.env.HAPROXY_OFF = "true"; //force it
@@ -378,7 +411,7 @@ describe("#getWsUrl()", function () {
 
 describe("#findAliveCoreAllocation()", function () {
 	it("should return null if no ID matches", function () {
-		var userId = "12345";
+		var id = "12345";
 		var allocations = [{
 			ID: "234710237512",
 			TaskGroup: "core-15515",
@@ -392,11 +425,11 @@ describe("#findAliveCoreAllocation()", function () {
 			TaskGroup: "core-35782",
 			ClientStatus: "running"
 		}];
-		var result = core.findAliveCoreAllocation(allocations, userId);
+		var result = core.findAliveCoreAllocation(allocations, id);
 		assert.equal(result, null);
 	});
 	it("should return null if there's no matching ID that is also running", function () {
-		var userId = "35782";
+		var id = "35782";
 		var allocations = [{
 			ID: "234710237512",
 			TaskGroup: "core-15515",
@@ -410,12 +443,12 @@ describe("#findAliveCoreAllocation()", function () {
 			TaskGroup: "core-35782",
 			ClientStatus: "complete"
 		}];
-		var result = core.findAliveCoreAllocation(allocations, userId);
+		var result = core.findAliveCoreAllocation(allocations, id);
 		assert.equal(result, null);
 	});
 
 	it("should return a match if an ID matches", function () {
-		var userId = "12345";
+		var id = "12345";
 		var allocations = [{
 			ID: "234710237512",
 			TaskGroup: "core-15515",
@@ -433,7 +466,7 @@ describe("#findAliveCoreAllocation()", function () {
 			TaskGroup: "core-12345",
 			ClientStatus: "running"
 		},];
-		var result = core.findAliveCoreAllocation(allocations, userId);
+		var result = core.findAliveCoreAllocation(allocations, id);
 		assert.equal(result.ID, "8425245674");
 	});
 });
@@ -441,15 +474,15 @@ describe("#findAliveCoreAllocation()", function () {
 
 describe("#handleAllocation()", function () {
 	it("should return null if no alive allocation", function () {
-		var userId = "12345";
+		var id = "12345";
 
-		var result = core.handleAllocation(null, userId, function () {
+		var result = core.handleAllocation(null, id, function () {
 
 		});
 		assert.equal(result, null);
 	});
 	it("should return connection info if there's an allocation", function (done) {
-		var userId = "12345";
+		var id = "12345";
 
 		var allocation1 = { 
 			ID: '96e2c9e8-863d-940a-79ed-b7160eba1eb5',
@@ -458,11 +491,11 @@ describe("#handleAllocation()", function () {
 			TaskStates: { 'core-master': { State: 'running', Events: [Object] } },
 		}
 
-		var result = core.handleAllocation(allocation1, userId, function (taskName) {
+		var result = core.handleAllocation(allocation1, id, function (taskName) {
 			assert.equal(taskName, 'core-master');
 			done();
 		});
-		assert.equal(result.connectionId, userId);
+		assert.equal(result.connectionId, id);
 		assert.notEqual(result.url, undefined);
 	});
 });
@@ -499,7 +532,7 @@ describe("#getUniquePort()", function () {
 
 describe("#checkUniqueRequest()", function () {
 	it("should invoke the function if there's not a duplicate request", function (done) {
-		var userId = "1234";
+		var id = "1234";
 		var requests1 = [
 			{Key: "4242"},
 			{Key: "3561"},
@@ -513,10 +546,10 @@ describe("#checkUniqueRequest()", function () {
 			{Key: "6480"}
 		];
 		//a little sketchy
-		var result = core.checkUniqueRequest(userId, requests2, function () {
+		var result = core.checkUniqueRequest(id, requests2, function () {
 			assert.fail("", "", "should not have been called");
 		});
-		core.checkUniqueRequest(userId, requests1, function () {
+		core.checkUniqueRequest(id, requests1, function () {
 			done();
 		});
 

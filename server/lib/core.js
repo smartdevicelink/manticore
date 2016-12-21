@@ -1,6 +1,7 @@
 //functionality of manticore without asynchronous behavior nor dependencies for unit testing
 var fs = require('fs');
 var haproxy = require('./HAProxyTemplate.js');
+var UserRequest = require('./UserRequest.js'); //represents the nature of a user's request
 var nomader = require('nomad-helper');
 var ip = require('ip');
 var logger = require('../lib/logger');
@@ -28,28 +29,21 @@ module.exports = {
 		var pairs = [];
 		for (let i = 0; i < hmis.length; i++) {
 			let corePair = undefined;
-			let hmiTagObj = JSON.parse(hmis[i].Tags[0]);
+			let corePairTagRequest = undefined;
+			let hmiTagRequest = UserRequest().parse(hmis[i].Tags[0]);
 			for (let j = 0; j < cores.length; j++) {
 				//check if there is a pair using the user id
-				let coreTagObj = JSON.parse(cores[j].Tags[0]);
-				if (hmiTagObj.userId === coreTagObj.userId) {
+				let coreTagRequest = UserRequest().parse(cores[j].Tags[0]);
+				if (hmiTagRequest.id === coreTagRequest.id) {
 					corePair = cores[j];
+					corePairTagRequest = coreTagRequest;
 					j = cores.length; //break out of the loop
 				}
 			}
 			if (corePair) {
 				//parse the name of the service to get just the user id
-				//the pair should have the same userId as the first tag string
-				let coreTagObj = JSON.parse(corePair.Tags[0]);
-				let body = {
-					user: hmiTagObj.userId,
-					userAddressInternal: hmis[i].Address + ":" + hmis[i].Port,
-					hmiAddressInternal: corePair.Address + ":" + corePair.Port,
-					tcpAddressInternal: corePair.Address + ":" + coreTagObj.tcpPortInternal,
-					userAddressExternal: coreTagObj.userToHmiPrefix,
-					hmiAddressExternal: coreTagObj.hmiToCorePrefix,
-					tcpPortExternal: coreTagObj.tcpPortExternal
-				}
+				//the pair should have the same id as the first tag string
+				let body = corePairTagRequest.generatePairInfo(corePair, hmis[i]);
 				pairs.push(body);
 			}
 			else {
@@ -60,9 +54,9 @@ module.exports = {
 				//shutdown signal was sent from HMI to core to kill it
 				//interpret this as the user being done with the pair and send back
 				//the id of the user from the request to be removed from the KV store
-				logger.debug("HMI with no core. Stop serving " + hmiTagObj.userId);
+				logger.debug("HMI with no core. Stop serving " + hmiTagRequest.id);
 				if (typeof callback === "function") {
-					callback(hmiTagObj.userId);
+					callback(hmiTagRequest.id);
 				}
 			}
 		}
@@ -96,6 +90,7 @@ module.exports = {
 			let pair = pairs[i];
 			file.addHttpRoute(pair.userAddressExternal, pair.userAddressInternal)
 				.addHttpRoute(pair.hmiAddressExternal, pair.hmiAddressInternal)
+				.addHttpRoute(pair.brokerAddressExternal, pair.brokerAddressInternal)
 				.addTcpRoute(pair.tcpPortExternal, pair.tcpAddressInternal)
 		}
 		return file;
@@ -119,11 +114,12 @@ module.exports = {
 				let value = JSON.parse(keys[i].Value);
 				addresses.push(value.userToHmiPrefix);
 				addresses.push(value.hmiToCorePrefix);
+				addresses.push(value.brokerAddressPrefix);
 			}
 		}
 		return addresses;
 	},
-	getPortsFromUserRequests: function (keys) {
+	getTcpPortsFromUserRequests: function (keys) {
 		var ports = [];
 		if (keys !== undefined) {
 			for (let i = 0; i < keys.length; i++) {
@@ -189,29 +185,29 @@ module.exports = {
 		}
 		return null; //return null if nothing matches
 	},
-	handleAllocation: function (allocation, userId, callback) {
+	handleAllocation: function (allocation, id, callback) {
 		//point the user to the appropriate address
 		var address = this.getWsUrl();
 		logger.debug("Address:");
 		logger.debug(address);
-		//use the userId to generate a unique ID intended for the socket connection
-		logger.debug("Connection ID Generated:" + userId);
+		//use the id to generate a unique ID intended for the socket connection
+		logger.debug("Connection ID Generated:" + id);
 		var connectionInfo = null;
 		//TODO: will getwsurl not work if multiple manticores are running while under HAproxy?
 		//set the load balancer to something other than round robin so logs don't get streamed to 
 		//wrong manticore?
 		if (allocation === null) {
 			//core isn't available to stream logs
-			logger.debug("Core isn't available for streaming for connection ID " + userId);
+			logger.debug("Core isn't available for streaming for connection ID " + id);
 		}
 		else {
 			//we can stream logs! return the appropriate connection details
 			//pass back the address and connectionID to connect to the websocket server
 			connectionInfo = {
 				url: address,
-				connectionId: userId
+				connectionId: id
 			}
-			logger.debug("Sending connection information to user " + userId);
+			logger.debug("Sending connection information to user " + id);
 			logger.debug("Address: " + connectionInfo.url);
 			logger.debug("Connection ID: " + connectionInfo.connectionId);
 			var taskName; //get the task name
@@ -225,14 +221,14 @@ module.exports = {
 	},
 	//returns an array of unique numbers within a specified range
 	getUniquePort: getUniquePort,
-	checkUniqueRequest: function (userId, requests, callback) {
+	checkUniqueRequest: function (id, requests, callback) {
 		if (requests === undefined) {
 			requests = [];
 		}
 		//callback only if there is no request with the given id found in the KV store
 		for (let i = 0; i < requests.length; i++) {
-			if (requests[i].Key === userId) {
-				logger.debug("Duplicate request from " + userId);
+			if (requests[i].Key === id) {
+				logger.debug("Duplicate request from " + id);
 				return;
 			}
 		}
@@ -315,11 +311,12 @@ function getUniquePort (lowerBound, upperBound, blackList) {
 	return possibilities[randomIndex];
 }
 
-function addCoreGroup (job, userId, request) {
+//request is expected to be an object of type UserRequest
+function addCoreGroup (job, id, request) {
 	//this adds a group for a user so that another core will be created
 	//since each group name must be different make the name based off of the user id
-	//core-<userId>
-	var groupName = "core-" + userId;
+	//core-<id>
+	var groupName = "core-" + id;
 	job.addGroup(groupName);
 	//set the restart policy of core so that if it dies once, it's gone for good
 	//attempts number should be 0. interval and delay don't matter since task is in fail mode
@@ -342,32 +339,30 @@ function addCoreGroup (job, userId, request) {
 	job.setLogs(groupName, "core-master", 2, 10);
 
 	job.addService(groupName, "core-master", "core-master");
-	//include the userId's tag for ID purposes
+	//include the id's tag for ID purposes
 	//also include the user, hmi, and tcp external addresses for haproxy
 	//store all this information into one tag as a stringified JSON
-	var obj = {
-		userId: userId,
-		tcpPortInternal: "${NOMAD_PORT_tcp}",
-		userToHmiPrefix: request.userToHmiPrefix,
-		hmiToCorePrefix: request.hmiToCorePrefix,
-		tcpPortExternal: request.tcpPortExternal
-	};
-	job.addTag(groupName, "core-master", "core-master", JSON.stringify(obj));
+	//tcpPortInternal has a value because the whole object will be added as a tag to the
+	//nomad job, and nomad can interpolate variables inside the tag, even as a stringified JSON
+	request.tcpPortInternal = "${NOMAD_PORT_tcp}";
+	job.addTag(groupName, "core-master", "core-master", request.getString());
 	job.setPortLabel(groupName, "core-master", "core-master", "hmi");
 }
 
+//core is expected to be the object returned from consul's services API
 function addHmiGenericGroup (job, core, haproxyPort) {
 	//parse the JSON from the tag
-	var tagObj = JSON.parse(core.Tags[0]);
+	var request = UserRequest().parse(core.Tags[0]);
 
 	//this adds a group for a user so that another hmi will be created
 	//since each group name must be different make the name based off of the user id
-	//hmi-<userId>
-	var groupName = "hmi-" + tagObj.userId;
+	//hmi-<id>
+	var groupName = "hmi-" + request.id;
 	job.addGroup(groupName);
 	job.addTask(groupName, "hmi-master");
 	job.setImage(groupName, "hmi-master", "crokita/discovery-generic-hmi:master");
 	job.addPort(groupName, "hmi-master", true, "user", 8080);
+	job.addPort(groupName, "hmi-master", true, "broker", 9000);
 	job.addConstraint({
 		LTarget: "${meta.core}",
 		Operand: "=",
@@ -387,12 +382,15 @@ function addHmiGenericGroup (job, core, haproxyPort) {
 
 	if (process.env.HAPROXY_OFF !== "true") { //haproxy enabled
 		//the address from the tags is just the prefix. add the domain/subdomain name too
-		var fullAddress = tagObj.hmiToCorePrefix + "." + process.env.DOMAIN_NAME;
-		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddress + ":" + haproxyPort);
+		var fullAddressHMI = request.hmiToCorePrefix + "." + process.env.DOMAIN_NAME;
+		var fullAddressBroker = request.brokerAddressPrefix + "." + process.env.DOMAIN_NAME;
+		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddressHMI + ":" + haproxyPort);
+		job.addEnv(groupName, "hmi-master", "BROKER_WEBSOCKET_ADDR", fullAddressBroker + ":" + haproxyPort);
 	}
 	else { //no haproxy
 		//directly connect to core
-		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", core.Address + ":" + core.Port);
+		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", "${NOMAD_ADDR_broker}");
+		job.addEnv(groupName, "hmi-master", "BROKER_WEBSOCKET_ADDR", core.Address + ":" + core.Port);
 	}
 
 	job.addService(groupName, "hmi-master", "hmi-master");
@@ -407,12 +405,9 @@ function addHmiGenericGroup (job, core, haproxyPort) {
 		Protocol: "http"
 	}
 	job.addCheck(groupName, "hmi-master", "hmi-master", healthObj);
-
-	//give hmi the same id as core so we know they're together
-	var obj = {
-		userId: tagObj.userId
-	};
-	
-	job.addTag(groupName, "hmi-master", "hmi-master", JSON.stringify(obj));
+	//store the port of the broker
+	request.brokerPortInternal = "${NOMAD_PORT_broker}";
+	//give hmi the same id as core so we know they're together	
+	job.addTag(groupName, "hmi-master", "hmi-master", request.getString());
 	return job;
 }

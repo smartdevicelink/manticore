@@ -11,6 +11,7 @@ var ip = require('ip');
 var logger = require('../lib/logger');
 var C = require('./constants.js'); //location of constants such as strings
 var WaitingList = require('./WaitingList.js'); //represents the waiting list in the KV store
+var UserRequest = require('./UserRequest.js'); //represents the nature of a user's request
 var AWS = require('aws-sdk');
 var functionite = require('functionite');
 AWS.config.update({region: process.env.AWS_REGION});
@@ -137,11 +138,11 @@ module.exports = {
 				logger.debug(filteredRequests);
 
 				for (var key in filteredRequests) {
-					var request = JSON.parse(filteredRequests[key]);
+					var request = UserRequest().parse(filteredRequests[key]);
 					core.addCoreGroup(job, key, request);
 					//add an HMI to this test job file
 					core.addHmiGenericGroup(job, {
-						Tags: [`{"userId":"${key}","hmiToCorePrefix":"asdf1234"}`],
+						Tags: [`{"id":"${key}","hmiToCorePrefix":"asdf1234"}`],
 						Address: "127.0.0.1",
 						Port: 3000
 					}, process.env.HAPROXY_HTTP_LISTEN);
@@ -245,10 +246,10 @@ module.exports = {
 			//we want to remove the job completely. delete the job in that case
 			updateJobs(job, "hmi");
 
-			var pairs = core.findPairs(cores, hmis, function (userId) {
+			var pairs = core.findPairs(cores, hmis, function (id) {
 				//remove user from KV store because the HMI has no paired core which
 				//indicates that the user exited the HMI page and is done with their instance
-				self.deleteKey(C.keys.data.request + "/" + userId, function () {});
+				self.deleteKey(C.keys.data.request + "/" + id, function () {});
 			});
 			pairs = {
 				pairs: pairs
@@ -295,20 +296,21 @@ module.exports = {
 			});
 		}
 	},
-	requestCore: function (userId, body) {
-		//userId = Math.floor(Math.random()*1000);
-		//body.id = userId;
-		//store the userId and request info in the database. wait for this app to find it
+	requestCore: function (id, body) {
+		//id = Math.floor(Math.random()*1000);
+		//body.id = id;
+		//store the id and request info in the database. wait for this app to find it
 		//also generate unique strings to append to the external IP address that will
 		//be given to users. HAProxy will map those IPs to the correct internal IP addresses
 		//of core and hmi
 		//generate random letters and numbers for the user and hmi addresses
 		//get all keys in the KV store and find their external address prefixes
 		//do not get the filler key/value!
+		var requestJSON = UserRequest(body);
 		consuler.getKeyAll(C.keys.data.request + "/", function (results) {
 			//do not store a new request in the KV store if the request already exists
 			//pass in the prefix to the value we want to check exists
-			core.checkUniqueRequest(C.keys.data.request + "/" + userId, results, function () {
+			core.checkUniqueRequest(C.keys.data.request + "/" + id, results, function () {
 				//if HAPROXY_OFF is set to true then the external addresses mean nothing
 				//don't bother computing what they should be
 				core.checkHaProxyFlag(function () { //HAPROXY on
@@ -322,24 +324,27 @@ module.exports = {
 					var func1 = randomString.generate.bind(undefined, options1);
 					const userToHmiAddress = core.getUniqueString(addresses, func1); //userAddress prefix
 					const hmiToCoreAddress = core.getUniqueString(addresses, func1); //hmiAddress prefix
+					const brokerAddress = core.getUniqueString(addresses, func1); //brokerAddress prefix
 
 					//since we must have one TCP port open per connection to SDL core (it's a long story)
 					//generate a number within reasonable bounds and isn't already used by other core connections
 					//WARNING: this does not actually check if the port is used on the OS! please make sure the
 					//port range specified in the environment variables are all open!
-					var usedPorts = core.getPortsFromUserRequests(results);
+					var usedPorts = core.getTcpPortsFromUserRequests(results);
 					const tcpPortExternal = core.getUniquePort(process.env.TCP_PORT_RANGE_START, 
 						process.env.TCP_PORT_RANGE_END, usedPorts);
-					body.userToHmiPrefix = userToHmiAddress;
-					body.hmiToCorePrefix = hmiToCoreAddress;
-					body.tcpPortExternal = tcpPortExternal;	
+					
+					requestJSON.userToHmiPrefix = userToHmiAddress;
+					requestJSON.hmiToCorePrefix = hmiToCoreAddress;
+					requestJSON.tcpPortExternal = tcpPortExternal;
+					requestJSON.brokerAddressPrefix = brokerAddress;
 
-					logger.debug("Store request " + userId);
-					consuler.setKeyValue(C.keys.data.request + "/" + userId, JSON.stringify(body));
+					logger.debug("Store request " + id);
+					consuler.setKeyValue(C.keys.data.request + "/" + id, requestJSON.getString());
 					
 				}, function () { //HAPROXY off
-					logger.debug("Store request " + userId);
-					consuler.setKeyValue(C.keys.data.request + "/" + userId, JSON.stringify(body));
+					logger.debug("Store request " + id);
+					consuler.setKeyValue(C.keys.data.request + "/" + id, requestJSON.getString());
 				});
 
 			});
@@ -349,7 +354,7 @@ module.exports = {
 	},
 	//send back connection information in order for the client to make a websocket connection to
 	//receive sdl_core logs
-	requestLogs: function (userId, callback) {
+	requestLogs: function (id, callback) {
 		//make sure there is an allocation for core intended for this user before 
 		//starting up a connection
 		//the log request requires that the address must be from the client from which the allocation
@@ -357,7 +362,7 @@ module.exports = {
 		nomader.getAllocations("core", nomadAddress, function (res) {
 			//we know which allocation to find because the TaskGroup name has the client ID
 			//make sure the allocation is alive, which indicates it's the one that's running core
-			var allocation = core.findAliveCoreAllocation(res.allocations, userId);
+			var allocation = core.findAliveCoreAllocation(res.allocations, id);
 			var nodeID = allocation.NodeID;
 			nomader.getNodeStatus(nodeID, nomadAddress, function (data) {
 				var targetedNomadAddress = data.HTTPAddr;
@@ -365,9 +370,9 @@ module.exports = {
 				logger.error(targetedNomadAddress);
 
 				//get the client agent address using its node ID
-				var connectionInfo = core.handleAllocation(allocation, userId, function (taskName) {
+				var connectionInfo = core.handleAllocation(allocation, id, function (taskName) {
 					//start streaming logs to the client once they connect using the connection details
-					var custom = io.of('/' + userId);
+					var custom = io.of('/' + id);
 					custom.on('connection', function (socket) {
 						logger.debug("User connected! Stream core logs");
 						//get the stdout logs and stream them
@@ -402,7 +407,7 @@ function createCoreJob (waitingHash, requestKV) {
 	logger.debug(filteredRequests);
 
 	for (var key in filteredRequests) {
-		var request = JSON.parse(filteredRequests[key]);
+		var request = UserRequest().parse(filteredRequests[key]);
 		core.addCoreGroup(coreJob, key, request);
 	}
 	return coreJob;
