@@ -328,9 +328,9 @@ describe("#addHmisToJob()", function () {
 		var env2b = job.findTask("hmi-userId3", "hmi-master").Env.BROKER_WEBSOCKET_ADDR;
 		var tag1 = job.findTask("hmi-userId1", "hmi-master").Services[0].Tags[0];
 		var tag2 = job.findTask("hmi-userId3", "hmi-master").Services[0].Tags[0];
-		assert.equal(env1a, "${NOMAD_ADDR_broker}");
+		assert.equal(env1a, "${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
 		assert.equal(env1b, cores[0].Address+":"+cores[0].Port);
-		assert.equal(env2a, "${NOMAD_ADDR_broker}");
+		assert.equal(env2a, "${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
 		assert.equal(env2b, cores[1].Address+":"+cores[1].Port);
 		assert.equal(JSON.parse(tag1).id, JSON.parse(cores[0].Tags[0]).id);
 		assert.equal(JSON.parse(tag2).id, JSON.parse(cores[1].Tags[0]).id);
