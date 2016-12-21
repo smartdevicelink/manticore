@@ -386,10 +386,11 @@ function addHmiGenericGroup (job, core, haproxyPort) {
 	}
 	else { //no haproxy
 		//directly connect to core
-		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", "${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
+		//do not include HMI_WEBSOCKET_ADDR here
+		//job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", "${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
 		job.addEnv(groupName, "hmi-master", "BROKER_WEBSOCKET_ADDR", core.Address + ":" + core.Port);
 	}
-
+//TODO: ESTIMATED PROBLEM -> REMOVE STRING INTERPOLATION HERE SOMEHOW
 	job.addService(groupName, "hmi-master", "hmi-master");
 	job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
 	//add a health check
@@ -403,7 +404,7 @@ function addHmiGenericGroup (job, core, haproxyPort) {
 	}
 	job.addCheck(groupName, "hmi-master", "hmi-master", healthObj);
 	//store the port of the broker
-	request.brokerPortInternal = "${NOMAD_PORT_broker}";
+	//request.brokerPortInternal = "${NOMAD_PORT_broker}";
 	//give hmi the same id as core so we know they're together	
 	job.addTag(groupName, "hmi-master", "hmi-master", request.getString());
 	return job;
