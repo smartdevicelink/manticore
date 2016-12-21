@@ -193,9 +193,6 @@ module.exports = {
 		//use the id to generate a unique ID intended for the socket connection
 		logger.debug("Connection ID Generated:" + id);
 		var connectionInfo = null;
-		//TODO: will getwsurl not work if multiple manticores are running while under HAproxy?
-		//set the load balancer to something other than round robin so logs don't get streamed to 
-		//wrong manticore?
 		if (allocation === null) {
 			//core isn't available to stream logs
 			logger.debug("Core isn't available for streaming for connection ID " + id);

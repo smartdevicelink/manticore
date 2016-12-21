@@ -363,14 +363,13 @@ module.exports = {
 			//we know which allocation to find because the TaskGroup name has the client ID
 			//make sure the allocation is alive, which indicates it's the one that's running core
 			var allocation = core.findAliveCoreAllocation(res.allocations, id);
-			var nodeID = allocation.NodeID;
-			nomader.getNodeStatus(nodeID, nomadAddress, function (data) {
-				var targetedNomadAddress = data.HTTPAddr;
-				logger.error("Client agent address found:");
-				logger.error(targetedNomadAddress);
-
-				//get the client agent address using its node ID
-				var connectionInfo = core.handleAllocation(allocation, id, function (taskName) {
+			//get the client agent address using its node ID
+			var connectionInfo = core.handleAllocation(allocation, id, function (taskName) {
+				var nodeID = allocation.NodeID;
+				nomader.getNodeStatus(nodeID, nomadAddress, function (data) {
+					var targetedNomadAddress = data.HTTPAddr;
+					logger.error("Client agent address found:");
+					logger.error(targetedNomadAddress);
 					//start streaming logs to the client once they connect using the connection details
 					var custom = io.of('/' + id);
 					custom.on('connection', function (socket) {
@@ -381,8 +380,8 @@ module.exports = {
 							socket.emit("logs", data);
 						});	
 					});
+					callback(connectionInfo); //get back connection info and pass it to client
 				});
-				callback(connectionInfo); //get back connection info and pass it to client
 			});
 		});
 
