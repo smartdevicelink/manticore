@@ -142,7 +142,7 @@ module.exports = {
 					core.addCoreGroup(job, key, request);
 					//add an HMI to this test job file
 					core.addHmiGenericGroup(job, {
-						Tags: [`{"id":"${key}","hmiToCorePrefix":"asdf1234"}`],
+						Tags: [`{"id":"${key}","hmiToCorePrefix":"asdf1234","brokerAddressPrefix":"asdf2345"}`],
 						Address: "127.0.0.1",
 						Port: 3000
 					}, process.env.HAPROXY_HTTP_LISTEN);
@@ -235,17 +235,22 @@ module.exports = {
 			let cores = services.filter("core-master");
 			let hmis = services.filter("hmi-master");
 			let manticores = services.filter("manticore-service");
+			
+			logger.error(JSON.stringify(services, null, 2));
+			logger.error(JSON.stringify(cores, null, 2));
+			logger.error(JSON.stringify(hmis, null, 2));
+			logger.error(JSON.stringify(manticores, null, 2));
 
 			logger.debug("Core services: " + cores.length);
 			logger.debug("Hmi services: " + hmis.length);
 			logger.debug("Manticore services: " + manticores.length);
 			//for every core service, ensure it has a corresponding HMI
 			var job = nomader.createJob("hmi");
-			core.addHmisToJob(job, cores);
+/*			core.addHmisToJob(job, cores);
 			//submit the job. if there are no task groups then
 			//we want to remove the job completely. delete the job in that case
 			updateJobs(job, "hmi");
-
+*/
 			var pairs = core.findPairs(cores, hmis, function (id) {
 				//remove user from KV store because the HMI has no paired core which
 				//indicates that the user exited the HMI page and is done with their instance
@@ -413,7 +418,7 @@ function createCoreJob (waitingHash, requestKV) {
 }
 
 function updateJobs (localJob, jobName, jobModifyIndex) {
-	//TEST: only submit the job if any information has changed?
+	//only submit the job if any information has changed
 	nomader.findJob(jobName, nomadAddress, function (job) {
 		logger.debug("CHECKING CONTENTS FOR " + jobName);
 		var changed = core.compareJobStates(localJob, job);
