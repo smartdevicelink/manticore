@@ -236,11 +236,6 @@ module.exports = {
 			let hmis = services.filter("hmi-master");
 			let manticores = services.filter("manticore-service");
 			
-			logger.error(JSON.stringify(services, null, 2));
-			logger.error(JSON.stringify(cores, null, 2));
-			logger.error(JSON.stringify(hmis, null, 2));
-			logger.error(JSON.stringify(manticores, null, 2));
-
 			logger.debug("Core services: " + cores.length);
 			logger.debug("Hmi services: " + hmis.length);
 			logger.debug("Manticore services: " + manticores.length);
@@ -373,8 +368,8 @@ module.exports = {
 				var nodeID = allocation.NodeID;
 				nomader.getNodeStatus(nodeID, nomadAddress, function (data) {
 					var targetedNomadAddress = data.HTTPAddr;
-					logger.error("Client agent address found:");
-					logger.error(targetedNomadAddress);
+					logger.debug("Client agent address found:");
+					logger.debug(targetedNomadAddress);
 					//start streaming logs to the client once they connect using the connection details
 					var custom = io.of('/' + id);
 					custom.on('connection', function (socket) {
