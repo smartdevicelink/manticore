@@ -246,11 +246,11 @@ module.exports = {
 			logger.debug("Manticore services: " + manticores.length);
 			//for every core service, ensure it has a corresponding HMI
 			var job = nomader.createJob("hmi");
-/*			core.addHmisToJob(job, cores);
+			core.addHmisToJob(job, cores);
 			//submit the job. if there are no task groups then
 			//we want to remove the job completely. delete the job in that case
 			updateJobs(job, "hmi");
-*/
+
 			var pairs = core.findPairs(cores, hmis, function (id) {
 				//remove user from KV store because the HMI has no paired core which
 				//indicates that the user exited the HMI page and is done with their instance
@@ -418,6 +418,8 @@ function createCoreJob (waitingHash, requestKV) {
 }
 
 function updateJobs (localJob, jobName, jobModifyIndex) {
+	logger.error(jobName);
+	logger.error(JSON.stringify(localJob, null, 2));
 	//only submit the job if any information has changed
 	nomader.findJob(jobName, nomadAddress, function (job) {
 		logger.debug("CHECKING CONTENTS FOR " + jobName);
@@ -428,7 +430,7 @@ function updateJobs (localJob, jobName, jobModifyIndex) {
 		else {
 			logger.debug("Job files are different!");
 			//attempt to submit the updated job
-			core.checkJobs(localJob, function () {//there are tasks. submit the job
+			/*core.checkJobs(localJob, function () {//there are tasks. submit the job
 				logger.debug(jobName + " tasks exist");
 				logger.debug(localJob.getJob().Job.TaskGroups.length);
 				localJob.submitJob(nomadAddress, function (result) {
@@ -437,7 +439,7 @@ function updateJobs (localJob, jobName, jobModifyIndex) {
 			}, function () { //there are no tasks. delete the job
 				logger.debug("No " + jobName + " tasks");
 				self.deleteJob(jobName, function () {});
-			});
+			});*/
 		}
 	});
 }
