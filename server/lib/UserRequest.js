@@ -39,6 +39,23 @@ UserRequest.prototype.getString = function () {
 	});
 }
 
+UserRequest.prototype.toCoreTag = function () {
+	return JSON.stringify({
+		id: this.id,
+		tcpPortInternal: this.tcpPortInternal,
+		userToHmiPrefix: this.userToHmiPrefix,
+		hmiToCorePrefix: this.hmiToCorePrefix,
+		tcpPortExternal: this.tcpPortExternal
+	});
+}
+
+UserRequest.prototype.toHmiTag = function () {
+	return JSON.stringify({
+		id: this.id,
+		brokerPortInternal: this.brokerPortInternal,
+	});
+}
+
 //the inverse of the getString function
 UserRequest.prototype.parse = function (string) {
 	return new UserRequest(JSON.parse(string));

@@ -342,7 +342,7 @@ function addCoreGroup (job, id, request) {
 	//tcpPortInternal has a value because the whole object will be added as a tag to the
 	//nomad job, and nomad can interpolate variables inside the tag, even as a stringified JSON
 	request.tcpPortInternal = "${NOMAD_PORT_tcp}";
-	job.addTag(groupName, "core-master", "core-master", request.getString());
+	job.addTag(groupName, "core-master", "core-master", request.toCoreTag());
 	job.setPortLabel(groupName, "core-master", "core-master", "hmi");
 }
 
@@ -386,11 +386,9 @@ function addHmiGenericGroup (job, core, haproxyPort) {
 	}
 	else { //no haproxy
 		//directly connect to core
-		//do not include HMI_WEBSOCKET_ADDR here
-		//job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", "${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
+		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", "${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
 		job.addEnv(groupName, "hmi-master", "BROKER_WEBSOCKET_ADDR", core.Address + ":" + core.Port);
 	}
-//TODO: ESTIMATED PROBLEM -> REMOVE STRING INTERPOLATION HERE SOMEHOW
 	job.addService(groupName, "hmi-master", "hmi-master");
 	job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
 	//add a health check
@@ -404,8 +402,8 @@ function addHmiGenericGroup (job, core, haproxyPort) {
 	}
 	job.addCheck(groupName, "hmi-master", "hmi-master", healthObj);
 	//store the port of the broker
-	//request.brokerPortInternal = "${NOMAD_PORT_broker}";
+	request.brokerPortInternal = "${NOMAD_PORT_broker}";
 	//give hmi the same id as core so we know they're together	
-	job.addTag(groupName, "hmi-master", "hmi-master", request.getString());
+	job.addTag(groupName, "hmi-master", "hmi-master", request.toHmiTag());
 	return job;
 }

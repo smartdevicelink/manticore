@@ -425,7 +425,7 @@ function updateJobs (localJob, jobName, jobModifyIndex) {
 		else {
 			logger.debug("Job files are different!");
 			//attempt to submit the updated job
-			/*core.checkJobs(localJob, function () {//there are tasks. submit the job
+			core.checkJobs(localJob, function () {//there are tasks. submit the job
 				logger.debug(jobName + " tasks exist");
 				logger.debug(localJob.getJob().Job.TaskGroups.length);
 				localJob.submitJob(nomadAddress, function (result) {
@@ -434,7 +434,7 @@ function updateJobs (localJob, jobName, jobModifyIndex) {
 			}, function () { //there are no tasks. delete the job
 				logger.debug("No " + jobName + " tasks");
 				self.deleteJob(jobName, function () {});
-			});*/
+			});
 		}
 	});
 }
