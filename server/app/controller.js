@@ -26,9 +26,15 @@ module.exports = function (app, io) {
 	app.post('/v1/logs', function (req, res) {
 		logger.debug("/v1/logs");
 		logger.debug(req.body);
-		shell.requestLogs(req.body.id, function (response) {
-			res.json(response);
-		});
+		shell.requestLogs(req.body.id);
+		res.sendStatus(200);
+	});
+
+	app.post('/v1/connect', function (req, res) {
+		logger.debug("/v1/connect");
+		logger.debug(req.body);
+		var response = shell.requestConnection(req.body.id);
+		res.send(response);
 	});
 
 	//get a list of HMIs and their branches

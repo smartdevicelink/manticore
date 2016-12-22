@@ -19,6 +19,8 @@ var ec2;
 var nomadAddress;
 var self;
 var io;
+//temporary storage of socket connections from clients
+var sockets = {}; 
 
 module.exports = {
 	init: function (address, socketIo, callback) {
@@ -256,10 +258,13 @@ module.exports = {
 			};
 			//post all pairs at once
 			logger.info(pairs);
-			//currently doesn't really do anything
-			needle.post(postUrl, pairs, function (err, res) {
-			});
-
+			//go through each pair, and post the connection information to each listening client
+			for (let i = 0; i < pairs.length; i++) {
+				var pair = pairs[i];
+				if (sockets[pair.id]) {
+					sockets[pair.id].emit("connectInfo", pair);
+				}
+			}
 			//if HAPROXY_OFF was not set to "true"
 			core.checkHaProxyFlag(function () {
 				logger.debug("Updating KV Store with data for proxy!");
@@ -371,20 +376,34 @@ module.exports = {
 					logger.debug("Client agent address found:");
 					logger.debug(targetedNomadAddress);
 					//start streaming logs to the client once they connect using the connection details
-					var custom = io.of('/' + id);
-					custom.on('connection', function (socket) {
-						logger.debug("User connected! Stream core logs");
-						//get the stdout logs and stream them
+					if (sockets[id]) {
+						//connection exists!
 						nomader.streamLogs(allocation.ID, taskName, "stdout", targetedNomadAddress, function (data) {
 							//this function gets invoked whenever new data arrives from core
-							socket.emit("logs", data);
-						});	
-					});
-					callback(connectionInfo); //get back connection info and pass it to client
+							sockets[id].emit("logs", data);
+						});							
+					}
+					//callback(true); //get back connection info and pass it to client
 				});
 			});
 		});
 
+	},
+	//starts a websocket server that is able to stream information to the client
+	requestConnection: function (id) {
+		var custom = io.of('/' + id);
+		custom.on('connection', function (socket) {
+			logger.debug("Client connected: " + id);
+			//save this socket object somewhere. retrievable by looking up the id
+			sockets[id] = socket;
+		});
+		custom.on('disconnect', function () {
+			logger.debug("Client disconnected: " + id);
+			//remove socket
+			delete sockets[id];
+		});
+		//return the appropriate address the client should connect to
+		return core.getWsUrl() + "/" + id;
 	},
 	deleteKey: function (key, callback) {
 		consuler.delKey(key, function () {

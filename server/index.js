@@ -26,7 +26,6 @@ app.use(express.static(rootLocation));
         logger.info("Environment variable NODE_LOGS=" + process.env.NODE_LOGS);
         logger.debug("Manticore's environment variables:");
         logger.debug("CLIENT_AGENT_IP: " + process.env.CLIENT_AGENT_IP);
-        logger.debug("POST_CONNECTION_ADDR: " + process.env.POST_CONNECTION_ADDR);
         logger.debug("DOMAIN_NAME: " + process.env.DOMAIN_NAME);
         logger.debug("HTTP_PORT: " + process.env.HTTP_PORT);
         logger.debug("TCP_PORT_RANGE_START: " + process.env.TCP_PORT_RANGE_START);   

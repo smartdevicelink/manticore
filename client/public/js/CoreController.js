@@ -40,3 +40,27 @@ function requestLogs() {
 		}
 	});
 }
+
+
+//immediately request a websocket connection to be open to receive things such as core logs and
+//connection information
+(function () {
+	$.post('/v1/connect', body2, function (wsUrl) {
+		//the data contains the url we need to connect to the websocket server
+		//make sure the information isn't null. if it's null then that indicates that the
+		//core isn't ready to have logs streamed to yet
+		if (!socket) {
+			//make a connection using the url given
+			console.log(wsUrl);
+			socket = io(wsUrl);
+			socket.on('connectInfo', function (data) {
+				console.log("connection information!");
+				console.log(data);
+			});
+			//core log data
+			socket.on('logs', function (data) {
+				console.log(data);
+			});
+		}
+	});
+})();

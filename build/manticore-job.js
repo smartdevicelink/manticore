@@ -7,7 +7,6 @@ var fs = require('fs');
 console.log("Environment variable NODE_LOGS=" + process.env.NODE_LOGS);
 console.log("Manticore's environment variables:");
 console.log("CLIENT_AGENT_IP: " + process.env.CLIENT_AGENT_IP);
-console.log("POST_CONNECTION_ADDR: " + process.env.POST_CONNECTION_ADDR);
 console.log("DOMAIN_NAME: " + process.env.DOMAIN_NAME);
 console.log("HTTP_PORT: " + process.env.HTTP_PORT);
 console.log("TCP_PORT_RANGE_START: " + process.env.TCP_PORT_RANGE_START);   
@@ -44,7 +43,6 @@ function buildManticoreJobFile () {
 	addEnvs(job, groupName, taskName, [
 		"NODE_LOGS",
 		"CLIENT_AGENT_IP",
-		"POST_CONNECTION_ADDR",
 		"DOMAIN_NAME",
 		"HTTP_PORT",
 		"TCP_PORT_RANGE_START",
