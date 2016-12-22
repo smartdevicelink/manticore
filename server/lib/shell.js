@@ -413,8 +413,6 @@ function createCoreJob (waitingHash, requestKV) {
 }
 
 function updateJobs (localJob, jobName, jobModifyIndex) {
-	logger.error(jobName);
-	logger.error(JSON.stringify(localJob, null, 2));
 	//only submit the job if any information has changed
 	nomader.findJob(jobName, nomadAddress, function (job) {
 		logger.debug("CHECKING CONTENTS FOR " + jobName);
