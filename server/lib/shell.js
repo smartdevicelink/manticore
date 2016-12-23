@@ -270,7 +270,7 @@ module.exports = {
 						tcpAddress: pair.tcpAddressExternal || pair.tcpAddressInternal,
 						brokerAddress: pair.brokerAddressExternal || pair.brokerAddressInternal
 					}
-					sockets[pair.id].emit("connectInfo", pair);
+					sockets[pair.id].emit("connectInfo", formatted);
 				}
 			}
 			//if HAPROXY_OFF was not set to "true"
