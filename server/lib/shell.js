@@ -259,9 +259,16 @@ module.exports = {
 			//post all pairs at once
 			logger.info(pairs);
 			//go through each pair, and post the connection information to each listening client
-			for (let i = 0; i < pairs.length; i++) {
-				var pair = pairs[i];
+			for (let i = 0; i < pairs.pairs.length; i++) {
+				var pair = pairs.pairs[i];
 				if (sockets[pair.id]) {
+					//format the connection information and send it!
+					var formatted = {
+						userAddress: userAddressInternal || userAddressExternal,
+						hmiAddress: hmiAddressInternal || hmiAddressExternal,
+						tcpAddress: tcpAddressInternal || tcpAddressExternal,
+						brokerAddress: brokerAddressInternal || brokerAddressExternal
+					}
 					sockets[pair.id].emit("connectInfo", pair);
 				}
 			}
@@ -396,6 +403,8 @@ module.exports = {
 			logger.debug("Client connected: " + id);
 			//save this socket object somewhere. retrievable by looking up the id
 			sockets[id] = socket;
+			//we shouldn't need to resend connection information
+			//Manticore UI may keep that info in storage on refreshes
 		});
 		custom.on('disconnect', function () {
 			logger.debug("Client disconnected: " + id);

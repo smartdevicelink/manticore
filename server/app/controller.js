@@ -19,7 +19,8 @@ module.exports = function (app, io) {
 		logger.debug("/v1/cores");
 		logger.debug(req.body);
 		shell.requestCore(req.body.id, req.body);
-		res.sendStatus(200);
+		var response = shell.requestConnection(req.body.id);
+		res.send(response);
 	});
 
 	//get logs from core
@@ -28,13 +29,6 @@ module.exports = function (app, io) {
 		logger.debug(req.body);
 		shell.requestLogs(req.body.id);
 		res.sendStatus(200);
-	});
-
-	app.post('/v1/connect', function (req, res) {
-		logger.debug("/v1/connect");
-		logger.debug(req.body);
-		var response = shell.requestConnection(req.body.id);
-		res.send(response);
 	});
 
 	//get a list of HMIs and their branches
