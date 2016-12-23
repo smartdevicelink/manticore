@@ -10,6 +10,7 @@
   "author": "Christopher Rokita",
   "license": "ISC",
   "dependencies": {
+    "@risingstack/trace": "^3.0.2",
     "aws-sdk": "^2.6.12",
     "body-parser": "^1.15.2",
     "consul": "^0.25.0",

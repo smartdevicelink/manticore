@@ -1,6 +1,8 @@
 //load the environment variables from the .env file in the same directory (remove when using docker containers)
 //require('dotenv').config();
 //modules
+//trace
+require('@risingstack/trace');
 var express = require('express');
 var bodyParser = require('body-parser');
 //server-related initialization

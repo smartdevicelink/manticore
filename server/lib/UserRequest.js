@@ -69,7 +69,7 @@ UserRequest.prototype.parse = function (string) {
 UserRequest.prototype.generatePairInfo = function (corePair, hmiPair) {
 	//broker port will be located inside the hmiPair
 	var hmiRequest = new UserRequest().parse(hmiPair.Tags[0]);
-	//TODO: is hmiaddress and brokeraddress flipped around?
+	//TODO: is hmiaddress and brokeraddress flipped around? (probably not)
 	return {
 		id: this.id,
 		userAddressInternal: hmiPair.Address + ":" + hmiPair.Port,
