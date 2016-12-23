@@ -383,7 +383,7 @@ function addCoreGroup (job, id, request) {
 	//tcpPortInternal has a value because the whole object will be added as a tag to the
 	//nomad job, and nomad can interpolate variables inside the tag, even as a stringified JSON
 	request.tcpPortInternal = "${NOMAD_PORT_tcp}";
-	job.addTag(groupName, "core-master", "core-master", request.getString());
+	job.addTag(groupName, "core-master", "core-master", request.toCoreTag());
 	job.setPortLabel(groupName, "core-master", "core-master", "hmi");
 }
 
@@ -445,6 +445,6 @@ function addHmiGenericGroup (job, core, haproxyPort) {
 	//store the port of the broker
 	request.brokerPortInternal = "${NOMAD_PORT_broker}";
 	//give hmi the same id as core so we know they're together	
-	job.addTag(groupName, "hmi-master", "hmi-master", request.getString());
+	job.addTag(groupName, "hmi-master", "hmi-master", request.toHmiTag());
 	return job;
 }
