@@ -88,6 +88,7 @@ module.exports = {
 			//generate a random port number in a range specified by environment variables
 			//to pick as an exposed port for a TCP connection
 			let pair = pairs[i];
+
 			file.addHttpRoute(pair.userAddressExternal, pair.userAddressInternal)
 				.addHttpRoute(pair.hmiAddressExternal, pair.hmiAddressInternal)
 				.addHttpRoute(pair.brokerAddressExternal, pair.brokerAddressInternal)
@@ -280,6 +281,46 @@ module.exports = {
 		}
 
 		return infoChanged;
+	},
+	//convert a JSON pair object to something more usable
+	formatPairResponse: function (pair) {
+		var userAddress;
+		var hmiAddress;
+		var tcpAddress;
+		var brokerAddress;
+		if (pair.userAddressExternal) {
+			userAddress = pair.userAddressExternal + "." + process.env.DOMAIN_NAME;
+		}
+		else {
+			userAddress = pair.userAddressInternal;
+		}
+
+		if (pair.hmiAddressExternal) {
+			hmiAddress = pair.hmiAddressExternal + "." + process.env.DOMAIN_NAME;
+		}
+		else {
+			hmiAddress = pair.hmiAddressInternal;
+		}
+
+		if (pair.tcpPortExternal) {
+			tcpAddress = pair.tcpPortExternal + "." + process.env.DOMAIN_NAME;
+		}
+		else {
+			tcpAddress = pair.tcpAddressInternal;
+		}
+
+		if (pair.brokerAddressExternal) {
+			brokerAddress = pair.brokerAddressExternal + "." + process.env.DOMAIN_NAME;
+		}
+		else {
+			brokerAddress = pair.brokerAddressInternal;
+		}
+		return {
+			userAddress: userAddress,
+			hmiAddress: hmiAddress,
+			tcpAddress: tcpAddress,
+			brokerAddress: brokerAddress
+		}
 	}
 }
 
@@ -342,7 +383,7 @@ function addCoreGroup (job, id, request) {
 	//tcpPortInternal has a value because the whole object will be added as a tag to the
 	//nomad job, and nomad can interpolate variables inside the tag, even as a stringified JSON
 	request.tcpPortInternal = "${NOMAD_PORT_tcp}";
-	job.addTag(groupName, "core-master", "core-master", request.toCoreTag());
+	job.addTag(groupName, "core-master", "core-master", request.toString());
 	job.setPortLabel(groupName, "core-master", "core-master", "hmi");
 }
 
@@ -404,6 +445,6 @@ function addHmiGenericGroup (job, core, haproxyPort) {
 	//store the port of the broker
 	request.brokerPortInternal = "${NOMAD_PORT_broker}";
 	//give hmi the same id as core so we know they're together	
-	job.addTag(groupName, "hmi-master", "hmi-master", request.toHmiTag());
+	job.addTag(groupName, "hmi-master", "hmi-master", request.toString());
 	return job;
 }

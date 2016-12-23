@@ -263,14 +263,7 @@ module.exports = {
 				var pair = pairs.pairs[i];
 				if (sockets[pair.id]) {
 					//format the connection information and send it!
-					//if the external address doesn't exist, send the internal address
-					var formatted = {
-						userAddress: pair.userAddressExternal || pair.userAddressInternal,
-						hmiAddress: pair.hmiAddressExternal || pair.hmiAddressInternal,
-						tcpAddress: pair.tcpAddressExternal || pair.tcpAddressInternal,
-						brokerAddress: pair.brokerAddressExternal || pair.brokerAddressInternal
-					}
-					sockets[pair.id].emit("connectInfo", formatted);
+					sockets[pair.id].emit("connectInfo", core.formatPairResponse(pair));
 				}
 			}
 			//if HAPROXY_OFF was not set to "true"
