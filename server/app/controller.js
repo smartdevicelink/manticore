@@ -36,10 +36,6 @@ module.exports = function (app, io) {
 		let hmis = {
 			hmis: [
 				{
-					name: "ford",
-					branches: ["master", "develop"]
-				},
-				{
 					name: "generic",
 					branches: ["master"]
 				}
@@ -53,8 +49,7 @@ module.exports = function (app, io) {
 		//do something with req.params.hmiName
 		let branches = {
 			branches: [
-				"master",
-				"develop"
+				"master"
 			]
 		}
 		res.json(branches);

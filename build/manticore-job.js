@@ -48,7 +48,9 @@ function buildManticoreJobFile () {
 		"TCP_PORT_RANGE_START",
 		"TCP_PORT_RANGE_END",
 		"HAPROXY_HTTP_LISTEN",
-		"HAPROXY_OFF"
+		"HAPROXY_OFF",
+		"TRACE_SERVICE_NAME",
+		"TRACE_API_KEY"
 	]);
 	job.addService(groupName, taskName, serviceName);
 	job.setPortLabel(groupName, taskName, serviceName, "http");
