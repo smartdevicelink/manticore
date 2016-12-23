@@ -422,13 +422,13 @@ function addHmiGenericGroup (job, core, haproxyPort) {
 		//the address from the tags is just the prefix. add the domain/subdomain name too
 		var fullAddressHMI = request.hmiToCorePrefix + "." + process.env.DOMAIN_NAME;
 		var fullAddressBroker = request.brokerAddressPrefix + "." + process.env.DOMAIN_NAME;
-		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddressHMI + ":" + haproxyPort);
-		job.addEnv(groupName, "hmi-master", "BROKER_WEBSOCKET_ADDR", fullAddressBroker + ":" + haproxyPort);
+		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddressBroker + ":" + haproxyPort);
+		job.addEnv(groupName, "hmi-master", "BROKER_WEBSOCKET_ADDR", fullAddressHMI + ":" + haproxyPort);
 	}
 	else { //no haproxy
 		//directly connect to core
-		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", core.Address + ":" + core.Port);
-		job.addEnv(groupName, "hmi-master", "BROKER_WEBSOCKET_ADDR", "${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
+		job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", "${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
+		job.addEnv(groupName, "hmi-master", "BROKER_WEBSOCKET_ADDR", core.Address + ":" + core.Port);
 	}
 	job.addService(groupName, "hmi-master", "hmi-master");
 	job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
