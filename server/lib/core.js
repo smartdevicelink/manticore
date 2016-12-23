@@ -303,7 +303,7 @@ module.exports = {
 		}
 
 		if (pair.tcpPortExternal) {
-			tcpAddress = pair.tcpPortExternal + "." + process.env.DOMAIN_NAME;
+			tcpAddress = process.env.DOMAIN_NAME + ":" + pair.tcpPortExternal;
 		}
 		else {
 			tcpAddress = pair.tcpAddressInternal;
