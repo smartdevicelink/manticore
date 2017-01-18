@@ -14,12 +14,16 @@ var controller = require('./app/controller.js');
 var logger = require('./lib/logger.js');
 var rootLocation = __dirname + '/../client/public';
 var ip = require('ip');
+var cors = require('cors'); //easily allow cross-origin requests
 
 app.use(bodyParser.json()); //allow json parsing
 app.use(bodyParser.urlencoded({extended: true})); //for parsing application/x-www-form-urlencoded
 //allow any content from inside /client/public to be brought to the user
 //expose everything in public. The main index.html file should exist inside public but not inside html/
 app.use(express.static(rootLocation));  
+if (process.env.CORS === "true") {
+    app.use(cors({credentials: true, origin: true}));
+}
 
 //start the server
 (function () {
@@ -34,6 +38,7 @@ app.use(express.static(rootLocation));
         logger.debug("TCP_PORT_RANGE_END: " + process.env.TCP_PORT_RANGE_END);   
         logger.debug("HAPROXY_HTTP_LISTEN: " + process.env.HAPROXY_HTTP_LISTEN);   
         logger.debug("HAPROXY_OFF: " + process.env.HAPROXY_OFF); 
+        logger.debug("CORS: " + process.env.CORS); 
         logger.debug("CONTAINER IP ADDRESS: " + process.env.NOMAD_IP_http + ":" + process.env.NOMAD_HOST_PORT_http); 
         //let shell.js handle the websocket server
         controller(app, io);

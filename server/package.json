@@ -15,6 +15,7 @@
     "body-parser": "^1.15.2",
     "consul": "^0.25.0",
     "consul-helper": "^2.3.2",
+    "cors": "^2.8.1",
     "dotenv": "^2.0.0",
     "express": "^4.14.0",
     "functionite": "^2.0.0",
