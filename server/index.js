@@ -1,8 +1,11 @@
 //load the environment variables from the .env file in the same directory (remove when using docker containers)
 //require('dotenv').config();
 //modules
-//trace
-require('@risingstack/trace');
+//trace. only require it if the TRACE_SERVICE_NAME and TRACE_API_KEY exist
+if (process.env.TRACE_SERVICE_NAME && process.env.TRACE_API_KEY) {
+    logger.debug("Trace enabled");
+    require('@risingstack/trace');
+}
 var express = require('express');
 var bodyParser = require('body-parser');
 //server-related initialization
@@ -15,9 +18,24 @@ var logger = require('./lib/logger.js');
 var rootLocation = __dirname + '/../client/public';
 var ip = require('ip');
 var cors = require('cors'); //easily allow cross-origin requests
+var expressJwt = require('express-jwt');
+var jwt = require('jsonwebtoken');
 
 app.use(bodyParser.json()); //allow json parsing
 app.use(bodyParser.urlencoded({extended: true})); //for parsing application/x-www-form-urlencoded
+if (process.env.JWT_SECRET) {
+    //pass the JWT secret token, if any, to express for message encryption
+    //if the JWT secret exists then require that the token is passed through
+    //the request for authentication purposes
+    logger.debug("JWT_SECRET found");
+    //allow GET to the main route '/' and the Controller.js file
+    app.use(expressJwt({
+        secret: process.env.JWT_SECRET
+    })
+    .unless({path: ['/', '/js/CoreController.js']})
+    );
+}
+
 //allow any content from inside /client/public to be brought to the user
 //expose everything in public. The main index.html file should exist inside public but not inside html/
 app.use(express.static(rootLocation));  

@@ -177,9 +177,12 @@ module.exports = {
 		for (let i = 0; i < allocations.length; i++) {
 			//remove "core-" from taskgroup name to get just the ID
 			var testID = allocations[i].TaskGroup.split("core-")[1];
-			if (testID === targetID) {
+			//allow targetID to be a string or a number
+			if (testID == targetID) {
 				//only return the alloc ID if the ClientStatus is set to "running"
-				if (allocations[i].ClientStatus === "running") {
+				//try accepting it if the status is also "pending"
+				if (allocations[i].ClientStatus === "running" || 
+					allocations[i].ClientStatus === "pending" ) {
 					return allocations[i];
 				}
 			}
@@ -356,6 +359,7 @@ function addCoreGroup (job, id, request) {
 	//core-<id>
 	var groupName = "core-" + id;
 	job.addGroup(groupName);
+	job.setType("batch");
 	//set the restart policy of core so that if it dies once, it's gone for good
 	//attempts number should be 0. interval and delay don't matter since task is in fail mode
 	job.setRestartPolicy(groupName, 60000000000, 0, 60000000000, "fail");
@@ -397,6 +401,7 @@ function addHmiGenericGroup (job, core, haproxyPort) {
 	//hmi-<id>
 	var groupName = "hmi-" + request.id;
 	job.addGroup(groupName);
+	job.setType("batch");
 	job.addTask(groupName, "hmi-master");
 	job.setImage(groupName, "hmi-master", "crokita/discovery-generic-hmi:master");
 	job.addPort(groupName, "hmi-master", true, "user", 8080);

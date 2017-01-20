@@ -77,3 +77,29 @@ WaitingList.prototype.filterRequests = function (requestKV) {
 	}
 	return filteredKV;
 }
+
+//warning: this is an O(n^2) operation, where n is the number of people in the waiting list
+WaitingList.prototype.getQueuePositions = function () {
+	//calculate the position each user is in the waiting list that hasn't claimed a core/hmi
+	var results = {};
+
+	for (var key in this.waiting) {
+		var user = this.waiting[key];
+		if (!user.claimed) {
+			var queueNumber = user.queue;
+			//find how many users are before this user
+			//a user is in front of another if their queue number is lower and claimed is false
+			var waitingCount = 0;
+			for (var target in this.waiting) {
+				if (!this.waiting[target].claimed && this.waiting[target].queue < queueNumber) {
+					waitingCount++;
+				}
+			}
+			//associate the user with their place in line (0 is front of the queue)
+			results[key] = waitingCount; 
+		}
+
+	}
+
+	return results;
+}

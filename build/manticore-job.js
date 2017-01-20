@@ -51,6 +51,7 @@ function buildManticoreJobFile () {
 		"HAPROXY_HTTP_LISTEN",
 		"HAPROXY_OFF",
 		"CORS",
+		"JWT_SECRET",
 		"TRACE_SERVICE_NAME",
 		"TRACE_API_KEY"
 	]);

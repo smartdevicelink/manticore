@@ -107,7 +107,15 @@ module.exports = {
 			.pass(function (waitingObj, callback) {
 				waitingHash = WaitingList(waitingObj);
 				logger.debug("Find next in waiting list");
-				
+				//also, calculate the position of the user in the waiting list using the KV store
+				var positionMap = waitingHash.getQueuePositions();
+				for (var id in positionMap) {
+					if (sockets[id]) {
+						//TODO: sometimes the position doesn't send. is it because the 
+						//client isn't connected to the socket yet?
+						sockets[id].emit("position", positionMap[id]);
+					}
+				}
 				waitingHash.nextInQueue(function (lowestKey) {
 					//there is a request that needs to claim a core
 					logger.debug("Lowest key found:");

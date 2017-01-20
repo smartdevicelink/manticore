@@ -33,6 +33,10 @@ function requestInstance() {
 			socket.on('logs', function (data) {
 				console.log(data);
 			});
+			//position in queue data
+			socket.on('position', function (pos) {
+				console.log("Current position: " + pos);
+			});
 		}
 	});
 }
