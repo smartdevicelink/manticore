@@ -14,7 +14,7 @@ module.exports = function (app, io) {
 	});
 
 	//start core and hmi
-	app.post('/v1/cores', function (req, res) {
+	app.post('/v1/cores', extractUserId, function (req, res) {
 		//pretend we have some unique identifier for the client so that
 		//we know which client wants what core
 		logger.debug("/v1/cores");
@@ -26,7 +26,7 @@ module.exports = function (app, io) {
 	});
 
 	//get logs from core
-	app.post('/v1/logs', function (req, res) {
+	app.post('/v1/logs', extractUserId, function (req, res) {
 		logger.debug("/v1/logs");
 		logger.debug(req.body);
 		shell.requestLogs(req.body.id);
@@ -70,8 +70,19 @@ module.exports = function (app, io) {
 	});
 
 	//delete a core passing in an id
+	//TODO: change it to accept IDs from a JWT
 	app.delete('/v1/cores/:id', function (req, res) {
 		//do something with req.params.id
 		res.sendStatus(200);
 	});
+}
+
+function extractUserId (req, res, next) {
+	//find the user id from the JWT (if JWT is enabled)
+	//and place it in the body of the request as <id>
+	if (process.env.JWT_SECRET && req.user) {
+		var id = req.user.user_id;
+		req.body.id = id;
+	}
+	next();
 }
