@@ -14,13 +14,15 @@ var WaitingList = require('./WaitingList.js'); //represents the waiting list in 
 var UserRequest = require('./UserRequest.js'); //represents the nature of a user's request
 var AWS = require('aws-sdk');
 var functionite = require('functionite');
+var SocketHandler = require('./SocketHandler.js'); //manages socket connections
 AWS.config.update({region: process.env.AWS_REGION});
 var ec2;
 var nomadAddress;
 var self;
 var io;
 //temporary storage of socket connections from clients
-var sockets = {}; 
+var connectionSockets = SocketHandler();
+//var sockets = {}; 
 
 module.exports = {
 	init: function (address, socketIo, callback) {
@@ -110,11 +112,11 @@ module.exports = {
 				//also, calculate the position of the user in the waiting list using the KV store
 				var positionMap = waitingHash.getQueuePositions();
 				for (var id in positionMap) {
-					if (sockets[id]) {
-						//TODO: sometimes the position doesn't send. is it because the 
-						//client isn't connected to the socket yet?
-						sockets[id].emit("position", positionMap[id]);
-					}
+					connectionSockets.setPosition(id, positionMap[id]);
+					connectionSockets.send(id, "position");
+					//TODO: sometimes the position doesn't send. is it because the 
+					//client isn't connected to the socket yet?
+					//sockets[id].emit("position", positionMap[id]);
 				}
 				waitingHash.nextInQueue(function (lowestKey) {
 					//there is a request that needs to claim a core
@@ -269,10 +271,10 @@ module.exports = {
 			//go through each pair, and post the connection information to each listening client
 			for (let i = 0; i < pairs.pairs.length; i++) {
 				var pair = pairs.pairs[i];
-				if (sockets[pair.id]) {
-					//format the connection information and send it!
-					sockets[pair.id].emit("connectInfo", core.formatPairResponse(pair));
-				}
+				connectionSockets.setAddresses(pair.id, core.formatPairResponse(pair));
+				//format the connection information and send it!
+				connectionSockets.send(pair.id, "connectInfo");
+				//sockets[pair.id].emit("connectInfo", core.formatPairResponse(pair));
 			}
 			//if HAPROXY_OFF was not set to "true"
 			core.checkHaProxyFlag(function () {
@@ -368,7 +370,7 @@ module.exports = {
 	},
 	//send back connection information in order for the client to make a websocket connection to
 	//receive sdl_core logs
-	requestLogs: function (id, callback) {
+	requestLogs: function (id) {
 		//make sure there is an allocation for core intended for this user before 
 		//starting up a connection
 		//the log request requires that the address must be from the client from which the allocation
@@ -385,14 +387,14 @@ module.exports = {
 					logger.debug("Client agent address found:");
 					logger.debug(targetedNomadAddress);
 					//start streaming logs to the client once they connect using the connection details
-					if (sockets[id]) {
+					if (connectionSockets.checkId(id)) {
 						//connection exists!
 						nomader.streamLogs(allocation.ID, taskName, "stdout", targetedNomadAddress, function (data) {
 							//this function gets invoked whenever new data arrives from core
-							sockets[id].emit("logs", data);
+							//sockets[id].emit("logs", data);
+							connectionSockets.send(id, "logs", data);
 						});							
 					}
-					//callback(true); //get back connection info and pass it to client
 				});
 			});
 		});
@@ -404,14 +406,18 @@ module.exports = {
 		custom.on('connection', function (socket) {
 			logger.debug("Client connected: " + id);
 			//save this socket object somewhere. retrievable by looking up the id
-			sockets[id] = socket;
-			//we shouldn't need to resend connection information
-			//Manticore UI may keep that info in storage on refreshes
+			//sockets[id] = socket;
+			//if the id already is known then use the new socket
+			connectionSockets.addSocket(id, socket);
+			//resend connection information if it exists! 
+			connectionSockets.send(id, "connectInfo");
+			connectionSockets.send(id, "position");
 		});
 		custom.on('disconnect', function () {
 			logger.debug("Client disconnected: " + id);
 			//remove socket
-			delete sockets[id];
+			connectionSockets.removeSocket(id);
+			//delete sockets[id];
 		});
 		//return the appropriate address the client should connect to
 		return core.getWsUrl() + "/" + id;

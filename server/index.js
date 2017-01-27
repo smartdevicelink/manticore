@@ -2,10 +2,6 @@
 //require('dotenv').config();
 //modules
 //trace. only require it if the TRACE_SERVICE_NAME and TRACE_API_KEY exist
-if (process.env.TRACE_SERVICE_NAME && process.env.TRACE_API_KEY) {
-    logger.debug("Trace enabled");
-    require('@risingstack/trace');
-}
 var express = require('express');
 var bodyParser = require('body-parser');
 //server-related initialization
@@ -20,6 +16,12 @@ var ip = require('ip');
 var cors = require('cors'); //easily allow cross-origin requests
 var expressJwt = require('express-jwt');
 var jwt = require('jsonwebtoken');
+
+if (process.env.TRACE_SERVICE_NAME && process.env.TRACE_API_KEY) {
+    logger.debug("Trace enabled");
+    require('@risingstack/trace');
+}
+
 
 app.use(bodyParser.json()); //allow json parsing
 app.use(bodyParser.urlencoded({extended: true})); //for parsing application/x-www-form-urlencoded
