@@ -1,11 +1,5 @@
-//load the environment variables from the .env file in the same directory (remove when using docker containers)
-//require('dotenv').config();
+//main entry point
 //modules
-//trace. only require it if the TRACE_SERVICE_NAME and TRACE_API_KEY exist
-if (process.env.TRACE_SERVICE_NAME && process.env.TRACE_API_KEY) {
-    logger.debug("Trace enabled");
-    require('@risingstack/trace');
-}
 var express = require('express');
 var bodyParser = require('body-parser');
 //server-related initialization
@@ -15,11 +9,19 @@ var io = require('socket.io')(http);
 //custom vars and modules
 var controller = require('./app/controller.js');
 var logger = require('./lib/logger.js');
+var shell = require('./lib/shell.js');
 var rootLocation = __dirname + '/../client/public';
 var ip = require('ip');
 var cors = require('cors'); //easily allow cross-origin requests
 var expressJwt = require('express-jwt');
 var jwt = require('jsonwebtoken');
+var Context = require('./lib/Context.js'); //stores a set of modules and objects that are globally needed
+
+//trace. only require it if the TRACE_SERVICE_NAME and TRACE_API_KEY exist
+if (process.env.TRACE_SERVICE_NAME && process.env.TRACE_API_KEY) {
+    logger.debug("Trace enabled");
+    require('@risingstack/trace');
+}
 
 app.use(bodyParser.json()); //allow json parsing
 app.use(bodyParser.urlencoded({extended: true})); //for parsing application/x-www-form-urlencoded
@@ -45,8 +47,8 @@ if (process.env.CORS === "true") {
 
 //start the server
 (function () {
-    var server = http.listen(process.env.HTTP_PORT, function () {
-        logger.info("Server started");
+    http.listen(process.env.HTTP_PORT, function () {
+        logger.info("HTTP Server started");
         logger.info("Environment variable NODE_LOGS=" + process.env.NODE_LOGS);
         logger.debug("Manticore's environment variables:");
         logger.debug("CLIENT_AGENT_IP: " + process.env.CLIENT_AGENT_IP);
@@ -58,7 +60,10 @@ if (process.env.CORS === "true") {
         logger.debug("HAPROXY_OFF: " + process.env.HAPROXY_OFF); 
         logger.debug("CORS: " + process.env.CORS); 
         logger.debug("CONTAINER IP ADDRESS: " + process.env.NOMAD_IP_http + ":" + process.env.NOMAD_HOST_PORT_http); 
-        //let shell.js handle the websocket server
-        controller(app, io);
+
+        //instantiate the context
+        var context = new Context(app, io, logger, process.env.CLIENT_AGENT_IP); 
+        //pass the context to the controller
+        controller(context);
     });
 })();

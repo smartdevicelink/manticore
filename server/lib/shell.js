@@ -18,38 +18,18 @@ AWS.config.update({region: process.env.AWS_REGION});
 var ec2;
 var nomadAddress;
 var self;
-var io;
 //temporary storage of socket connections from clients
+//TODO: move all sockets objects to the socket manager
 var sockets = {}; 
+var context;
 
 module.exports = {
-	init: function (address, socketIo, callback) {
-		consuler = require('consul-helper')(address);
+	init: function (contextObj, address) {
+		context = contextObj;
 		//set the address
 		nomadAddress = address + ":4646";
 		logger.debug("Nomad address: " + nomadAddress);
 		self = this; //keep a consistent context around
-		io = socketIo;
-		//set up AWS SDK. assume this EC2 instance has an IAM role so we don't need to put in extra credentials
-		/*ec2 = new AWS.EC2();
-		var params = {
-			GroupId: "",
-
-		}
-		console.log(ec2.modifyInstanceAttribute);
-		ec2.describeSecurityGroups({}, function (err, data) {
-			console.log(data.SecurityGroups[16].IpPermissions);
-			console.log(data.SecurityGroups[16].IpPermissionsEgress);
-		});
-		//make a security group because why not
-		var params = {
-			Description: "Im computer generated!",
-			GroupName: "Please delete me"
-		};
-		ec2.createSecurityGroup(params, function (err, data) {
-			console.log(err);
-			console.log(data);
-		});*/
 		//add filler keys so we can detect changes to empty lists in the KV store
 		functionite()
 		.toss(consuler.setKeyValue, C.keys.fillers.request, "Keep me here please!")
@@ -57,7 +37,8 @@ module.exports = {
 		.toss(consuler.setKeyValue, C.keys.haproxy.mainPort, process.env.HAPROXY_HTTP_LISTEN)
 		.toss(consuler.setKeyValue, C.keys.haproxy.domainName, process.env.DOMAIN_NAME)
 		.toss(function () {
-			callback();
+			//set up watches one time. listen forever for changes in consul's services
+			self.startWatches(process.env.POST_CONNECTION_ADDR);
 		}).go();
 
 	},
@@ -365,6 +346,10 @@ module.exports = {
 
 		});
 
+		//start the websocket server for this id
+		context.websocket.requestConnection(id);
+		//return the appropriate address the client should connect to
+		return core.getWsUrl() + "/" + id;
 	},
 	//send back connection information in order for the client to make a websocket connection to
 	//receive sdl_core logs
@@ -397,24 +382,6 @@ module.exports = {
 			});
 		});
 
-	},
-	//starts a websocket server that is able to stream information to the client
-	requestConnection: function (id) {
-		var custom = io.of('/' + id);
-		custom.on('connection', function (socket) {
-			logger.debug("Client connected: " + id);
-			//save this socket object somewhere. retrievable by looking up the id
-			sockets[id] = socket;
-			//we shouldn't need to resend connection information
-			//Manticore UI may keep that info in storage on refreshes
-		});
-		custom.on('disconnect', function () {
-			logger.debug("Client disconnected: " + id);
-			//remove socket
-			delete sockets[id];
-		});
-		//return the appropriate address the client should connect to
-		return core.getWsUrl() + "/" + id;
 	},
 	deleteKey: function (key, callback) {
 		consuler.delKey(key, function () {

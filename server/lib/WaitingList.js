@@ -18,8 +18,9 @@ WaitingList.prototype.setClaimed = function (key, value) {
 	this.waiting[key].claimed = value;
 }
 
-WaitingList.prototype.nextInQueue = function (pass, fail) {
+WaitingList.prototype.nextInQueue = function () {
 	//return the key that is the next in the queue that hasn't claimed a core
+	//if returned null, there were no more in the waiting list
 	var lowestIndex = Infinity;
 	var lowestKey = null;
 	for (var key in this.waiting) {
@@ -30,12 +31,7 @@ WaitingList.prototype.nextInQueue = function (pass, fail) {
 			lowestKey = key;
 		}
 	}
-	if (lowestKey) {
-		pass(lowestKey);
-	}
-	else {
-		fail();
-	}
+	return lowestKey;
 }
 
 WaitingList.prototype.update = function (requestKeys) {

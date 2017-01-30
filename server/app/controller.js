@@ -1,35 +1,29 @@
 //the client needs an agent to connect to so that it may access consul services
 //supply a host IP address
-var shell = require('../lib/shell.js');
-var uuid = require('node-uuid');
-var logger = require('../lib/logger');
-var jwt = require('jsonwebtoken');
+var app; //express app route provided by context
+var logger; //logger module provided by context
+var logic; //controller logic which handles all endpoint logic
+var controllerLogic = require('./app/controller-logic.js');
 
-module.exports = function (app, io) {
-	//connect to the consul agent
-	//let the shell handle the websocket server
-	shell.init(process.env.CLIENT_AGENT_IP, io, function () {
-		//set up watches one time. listen forever for changes in consul's services
-		shell.startWatches(process.env.POST_CONNECTION_ADDR);		
-	});
+module.exports = function (context) {
+	app = context.app;	
+	logger = context.logger;
+	//initialize controller logic
+	logic = controllerLogic(context);
 
-	//start core and hmi
-	app.post('/v1/cores', extractUserId, function (req, res) {
-		//pretend we have some unique identifier for the client so that
-		//we know which client wants what core
+	//request core and hmi
+	app.post('/v1/cores', extractUserId, validateRequestCore, function (req, res) {
 		logger.debug("/v1/cores");
 		logger.debug(req.body);
-		logger.debug(JSON.stringify(req.user, null, 4));
-		shell.requestCore(req.body.id, req.body);
-		var response = shell.requestConnection(req.body.id);
-		res.send(response);
+		var serverAddress = logic.requestCore(req.body);
+		res.send(serverAddress);
 	});
 
 	//get logs from core
-	app.post('/v1/logs', extractUserId, function (req, res) {
+	app.post('/v1/logs', extractUserId, validateRequestLogs, function (req, res) {
 		logger.debug("/v1/logs");
 		logger.debug(req.body);
-		shell.requestLogs(req.body.id);
+		logic.requestLogs(req.body.id);
 		res.sendStatus(200);
 	});
 
@@ -77,6 +71,7 @@ module.exports = function (app, io) {
 	});
 }
 
+//middleware function that handles JWT data, if enabled
 function extractUserId (req, res, next) {
 	//find the user id from the JWT (if JWT is enabled)
 	//and place it in the body of the request as <id>
@@ -85,4 +80,28 @@ function extractUserId (req, res, next) {
 		req.body.id = id;
 	}
 	next();
+}
+
+/*
+	VALIDATION METHODS
+*/
+
+function validateRequestCore (req, res, next) {
+	//validate input. right now only the id is required
+	if (!req.body.id) {
+		res.status(400).send("Please provide user identification");
+	}
+	else {
+		next();
+	}
+}
+
+function validateRequestLogs (req, res, next) {
+	//validate input. right now only the id is required
+	if (!req.body.id) {
+		res.status(400).send("Please provide user identification");
+	}
+	else {
+		next();
+	}
 }
