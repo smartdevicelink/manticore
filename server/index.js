@@ -22,6 +22,12 @@ if (process.env.TRACE_SERVICE_NAME && process.env.TRACE_API_KEY) {
     require('@risingstack/trace');
 }
 
+if (process.env.TRACE_SERVICE_NAME && process.env.TRACE_API_KEY) {
+    logger.debug("Trace enabled");
+    require('@risingstack/trace');
+}
+
+
 app.use(bodyParser.json()); //allow json parsing
 app.use(bodyParser.urlencoded({extended: true})); //for parsing application/x-www-form-urlencoded
 if (process.env.JWT_SECRET) {
