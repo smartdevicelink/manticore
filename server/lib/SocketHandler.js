@@ -8,19 +8,18 @@ function SocketHandler (io) {
 
 //starts a websocket server that is able to stream information to the client
 SocketHandler.prototype.requestConnection = function (id) {
+    var self = this;
     var custom = this.websocket.of('/' + id);
     custom.on('connection', function (socket) {
-        logger.debug("Client connected: " + id);
         //save this socket object
-        this.addSocket(socket);
+        self.addSocket(id, socket);
         //resend connection information if it exists!
-        this.send(id, "connectInfo");
-        this.send(id, "position");
+        self.send(id, "connectInfo");
+        self.send(id, "position");
     });
     custom.on('disconnect', function () {
-        logger.debug("Client disconnected: " + id);
         //remove socket, but only the socket. keep the connection information/position
-        this.removeSocket(id);
+        self.removeSocket(id);
     });
 }
 
@@ -31,7 +30,9 @@ SocketHandler.prototype.cleanSockets = function (requestKeyArray) {
     for (var key in this.sockets) {
         if (requestKeyArray.indexOf(key) === -1) {
             //not found. close socket connection and remove from sockets list 
-            this.sockets[key].socket.disconnect(true);
+            if (this.sockets[key].socket) {
+                this.sockets[key].socket.disconnect(true);   
+            }
             delete this.sockets[key];
         }
     }

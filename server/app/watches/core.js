@@ -18,7 +18,7 @@ module.exports = {
 	},
 	checkTaskCount: function (job) {
 		//checks if there are no task groups in TaskGroups
-		return job.getJob().Job.TaskGroups.length === 0;
+		return job.getJob().Job.TaskGroups.length;
 	},
 	//WARNING: assumes that the taskgroups are in order!
 	compareJobStates: function (job1, job2) {
@@ -44,13 +44,11 @@ module.exports = {
 			var groups1 = job1.getJob().Job.TaskGroups;
 			var groups2 = job2.getJob().Job.TaskGroups;
 			for (let i = 0; i < groups1.length; i++) {
-				logger.debug(groups1[i].Name);
 				if (groups1[i].Name !== groups2[i].Name) {
 					infoChanged = true;
 				}
 			}
 			for (let i = 0; i < groups2.length; i++) {
-				logger.debug(groups2[i].Name);
 				if (groups2[i].Name !== groups1[i].Name) {
 					infoChanged = true;
 				}
@@ -59,7 +57,7 @@ module.exports = {
 
 		return infoChanged;
 	},
-	findPairs: function (cores, hmis, callback) {
+	findPairs: function (cores, hmis, context, callback) {
 		//for each HMI found, find its paired core, determine who that core belongs to, 
 		//and send the connection information to the owner
 		//we search through HMIs because HMIs depend on cores, and there could be a core
@@ -68,10 +66,10 @@ module.exports = {
 		for (let i = 0; i < hmis.length; i++) {
 			let corePair = undefined;
 			let corePairTagRequest = undefined;
-			let hmiTagRequest = UserRequest().parse(hmis[i].Tags[0]);
+			let hmiTagRequest = context.UserRequest().parse(hmis[i].Tags[0]);
 			for (let j = 0; j < cores.length; j++) {
 				//check if there is a pair using the user id
-				let coreTagRequest = UserRequest().parse(cores[j].Tags[0]);
+				let coreTagRequest = context.UserRequest().parse(cores[j].Tags[0]);
 				if (hmiTagRequest.id === coreTagRequest.id) {
 					corePair = cores[j];
 					corePairTagRequest = coreTagRequest;
@@ -92,7 +90,6 @@ module.exports = {
 				//shutdown signal was sent from HMI to core to kill it
 				//interpret this as the user being done with the pair and send back
 				//the id of the user from the request to be removed from the KV store
-				logger.debug("HMI with no core. Stop serving " + hmiTagRequest.id);
 				if (typeof callback === "function") {
 					callback(hmiTagRequest.id);
 				}

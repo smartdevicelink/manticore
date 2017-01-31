@@ -23,32 +23,34 @@ var utility = {
 					requestCoreLogic.addExternalAddresses(requestJSON, requestsKV);
 				}
 				//store the request object!
-				context.logger.debug("Store request " + requestJSON.id);
+				context.logger.debug("Store request " + body.id);
 				requestCoreLogic.storeRequestInKVStore(requestJSON, context);
 			}
 			else { //duplicate request
-				context.logger.debug("Duplicate request from " + id);
+				context.logger.debug("Duplicate request from " + body.id);
 			} 
 		});
 		//start the websocket server for this id
-		context.socketManager.requestConnection(id);
+		context.socketHandler.requestConnection(body.id);
 		//return the appropriate address the client should connect to
-		var websocketAddress = context.getWsUrl() + "/" + id;
+		var websocketAddress = context.getWsUrl() + "/" + body.id;
 		//use the id for the socket connection
-		logger.debug("Connection ID:" + id);
-		logger.debug("Connection URL:" + websocketAddress);
+		context.logger.debug("Connection ID:" + body.id);
+		context.logger.debug("Connection URL:" + websocketAddress);
 		return websocketAddress;
 	}, 
 	requestLogs: function (userId) {
 		//make sure there is an allocation for core intended for this user before starting up a connection
-		var allocation;
-		var task;
+		var store = { //reference of object which holds information that functionite could use
+			allocation: null,
+			taskName: null
+		};
 		functionite()
-		.pass(requestLogsLogic.getValidAllocation, context, userId)
+		.pass(requestLogsLogic.checkValidAllocation, context, userId)
 		.pass(function (validAllocation, callback) {
 			if (validAllocation === null) {
 				//core isn't available to stream logs
-				logger.debug("Core isn't available for streaming for connection ID " + userId);
+				context.logger.debug("Core isn't available for streaming for connection ID " + userId);
 			}
 			else {
 				var taskName; //get the task name
@@ -56,17 +58,18 @@ var utility = {
 					taskName = obj;
 					break;
 				}
-				allocation = validAllocation;
-				task = taskName;
+				store.allocation = validAllocation;
+				store.taskName = taskName;
 				callback();
 			}
 		}) //get the client agent address using its node ID
-		.toss(requestLogsLogic.getAgentLogAddress, context, allocation)
+		//pass the store object as it will hold a reference to the allocation when it is created later
+		.toss(requestLogsLogic.getAgentLogAddress, context, store)
 		.pass(function (targetedAddress) {
-			logger.debug("Client agent address found:");
-			logger.debug(targetedAddress);
+			context.logger.debug("Client agent address found:");
+			context.logger.debug(targetedAddress);
 			//start streaming logs to the client once they connect using the connection details
-			context.nomader.streamLogs(allocation.ID, taskName, "stdout", targetedAddress, function (logData) {
+			context.nomader.streamLogs(store.allocation.ID, store.taskName, "stdout", targetedAddress, function (logData) {
 				//this function gets invoked whenever new data arrives from core
 				context.socketHandler.send(userId, "logs", logData);
 			});							

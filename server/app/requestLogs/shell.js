@@ -7,10 +7,10 @@ module.exports = {
 			callback(core.findAliveCoreAllocation(res.allocations, id));
 		});
 	},
-	getAgentLogAddress: function (context, allocation, callback) {
-		var nodeID = allocation.NodeID;
+	getAgentLogAddress: function (context, store, callback) {
+		var nodeID = store.allocation.NodeID;
 		context.nomader.getNodeStatus(nodeID, context.nomadAddress, function (data) {
-			return data.HTTPAddr;
+			callback(data.HTTPAddr);
 		});
 	}
 }

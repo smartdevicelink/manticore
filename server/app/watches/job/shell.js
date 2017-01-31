@@ -4,8 +4,16 @@ module.exports = {
 	//this will find a final state in which the maximum number of users are able to receive
 	//a core/hmi so that only one job submission to Nomad is necessary
 	//this is a recursive function
-	attemptCoreAllocation: function (lowestKey, job, waitingHash, requestKV, context, callback) {
-		var updateWaitingList = false; //keeps track of whether the waiting list has changed
+	//job, waitinglist update
+	attemptCoreAllocation: function (lowestKey, waitingHash, requestKV, context, callback) {
+		//call the recursive function with an empty job and no update to the waiting list
+		this.coreAllocRecurse(lowestKey, waitingHash, requestKV, context, null, false, 
+			function (newWaitingHash, requestKV, updateWaitingList) {
+			callback(newWaitingHash, requestKV, updateWaitingList);
+		});
+	},
+	coreAllocRecurse: function (lowestKey, waitingHash, requestKV, context, job, updateWaitingList, callback) {
+		var self = this; //consistent reference to this exported object
 		//check if lowestKey exists (aka someone is in front of the waiting list, waiting)
 		if (lowestKey) {
 			context.logger.debug("Lowest key found:");
@@ -15,12 +23,12 @@ module.exports = {
 			waitingHash.setClaimed(lowestKey, true);
 			//if the job is null, then make a job that represents the current state of cores/hmis
 			if (!job) {
-				job = buildCoreJob(context, waitingHash, requestKV);
+				job = self.buildCoreJob(context, waitingHash, requestKV);
 				//we have the cores now. get the current state of the HMI job and
 				//don't include those tasks in our dummy job since those HMIs are already counted
 				//towards allocation space
 				var filteredRequests = waitingHash.filterRequests(requestKV);
-				excludeRunningHmis(context, filteredRequests, function (hmiIds) {
+				self.excludeRunningHmis(context, filteredRequests, function (hmiIds) {
 					//add an HMI to this test job file for every id found in hmiIds
 					for (let i = 0; i < hmiIds.length; i++) {
 						var request = context.UserRequest().parse(filteredRequests[hmiIds[i]]);
@@ -71,7 +79,7 @@ module.exports = {
 					//and finding a new lowestKey. also, pass in the job we created so far
 					//as we will just add onto it for another test submission
 					var newLowest = waitingHash.nextInQueue();
-					attemptCoreAllocation(newLowest, job, waitingHash, requestKV, context, callback);
+					self.coreAllocRecurse(newLowest, waitingHash, requestKV, context, job, updateWaitingList, callback);
 				}
 				else {
 					//error: insufficient resources. revert the claimed parameter of the lowest key
@@ -116,7 +124,7 @@ module.exports = {
 		}
 		return job; //job created
 	},
-	addHmisToJob: function (job, cores) {
+	addHmisToJob: function (context, job, cores) {
 		for (let i = 0; i < cores.length; i++) {
 			//pass in what is repesenting the user in order to name the service
 			//pass in the external address prefix of core so that when the user tries to connect to it

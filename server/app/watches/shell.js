@@ -18,6 +18,7 @@ module.exports = {
 }
 
 //wrap the context in these functions so we have necessary functionality
+//warning: releasing locks triggers an update for the KV store
 
 //request list update
 function requestsWatch (context) {
@@ -32,14 +33,14 @@ function requestsWatch (context) {
 		functionite()
 		.pass(function (callback) {
 			//lock functionality
-			lock = context.consuler.lock(context.keys.waiting + "/"); //lock the directory
-			lock.on('acquire', function () {
+			//lock = context.consuler.lock(context.keys.waiting + "/"); //lock the directory
+			//lock.on('acquire', function () {
 				callback(); //continue
-			});
-			lock.on('end', function () {
-				context.logger.debug("Manticore instance at " + process.env.NOMAD_IP_http + " is done with lock!");
-			});
-			lock.acquire();
+			//});
+			//lock.on('end', function () {
+			//	context.logger.debug("Manticore instance at " + process.env.NOMAD_IP_http + " is done with lock!");
+			//});
+			//lock.acquire();
 		})
 		.pass(context.consuler.getKeyValue, context.keys.data.waiting)
 		.pass(function (waitingValue) {
@@ -51,7 +52,7 @@ function requestsWatch (context) {
 			context.logger.debug(waitingHash.get());
 			//update manticore/waiting/data using the updated object generated
 			context.consuler.setKeyValue(context.keys.data.waiting, waitingHash.get(), function () {
-				lock.release(); //release waiting list lock
+				//lock.release(); //release waiting list lock
 			});
 		})
 		.go()
@@ -74,17 +75,6 @@ function waitingWatch (context) {
 			requestKV = requestKeys;
 			callback();
 		}) //get waiting list. the waiting list is one value as a stringified JSON
-		.toss(function (callback) {
-			//lock functionality
-			lock = context.consuler.lock(context.keys.waiting + "/"); //lock the directory
-			lock.on('acquire', function () {
-				callback(); //continue
-			});
-			lock.on('end', function () {
-				context.logger.debug("Manticore instance at " + process.env.NOMAD_IP_http + " is done with lock!");
-			});
-			lock.acquire();
-		})
 		.toss(context.consuler.getKeyValue, context.keys.data.waiting)
 		.pass(function (waitingObj, callback) {
 			var waitingHash = context.WaitingList(waitingObj);
@@ -101,22 +91,30 @@ function waitingWatch (context) {
 			//there may be a request that needs to claim a core, or there may not
 			//designate logic of allocating cores to the allocation module
 			//pass all the information needed to the allocation module
-			callback(lowestKey, null, waitingHash, requestKV, context);
-		})
-		.pass(jobLogic.attemptCoreAllocation)
+			callback(lowestKey, waitingHash, requestKV, context);
+		}) //"this" keyword won't work for attemptCoreAllocation when passed through
+		//functionite. use the "with" function in functionite to establish context
+		.pass(jobLogic.attemptCoreAllocation).with(jobLogic)
 		.pass(function (newWaitingHash, requestKV, updateWaitingList) {
-			//only update the waiting list if it needs to be updated
+			//only update the waiting list if it needs to be updated.
+			//but always try to submit the current job state
+			var coreJob = jobLogic.buildCoreJob(context, newWaitingHash, requestKV);
+			updateJob(context, coreJob, "core");
+
 			if (updateWaitingList) {
-				//use this new waiting list to submit the core job and update the waiting list!
-				var coreJob = jobLogic.buildCoreJob(context, newWaitingHash, requestKV);
-				updateJob(context, coreJob, "core");
+				context.logger.debug("Waiting list update!");
 				//update the waiting list
-				context.consuler.setKeyValue(context.keys.data.waiting, newWaitingHash.get(), function (){
-					lock.release(); //done with the lock
-				});
-			}
-			else {
-				lock.release(); //done with the lock
+				//lock functionality
+				//lock = context.consuler.lock(context.keys.waiting + "/"); //lock the directory
+				//lock.on('acquire', function () {
+					context.consuler.setKeyValue(context.keys.data.waiting, newWaitingHash.get(), function (){
+						//lock.release(); //done with the lock
+					});
+				//});
+				//lock.on('end', function () {
+					//context.logger.debug("Manticore instance at " + process.env.NOMAD_IP_http + " is done with lock!");
+				//});
+				//lock.acquire();
 			}
 		})
 		.go();
@@ -137,14 +135,15 @@ function serviceWatch (context) {
 
 		//for every core service, ensure it has a corresponding HMI
 		var job = context.nomader.createJob("hmi");
-		jobLogic.addHmisToJob(job, cores);
+		jobLogic.addHmisToJob(context, job, cores);
 		//submit the job. if there are no task groups then
 		//we want to remove the job completely. delete the job in that case
 		updateJob(context, job, "hmi");
-
-		var pairs = core.findPairs(cores, hmis, function (id) {
+		//TODO: remove context dependency for findPairs
+		var pairs = core.findPairs(cores, hmis, context, function (id) {
 			//remove user from KV store because the HMI has no paired core which
 			//indicates that the user exited the HMI page and is done with their instance
+			context.logger.debug("HMI with no core. Stop serving " + id);
 			context.consuler.delKey(context.keys.data.request + "/" + id, function () {});
 		});
 		pairs = {
@@ -180,8 +179,8 @@ function updateJob (context, localJob, jobName) {
 		else {
 			context.logger.debug("Job files are different!");
 			//attempt to submit the updated job
-			var isTasks = core.checkTaskCount(localJob);
-			if (isTasks) { //there are tasks. submit the job
+			var taskCount = core.checkTaskCount(localJob);
+			if (taskCount > 0) { //there are tasks. submit the job
 				context.logger.debug(jobName + " tasks exist");
 				context.logger.debug(localJob.getJob().Job.TaskGroups.length);
 				localJob.submitJob(context.nomadAddress, function (result) {
@@ -190,7 +189,7 @@ function updateJob (context, localJob, jobName) {
 			}
 			else { //there are no tasks. delete the job
 				context.logger.debug("No " + jobName + " tasks");
-				context.nomader.deleteJob(jobName, nomadAddress, function () {});
+				context.nomader.deleteJob(jobName, context.nomadAddress, function () {});
 			};
 		}
 	});
