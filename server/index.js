@@ -9,7 +9,6 @@ var io = require('socket.io')(http);
 //custom vars and modules
 var controller = require('./app/controller.js');
 var logger = require('./lib/logger.js');
-var shell = require('./lib/shell.js');
 var rootLocation = __dirname + '/../client/public';
 var ip = require('ip');
 var cors = require('cors'); //easily allow cross-origin requests

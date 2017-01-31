@@ -1,4 +1,5 @@
 //an object that manages and contains global information necessary across all modules
+//the majority of these modules come from the /lib folder
 var SocketHandler = require('./SocketHandler.js');
 
 module.exports = Context;
@@ -10,6 +11,7 @@ function Context (app, socketio, logger, address) {
 	this.consuler = require('consul-helper')(address); //connect to the consul agent before continuing 
 	this.nomader = require('nomad-helper'); //creates nomad job files easily
 	this.agentAddress = address; //address of nomad and consul client agents
+	this.nomadAddress = address + ":4646"; //address of nomad agents including port
 	this.UserRequest = require('./UserRequest.js'); //represents a user's request for core/hmi
 	this.keys = require('./constants.js').keys; //stores locations of data inside the consul KV store
 	this.WaitingList = require('./WaitingList.js');

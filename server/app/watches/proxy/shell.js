@@ -2,7 +2,7 @@ var functionite = require('functionite');
 var HAProxyTemplate = require('./HAProxyTemplate.js');
 
 module.exports = {
-	generateProxyData = function (context, pairs, manticores) {
+	generateProxyData: function (context, pairs, manticores) {
 		var pairs = pairs.pairs;
 		//for each pair, extract connection information and add them to HAProxy config file
 		//put TCP blocks in a separate file
@@ -42,7 +42,7 @@ module.exports = {
 				callback(); //continue
 			});
 			lock.on('end', function () {
-				logger.debug("Manticore instance at " + process.env.NOMAD_IP_http + " is done with lock!");
+				context.logger.debug("Manticore instance at " + process.env.NOMAD_IP_http + " is done with lock!");
 			});
 			lock.acquire();
 		})

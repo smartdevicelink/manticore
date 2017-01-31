@@ -5,10 +5,11 @@ module.exports = {
 	//a core/hmi so that only one job submission to Nomad is necessary
 	//this is a recursive function
 	attemptCoreAllocation: function (lowestKey, job, waitingHash, requestKV, context, callback) {
+		var updateWaitingList = false; //keeps track of whether the waiting list has changed
 		//check if lowestKey exists (aka someone is in front of the waiting list, waiting)
 		if (lowestKey) {
-			logger.debug("Lowest key found:");
-			logger.debug(lowestKey);
+			context.logger.debug("Lowest key found:");
+			context.logger.debug(lowestKey);
 			//since we are testing if the user from the waiting list can claim core/hmi
 			//we must include that information for this test!
 			waitingHash.setClaimed(lowestKey, true);
@@ -53,16 +54,19 @@ module.exports = {
 			}
 		}
 		else { //we are done: no more users in the waiting list
-			callback(waitingHash, requestKV);
+			context.logger.debug("No more in waiting list");
+			callback(waitingHash, requestKV, updateWaitingList);
 		}
 
 		function evaluateJob () {
 			//test submission! we are using "core" because we want to pretend to
 			//replace that job file with more cores and hmis
-			job.planJob(context.agentAddress, "core", function (results) {
+			job.planJob(context.nomadAddress, "core", function (results) {
 				var canAllocate = core.checkHasResources(results);
 				if (canAllocate) {
-					logger.debug("Core and HMI can be allocated!");
+					context.logger.debug("Core and HMI can be allocated!");
+					//we will update the waiting list for this new allocation
+					updateWaitingList = true;
 					//recurse through this function again with the new waitingHash
 					//and finding a new lowestKey. also, pass in the job we created so far
 					//as we will just add onto it for another test submission
@@ -71,16 +75,16 @@ module.exports = {
 				}
 				else {
 					//error: insufficient resources. revert the claimed parameter of the lowest key
-					logger.debug("Core and HMI cannot be allocated!");
+					context.logger.debug("Core and HMI cannot be allocated!");
 					waitingHash.setClaimed(lowestKey, false);
 					//done.
-					callback(waitingHash, requestKV);
-				});
+					callback(waitingHash, requestKV, updateWaitingList);
+				};
 			});
 		}
 	},
 	excludeRunningHmis: function (context, filteredRequests, callback) {
-		context.nomader.findJob("hmi", context.agentAddress, function (job) {
+		context.nomader.findJob("hmi", context.nomadAddress, function (job) {
 			//check task groups in the HMI job
 			var hmiIds = [];
 			if (job && job.getJob().Job && job.getJob().Job.TaskGroups) {
@@ -99,12 +103,12 @@ module.exports = {
 			}
 			callback(necessaryHmiIds);
 		});
-	}
+	},
 	buildCoreJob: function (context, waitingHash, requestKV) {
 		var job = context.nomader.createJob("core");
 		var filteredRequests = waitingHash.filterRequests(requestKV);
-		logger.debug("filtered requests");
-		logger.debug(filteredRequests);
+		context.logger.debug("filtered requests");
+		context.logger.debug(filteredRequests);
 		//for every claimed user, build a task for them and add it to the job file
 		for (var key in filteredRequests) {
 			var request = context.UserRequest().parse(filteredRequests[key]);
@@ -122,4 +126,3 @@ module.exports = {
 		}	
 	}
 }
-

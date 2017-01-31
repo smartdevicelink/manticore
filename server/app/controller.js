@@ -3,7 +3,7 @@
 var app; //express app route provided by context
 var logger; //logger module provided by context
 var logic; //controller logic which handles all endpoint logic
-var controllerLogic = require('./app/controller-logic.js');
+var controllerLogic = require('./controller-logic.js');
 
 module.exports = function (context) {
 	app = context.app;	
