@@ -104,5 +104,5 @@ module.exports = {
 	//determines if the results say that nomad can allocate a job
 	checkHasResources: function (results) {
 		return results.FailedTGAllocs === null;
-	},
+	}
 }

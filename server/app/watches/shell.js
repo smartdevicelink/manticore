@@ -1,7 +1,7 @@
 var functionite = require('functionite');
 var core = require('./core.js');
 //SUBFOLDER MODULES
-var allocationLogic = require('./allocation/shell.js');
+var jobLogic = require('./job/shell.js');
 var proxyLogic = require('./proxy/shell.js');
 
 module.exports = {
@@ -101,12 +101,12 @@ function waitingWatch (context) {
 			//there may be a request that needs to claim a core, or there may not
 			//designate logic of allocating cores to the allocation module
 			//pass all the information needed to the allocation module
-			callback(lowestKey, waitingHash, requestKV, context);
+			callback(lowestKey, null, waitingHash, requestKV, context);
 		})
-		.pass(allocationLogic.attemptCoreAllocation)
+		.pass(jobLogic.attemptCoreAllocation)
 		.pass(function (newWaitingHash, requestKV) {
 			//use this new waiting list to submit the core job and update the waiting list!
-			var coreJob = allocationLogic.buildJob(context, newWaitingHash, requestKV, false);
+			var coreJob = jobLogic.buildCoreJob(context, newWaitingHash, requestKV);
 			updateJob(context, coreJob, "core");
 			consuler.setKeyValue(context.keys.data.waiting, newWaitingHash.get(), function (){
 				lock.release(); //done with the lock
@@ -130,7 +130,7 @@ function serviceWatch (context) {
 
 		//for every core service, ensure it has a corresponding HMI
 		var job = context.nomader.createJob("hmi");
-		allocationLogic.addHmisToJob(job, cores);
+		jobLogic.addHmisToJob(job, cores);
 		//submit the job. if there are no task groups then
 		//we want to remove the job completely. delete the job in that case
 		updateJobs(context, job, "hmi");

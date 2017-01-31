@@ -98,6 +98,7 @@ SocketHandler.prototype.send = function (id, keyword, logData) {
         if (keyword === "connectInfo" && connection.addresses) {
             connection.socket.emit(keyword, connection.addresses);
         } 
+        //logs don't need to be stored since Nomad stores them for us
         if (keyword === "logs") {
             connection.socket.emit(keyword, logData);
         } 
