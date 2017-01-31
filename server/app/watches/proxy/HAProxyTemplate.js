@@ -134,6 +134,6 @@ listen tcp-${i}
 
 //returns an HAProxy template
 function getTemplate () {
-    return fs.readFileSync(`${__dirname}/../templates/haproxyConfig`, 'utf-8');
+    return fs.readFileSync(`${__dirname}/../../../templates/haproxyConfig`, 'utf-8');
 }
 

@@ -37,14 +37,14 @@ module.exports = {
 		functionite()
 		.pass(function (callback) {
 			//lock functionality
-			lock = context.consuler.lock(context.keys.haproxy + "/"); //lock the directory
-			lock.on('acquire', function () {
+			//lock = context.consuler.lock(context.keys.haproxy + "/"); //lock the directory
+			//lock.on('acquire', function () {
 				callback(); //continue
-			});
-			lock.on('end', function () {
-				context.logger.debug("Manticore instance at " + process.env.NOMAD_IP_http + " is done with lock!");
-			});
-			lock.acquire();
+			//});
+			//lock.on('end', function () {
+			//	context.logger.debug("Manticore instance at " + process.env.NOMAD_IP_http + " is done with lock!");
+			//});
+			//lock.acquire();
 		})
 		.toss(context.consuler.delKeyAll, context.keys.data.haproxy) //reset everything under haproxy in KV store
 		.toss(function () {
@@ -83,7 +83,7 @@ module.exports = {
 				//async call complete
 				totalRequests--;
 				if (totalRequests === 0) { //all async calls are complete
-					lock.release(); //done with the lock
+					//lock.release(); //done with the lock
 				}
 			}
 		})
