@@ -13,7 +13,7 @@ module.exports = function (context) {
 
 	//request core and hmi
 	app.post('/v1/cores', extractUserId, validateRequestCore, function (req, res) {
-		logger.debug("/v1/cores");
+		logger.debug("POST /v1/cores");
 		logger.debug(req.body);
 		var serverAddress = logic.requestCore(req.body);
 		res.send(serverAddress);
@@ -21,9 +21,17 @@ module.exports = function (context) {
 
 	//get logs from core
 	app.post('/v1/logs', extractUserId, validateRequestLogs, function (req, res) {
-		logger.debug("/v1/logs");
+		logger.debug("POST /v1/logs");
 		logger.debug(req.body);
 		logic.requestLogs(req.body.id);
+		res.sendStatus(200);
+	});
+
+	//delete a core of a specific id
+	app.delete('/v1/cores', extractUserId, validateDeleteCore, function (req, res) {
+		logger.debug("DELETE /v1/cores");
+		context.logger.debug(req.body);
+		logic.deleteCore(req.body.id);
 		res.sendStatus(200);
 	});
 
@@ -62,13 +70,6 @@ module.exports = function (context) {
 		}
 		res.json(builds);
 	});
-
-	//delete a core passing in an id
-	//TODO: change it to accept IDs from a JWT
-	app.delete('/v1/cores/:id', function (req, res) {
-		//do something with req.params.id
-		res.sendStatus(200);
-	});
 }
 
 //middleware function that handles JWT data, if enabled
@@ -97,6 +98,16 @@ function validateRequestCore (req, res, next) {
 }
 
 function validateRequestLogs (req, res, next) {
+	//validate input. right now only the id is required
+	if (!req.body.id) {
+		res.status(400).send("Please provide user identification");
+	}
+	else {
+		next();
+	}
+}
+
+function validateDeleteCore (req, res, next) {
 	//validate input. right now only the id is required
 	if (!req.body.id) {
 		res.status(400).send("Please provide user identification");

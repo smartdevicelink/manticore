@@ -26,14 +26,12 @@ SocketHandler.prototype.requestConnection = function (id) {
 //remove outdated information of connection objects that shouldn't exist anymore
 SocketHandler.prototype.cleanSockets = function (requestKeyArray) {
     //now check if each element in the sockets object exists in the requests
-    //if it doesn't, remove it
+    //if it doesn't, remove the cached information
     for (var key in this.sockets) {
         if (requestKeyArray.indexOf(key) === -1) {
-            //not found. close socket connection and remove from sockets list 
-            if (this.sockets[key].socket) {
-                this.sockets[key].socket.disconnect(true);   
-            }
-            delete this.sockets[key];
+            //not found. remove the cached information
+            delete this.sockets[key].position;
+            delete this.sockets[key].addresses;
         }
     }
 }

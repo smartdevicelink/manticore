@@ -75,6 +75,12 @@ var utility = {
 			});							
 		})
 		.go();
+	},
+	deleteCore: function (userId) {
+		//remove the request id of the same id from the KV store
+		context.consuler.delKey(context.keys.data.request + "/" + userId, function () {
+			//that's literally it.
+		});
 	}
 };
 

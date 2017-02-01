@@ -44,3 +44,12 @@ function requestInstance() {
 function requestLogs() {
 	$.post('/v1/logs', body2, function (result) {});
 }
+
+function deleteCore() {
+	$.ajax({
+		url: '/v1/cores',
+		type: 'DELETE',
+		data: body2,
+		success: function (result) {}
+	});
+}
