@@ -179,7 +179,7 @@ function updateJob (context, localJob, jobName) {
 		else {
 			context.logger.debug("Job files are different!");
 			//attempt to submit the updated job
-			var taskCount = core.checkTaskCount(localJob);
+			var taskCount = localJob.getJob().Job.TaskGroups.length;
 			if (taskCount > 0) { //there are tasks. submit the job
 				context.logger.debug(jobName + " tasks exist");
 				context.logger.debug(localJob.getJob().Job.TaskGroups.length);

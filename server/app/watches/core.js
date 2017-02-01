@@ -16,10 +16,6 @@ module.exports = {
 		}
 		return KV;
 	},
-	checkTaskCount: function (job) {
-		//checks if there are no task groups in TaskGroups
-		return job.getJob().Job.TaskGroups.length;
-	},
 	//WARNING: assumes that the taskgroups are in order!
 	compareJobStates: function (job1, job2) {
 		var infoChanged = false;
