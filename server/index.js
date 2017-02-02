@@ -30,6 +30,7 @@ if (process.env.TRACE_SERVICE_NAME && process.env.TRACE_API_KEY) {
 
 app.use(bodyParser.json()); //allow json parsing
 app.use(bodyParser.urlencoded({extended: true})); //for parsing application/x-www-form-urlencoded
+
 if (process.env.JWT_SECRET) {
     //pass the JWT secret token, if any, to express for message encryption
     //if the JWT secret exists then require that the token is passed through

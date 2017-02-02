@@ -1,3 +1,7 @@
+var express = require('express');
+//setup a router for these requests
+var router = express.Router();
+
 //the client needs an agent to connect to so that it may access consul services
 //supply a host IP address
 var app; //express app route provided by context
@@ -6,37 +10,43 @@ var logic; //controller logic which handles all endpoint logic
 var controllerLogic = require('./controller-logic.js');
 
 module.exports = function (context) {
-	app = context.app;	
+	app = context.app;
 	logger = context.logger;
 	//initialize controller logic
 	logic = controllerLogic(context);
+	//all APIs are prepended with /v1
+	//contain these APIs in this router
+	app.use('/v1', router);
+	//make all requests pass through an extract ID middleware so
+	//that all IDs are stored in req.body.id if the ID was stored in a JWT
+	router.use(extractUserId);
 
 	//request core and hmi
-	app.post('/v1/cores', extractUserId, validateRequestCore, function (req, res) {
-		logger.debug("POST /v1/cores");
+	router.post('/cores', validateRequestCore, function (req, res) {
+		logger.debug("POST /cores");
 		logger.debug(req.body);
 		var serverAddress = logic.requestCore(req.body);
 		res.send(serverAddress);
 	});
 
 	//get logs from core
-	app.post('/v1/logs', extractUserId, validateRequestLogs, function (req, res) {
-		logger.debug("POST /v1/logs");
+	router.post('/logs', validateRequestLogs, function (req, res) {
+		logger.debug("POST /logs");
 		logger.debug(req.body);
 		logic.requestLogs(req.body.id);
 		res.sendStatus(200);
 	});
 
 	//delete a core of a specific id
-	app.delete('/v1/cores', extractUserId, validateDeleteCore, function (req, res) {
-		logger.debug("DELETE /v1/cores");
+	router.delete('/cores', validateDeleteCore, function (req, res) {
+		logger.debug("DELETE /cores");
 		context.logger.debug(req.body);
 		logic.deleteCore(req.body.id);
 		res.sendStatus(200);
 	});
 
 	//get a list of HMIs and their branches
-	app.get('/v1/hmis', function (req, res) {
+	router.get('/hmis', function (req, res) {
 		let hmis = {
 			hmis: [
 				{
@@ -49,7 +59,7 @@ module.exports = function (context) {
 	});
 
 	//given an HMI, get all valid core branches
-	app.get('/v1/cores/:hmiName', function (req, res) {
+	router.get('/cores/:hmiName', function (req, res) {
 		//do something with req.params.hmiName
 		let branches = {
 			branches: [
@@ -60,7 +70,7 @@ module.exports = function (context) {
 	});
 
 	//given a core branch, get all valid build configurations
-	app.get('/v1/builds/:coreBranchName', function (req, res) {
+	router.get('/builds/:coreBranchName', function (req, res) {
 		//do something with req.params.coreBranchName
 		let builds = {
 			builds: [
