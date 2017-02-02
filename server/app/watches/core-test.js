@@ -120,6 +120,13 @@ describe("#findPairs()", function () {
 			Port: "8687",
 			Tags: [JSON.stringify(hmiTagObj)]
 		}];
+		//first, convert the tag string for all cores and hmis into UserRequest objects
+		for (let i = 0; i < hmis.length; i++) {
+			hmis[i].Tags[0] = UserRequest().parse(hmis[i].Tags[0]);
+		}
+		for (let i = 0; i < cores.length; i++) {
+			cores[i].Tags[0] = UserRequest().parse(cores[i].Tags[0]);
+		}	
 		var pairs = core.findPairs(cores, hmis);
 		assert(pairs.length === 0, "There are no pairs. Found " + pairs.length);
 	});
@@ -191,6 +198,13 @@ describe("#findPairs()", function () {
 		Port: "2345",
 		Tags: [JSON.stringify(hmiTagObj3)]
 	}];
+	//first, convert the tag string for all cores and hmis into UserRequest objects
+	for (let i = 0; i < hmis.length; i++) {
+		hmis[i].Tags[0] = UserRequest().parse(hmis[i].Tags[0]);
+	}
+	for (let i = 0; i < cores.length; i++) {
+		cores[i].Tags[0] = UserRequest().parse(cores[i].Tags[0]);
+	}	
 	it("should return 2 pairs that are found", function () {
 		var pairs = core.findPairs(cores, hmis);
 		assert(pairs.length === 2, "There are 2 pairs. Found " + pairs.length);

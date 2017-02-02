@@ -53,7 +53,7 @@ module.exports = {
 
 		return infoChanged;
 	},
-	findPairs: function (cores, hmis, context, callback) {
+	findPairs: function (cores, hmis, callback) {
 		//for each HMI found, find its paired core, determine who that core belongs to, 
 		//and send the connection information to the owner
 		//we search through HMIs because HMIs depend on cores, and there could be a core
@@ -62,10 +62,10 @@ module.exports = {
 		for (let i = 0; i < hmis.length; i++) {
 			let corePair = undefined;
 			let corePairTagRequest = undefined;
-			let hmiTagRequest = context.UserRequest().parse(hmis[i].Tags[0]);
+			let hmiTagRequest = hmis[i].Tags[0];
 			for (let j = 0; j < cores.length; j++) {
 				//check if there is a pair using the user id
-				let coreTagRequest = context.UserRequest().parse(cores[j].Tags[0]);
+				let coreTagRequest = cores[j].Tags[0];
 				if (hmiTagRequest.id === coreTagRequest.id) {
 					corePair = cores[j];
 					corePairTagRequest = coreTagRequest;

@@ -139,8 +139,14 @@ function serviceWatch (context) {
 		//submit the job. if there are no task groups then
 		//we want to remove the job completely. delete the job in that case
 		updateJob(context, job, "hmi");
-		//TODO: remove context dependency for findPairs
-		var pairs = core.findPairs(cores, hmis, context, function (id) {
+		//first, convert the tag string for all cores and hmis into UserRequest objects
+		for (let i = 0; i < hmis.length; i++) {
+			hmis[i].Tags[0] = context.UserRequest().parse(hmis[i].Tags[0]);
+		}
+		for (let i = 0; i < cores.length; i++) {
+			cores[i].Tags[0] = context.UserRequest().parse(cores[i].Tags[0]);
+		}		
+		var pairs = core.findPairs(cores, hmis, function (id) {
 			//remove user from KV store because the HMI has no paired core which
 			//indicates that the user exited the HMI page and is done with their instance
 			context.logger.debug("HMI with no core. Stop serving " + id);
