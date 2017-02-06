@@ -22,12 +22,12 @@ module.exports = {
 			//we must include that information for this test!
 			waitingHash.setClaimed(lowestKey, true);
 			//if the job is null, then make a job that represents the current state of cores/hmis
+			var filteredRequests = waitingHash.filterRequests(requestKV);
 			if (!job) {
 				job = self.buildCoreJob(context, waitingHash, requestKV);
 				//we have the cores now. get the current state of the HMI job and
 				//don't include those tasks in our dummy job since those HMIs are already counted
 				//towards allocation space
-				var filteredRequests = waitingHash.filterRequests(requestKV);
 				self.excludeRunningHmis(context, filteredRequests, function (hmiIds) {
 					//add an HMI to this test job file for every id found in hmiIds
 					for (let i = 0; i < hmiIds.length; i++) {
@@ -84,7 +84,7 @@ module.exports = {
 				else {
 					//error: insufficient resources. revert the claimed parameter of the lowest key
 					context.logger.debug("Core and HMI cannot be allocated!");
-					context.logger.debug(JSON.stringify(results, null, 4));
+					//context.logger.debug(JSON.stringify(results, null, 4));
 					waitingHash.setClaimed(lowestKey, false);
 					//done.
 					callback(waitingHash, requestKV, updateWaitingList);

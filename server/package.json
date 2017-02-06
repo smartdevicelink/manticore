@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "node node_modules/.bin/mocha $(find app -name '*-test.js')"
+    "test": "node node_modules/.bin/mocha $(find app lib -name '*-test.js')"
   },
   "author": "Christopher Rokita",
   "license": "ISC",

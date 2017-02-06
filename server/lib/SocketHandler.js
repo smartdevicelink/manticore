@@ -91,7 +91,9 @@ SocketHandler.prototype.send = function (id, keyword, logData) {
     if (this.checkId(id) && this.sockets[id].socket) {
         var connection = this.sockets[id];
         //only send the information if it exists
-        if (keyword === "position" && connection.position) {
+        //for the position that is a number and 0 is a possible value which is falsy.
+        //we don't want to interpret 0 as falsy, so check for undefined/null instead
+        if (keyword === "position" && connection.position !== undefined && connection.position !== null) {
             connection.socket.emit(keyword, connection.position);
         }  
         if (keyword === "connectInfo" && connection.addresses) {

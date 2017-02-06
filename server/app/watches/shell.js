@@ -79,13 +79,6 @@ function waitingWatch (context) {
 		.pass(function (waitingObj, callback) {
 			var waitingHash = context.WaitingList(waitingObj);
 			context.logger.debug("Find next in waiting list");
-			//also, calculate the position of each user in the waiting list using the KV store
-			var positionMap = waitingHash.getQueuePositions();
-			//store and submit the position information of each user by their id
-			for (var id in positionMap) {
-				context.socketHandler.setPosition(id, positionMap[id]);
-				context.socketHandler.send(id, "position");
-			}
 			//get the request with the lowest index (front of waiting list)
 			var lowestKey = waitingHash.nextInQueue();
 			//there may be a request that needs to claim a core, or there may not
@@ -96,6 +89,13 @@ function waitingWatch (context) {
 		//functionite. use the "with" function in functionite to establish context
 		.pass(jobLogic.attemptCoreAllocation).with(jobLogic)
 		.pass(function (newWaitingHash, requestKV, updateWaitingList) {
+			//recalculate the positions of the new waiting list and send that over websockets
+			var positionMap = newWaitingHash.getQueuePositions();
+			//store and submit the position information of each user by their id
+			for (var id in positionMap) {
+				context.socketHandler.setPosition(id, positionMap[id]);
+				context.socketHandler.send(id, "position");
+			}
 			//only update the waiting list if it needs to be updated.
 			//but always try to submit the current job state
 			var coreJob = jobLogic.buildCoreJob(context, newWaitingHash, requestKV);

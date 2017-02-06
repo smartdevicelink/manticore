@@ -8,6 +8,7 @@ console.log("Environment variable NODE_LOGS=" + process.env.NODE_LOGS);
 console.log("Manticore's environment variables:");
 console.log("CLIENT_AGENT_IP: " + process.env.CLIENT_AGENT_IP);
 console.log("DOMAIN_NAME: " + process.env.DOMAIN_NAME);
+console.log("DOMAIN_NAME_UNSECURE: " + process.env.DOMAIN_NAME_UNSECURE);
 console.log("HTTP_PORT: " + process.env.HTTP_PORT);
 console.log("TCP_PORT_RANGE_START: " + process.env.TCP_PORT_RANGE_START);   
 console.log("TCP_PORT_RANGE_END: " + process.env.TCP_PORT_RANGE_END);   
@@ -45,6 +46,7 @@ function buildManticoreJobFile () {
 		"NODE_LOGS",
 		"CLIENT_AGENT_IP",
 		"DOMAIN_NAME",
+		"DOMAIN_NAME_UNSECURE",
 		"HTTP_PORT",
 		"TCP_PORT_RANGE_START",
 		"TCP_PORT_RANGE_END",
