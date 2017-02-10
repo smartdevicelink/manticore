@@ -13,7 +13,9 @@ module.exports = {
 	},
 	startServiceWatch: function (context) {
 		//set up a watch for all services
-		context.consuler.watchServices(serviceWatch(context));
+		context.consuler.watchServiceStatus('core-master', coreWatch(context));
+		context.consuler.watchServiceStatus('hmi-master', hmiWatch(context));
+		context.consuler.watchServiceStatus('manticore-service', manticoreWatch(context));
 	}
 }
 
@@ -93,8 +95,8 @@ function waitingWatch (context) {
 			var positionMap = newWaitingHash.getQueuePositions();
 			//store and submit the position information of each user by their id
 			for (var id in positionMap) {
-				context.socketHandler.setPosition(id, positionMap[id]);
-				context.socketHandler.send(id, "position");
+				context.socketHandler.updatePosition(id, positionMap[id]);
+				//context.socketHandler.send(id, "position");
 			}
 			//only update the waiting list if it needs to be updated.
 			//but always try to submit the current job state
@@ -121,56 +123,84 @@ function waitingWatch (context) {
 	}
 }
 
-//services update
-function serviceWatch (context) {
-	return function (services) { //given from consul-helper, with helper methods
-		context.logger.debug("Services update");
-		//services updated. get information about core and hmi if possible
-		let cores = services.filter("core-master");
-		let hmis = services.filter("hmi-master");
-		let manticores = services.filter("manticore-service");
+//core services update
+function coreWatch (context) {
+	return function (services) {
+		context.logger.debug("Core services update");
+		var cores = core.filterServices(services, []); //no mandatory checks for core
 		context.logger.debug("Core services: " + cores.length);
-		context.logger.debug("Hmi services: " + hmis.length);
-		context.logger.debug("Manticore services: " + manticores.length);
-
 		//for every core service, ensure it has a corresponding HMI
 		var job = context.nomader.createJob("hmi");
 		jobLogic.addHmisToJob(context, job, cores);
 		//submit the job. if there are no task groups then
 		//we want to remove the job completely. delete the job in that case
 		updateJob(context, job, "hmi");
-		//first, convert the tag string for all cores and hmis into UserRequest objects
-		for (let i = 0; i < hmis.length; i++) {
-			hmis[i].Tags[0] = context.UserRequest().parse(hmis[i].Tags[0]);
-		}
-		for (let i = 0; i < cores.length; i++) {
-			cores[i].Tags[0] = context.UserRequest().parse(cores[i].Tags[0]);
-		}		
-		var pairs = core.findPairs(cores, hmis, function (id) {
-			//remove user from KV store because the HMI has no paired core which
-			//indicates that the user exited the HMI page and is done with their instance
-			context.logger.debug("HMI with no core. Stop serving " + id);
-			context.consuler.delKey(context.keys.data.request + "/" + id, function () {});
-		});
-		pairs = {
-			pairs: pairs
-		};
-		//post all pairs at once
-		context.logger.info(pairs);
+	}
+}
 
-		//go through each pair, and post/store the connection information to each listening client
-		for (let i = 0; i < pairs.pairs.length; i++) {
-			var pair = pairs.pairs[i];
-			//format the connection information and send it!
-			context.socketHandler.setAddresses(pair.id, core.formatPairResponse(pair));
-			context.socketHandler.send(pair.id, "connectInfo");
-		}
-		//update the proxy information using the proxy module
-		if (context.isHaProxyEnabled()) {
-			context.logger.debug("Updating KV Store with data for proxy!");
-			var template = proxyLogic.generateProxyData(context, pairs, manticores);
-			proxyLogic.updateKvStore(context, template);
-		}
+//hmi services update
+function hmiWatch (context) {
+	return function (services) {
+		context.logger.debug("HMI services update");
+		var hmis = core.filterServices(services, ['hmi-alive']); //require an http alive check
+		context.logger.debug("Hmi services: " + hmis.length);
+
+		//get core services and manticore services (get all services as a consequence)
+		context.consuler.getAllServices(function (allServices) {
+			var coreServiceName = "core-master";
+			var manticoreServiceName = "manticore-service";
+			var cores = allServices.filter(function (element) {
+				return element.Service == coreServiceName;
+			});
+			var manticores = allServices.filter(function (element) {
+				return element.Service == manticoreServiceName;
+			});
+			//first, convert the tag string for all cores and hmis into UserRequest objects
+			for (let i = 0; i < hmis.length; i++) {
+				hmis[i].Tags[0] = context.UserRequest().parse(hmis[i].Tags[0]);
+			}
+			for (let i = 0; i < cores.length; i++) {
+				cores[i].Tags[0] = context.UserRequest().parse(cores[i].Tags[0]);
+			}		
+			var pairs = core.findPairs(cores, hmis, function (id) {
+				//remove user from KV store because the HMI has no paired core which
+				//indicates that the user exited the HMI page and is done with their instance
+				context.logger.debug("HMI with no core. Stop serving " + id);
+				context.consuler.delKey(context.keys.data.request + "/" + id, function () {});
+			});
+			pairs = {
+				pairs: pairs
+			};
+			//post all pairs at once
+			context.logger.info(pairs);
+
+			//go through each pair, and post/store the connection information to each listening client
+			for (let i = 0; i < pairs.pairs.length; i++) {
+				var pair = pairs.pairs[i];
+				//format the connection information and send it!
+				context.socketHandler.updateAddresses(pair.id, core.formatPairResponse(pair));
+				//context.socketHandler.send(pair.id, "connectInfo");
+			}
+			//update the proxy information using the proxy module
+			if (context.isHaProxyEnabled()) {
+				context.logger.debug("Updating KV Store with data for proxy!");
+				var template = proxyLogic.generateProxyData(context, pairs, manticores);
+				proxyLogic.updateKvStore(context, template);
+			}
+		});
+	}
+}
+
+//manticore services update
+function manticoreWatch (context) {
+	return function (services) {
+		context.logger.debug("Manticore services update");
+		var manticores = core.filterServices(services, ['manticore-alive']); //require an http alive check
+		context.logger.debug("Manticore services: " + manticores.length);	
+		//ONLY update the manticore services in the KV store
+		context.logger.debug("Updating KV Store with data for proxy!");
+		var template = proxyLogic.generateProxyData(context, {pairs: []}, manticores);
+		proxyLogic.updateManticoreKvStore(context, template);		
 	}
 }
 

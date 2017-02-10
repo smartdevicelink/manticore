@@ -72,7 +72,15 @@ module.exports = {
 			var fullAddressBroker = request.brokerAddressPrefix + "." + process.env.DOMAIN_NAME;
 			//job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddressBroker + ":" + haproxyPort);
 			//job.addEnv(groupName, "hmi-master", "BROKER_WEBSOCKET_ADDR", fullAddressHMI + ":" + haproxyPort);
-			job.addEnv(groupName, "hmi-master", "HMI_TO_BROKER_ADDR", fullAddressBroker + ":" + haproxyPort);
+			if (process.env.ELB_SSL_PORT) {
+				//if an ELB SSL PORT was given, we want to use secure websockets
+				//override the value of haproxyPort with the port that the ELB will go through
+				//you should make sure the ELB exit port matches the port HAProxy is listening to
+				job.addEnv(groupName, "hmi-master", "HMI_TO_BROKER_ADDR", fullAddressBroker + ":" + process.env.ELB_SSL_PORT);
+			}
+			else {
+				job.addEnv(groupName, "hmi-master", "HMI_TO_BROKER_ADDR", fullAddressBroker + ":" + haproxyPort);
+			}
 			job.addEnv(groupName, "hmi-master", "BROKER_TO_CORE_ADDR", core.Address + ":" + core.Port);
 		}
 		else { //no haproxy

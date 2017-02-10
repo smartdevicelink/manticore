@@ -59,7 +59,7 @@ if (process.env.CORS === "true") {
         logger.debug("Manticore's environment variables:");
         logger.debug("CLIENT_AGENT_IP: " + process.env.CLIENT_AGENT_IP);
         logger.debug("DOMAIN_NAME: " + process.env.DOMAIN_NAME);
-        logger.debug("DOMAIN_NAME_UNSECURE: " + process.env.DOMAIN_NAME_UNSECURE);
+        logger.debug("ELB_SSL_PORT: " + process.env.ELB_SSL_PORT);
         logger.debug("HTTP_PORT: " + process.env.HTTP_PORT);
         logger.debug("TCP_PORT_RANGE_START: " + process.env.TCP_PORT_RANGE_START);   
         logger.debug("TCP_PORT_RANGE_END: " + process.env.TCP_PORT_RANGE_END);   

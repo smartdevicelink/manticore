@@ -84,7 +84,13 @@ module.exports = {
 				else {
 					//error: insufficient resources. revert the claimed parameter of the lowest key
 					context.logger.debug("Core and HMI cannot be allocated!");
-					//context.logger.debug(JSON.stringify(results, null, 4));
+					if (!results.FailedTGAllocs) {
+						context.logger.debug(JSON.stringify(results, null, 4));
+					}
+					else {
+						context.logger.debug(JSON.stringify(results.FailedTGAllocs, null, 4));
+					}
+					
 					waitingHash.setClaimed(lowestKey, false);
 					//done.
 					callback(waitingHash, requestKV, updateWaitingList);

@@ -88,5 +88,19 @@ module.exports = {
 			}
 		})
 		.go();
+	},
+	updateManticoreKvStore: function (context, template) {
+		//only update manticore web app addresses!
+		functionite()
+		.toss(context.consuler.delKeyAll, context.keys.haproxy.webApp) //reset only web app addresses!
+		.toss(function () {
+			for (let i = 0; i < template.webAppAddresses.length; i++) {
+				var item = template.webAppAddresses[i];
+				(function (index) {
+					context.consuler.setKeyValue(context.keys.haproxy.webApp + "/" + index, item, function () {});
+				})(i);
+			}	
+		})
+		.go();
 	}
 }

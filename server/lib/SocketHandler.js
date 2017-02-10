@@ -67,18 +67,28 @@ SocketHandler.prototype.removeSocket = function (id) {
     }
 }
 
-SocketHandler.prototype.setPosition = function (id, data) {
+SocketHandler.prototype.updatePosition = function (id, data) {
     if (!this.checkId(id)) { //make a new connection socket if it doesn't exist
         this.newSocket(id);
     }
+    //only send info if it's new info
+    var newInfo = (this.sockets[id].position !== data);
     this.sockets[id].position = data;
+    if (newInfo) {
+        this.send(id, "position");
+    }
 }
 
-SocketHandler.prototype.setAddresses = function (id, data) {
+SocketHandler.prototype.updateAddresses = function (id, data) {
     if (!this.checkId(id)) { //make a new connection socket if it doesn't exist
         this.newSocket(id);
     }
+    //only send info if it's new info
+    var newInfo = (JSON.stringify(this.sockets[id].addresses) !== JSON.stringify(data));
     this.sockets[id].addresses = data;
+    if (newInfo) {
+        this.send(id, "connectInfo");
+    }
 }
 
 SocketHandler.prototype.checkId = function (id) {

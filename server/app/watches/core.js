@@ -132,5 +132,49 @@ module.exports = {
 			tcpAddress: tcpAddress,
 			brokerAddress: brokerAddress
 		}
+	},
+	filterServices: function (services, mandatoryChecks) {
+	    var servicesArr = [];
+	    for (let i = 0; i < services.length; i++) {
+	        //parse through the information
+	        //make sure all health checks are passing to count this service
+            var healthReqs = services[i].Checks;
+            if (this.healthCheckService(healthReqs, mandatoryChecks)) {
+        		servicesArr.push(services[i].Service);
+            }
+	    }
+	    return servicesArr;
+	},
+	//ensure that all health checks that exist passed
+	//if provided a list of mandatory checks, will fail if the
+	//check does not exist in the service health object
+	healthCheckService: function (healthCheckArr, mandatoryChecks) {
+		if (!mandatoryChecks) {
+			mandatoryChecks = [];
+		}
+
+		var requiredChecks = {};
+		//make a to-do list of required checks
+		for (let i = 0; i < mandatoryChecks.length; i++) {
+			requiredChecks[mandatoryChecks[i]] = false;
+		}
+
+	    for (let i = 0; i < healthCheckArr.length; i++) {
+	        if (healthCheckArr[i].Status !== "passing") {
+	            return false;
+	        }
+	        var stringName = healthCheckArr[i].Name;
+	        //check passed. check if it was one of our mandatory checks
+	        if (requiredChecks[stringName] !== undefined) {
+	        	requiredChecks[stringName] = true;
+	        }
+	    }
+	    //ensure all mandatory checks have passed
+	    for (var key in requiredChecks) {
+	    	if (!requiredChecks[key]) {
+	    		return false;
+	    	}
+	    }
+	    return true;
 	}
 }

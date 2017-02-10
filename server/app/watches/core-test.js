@@ -276,3 +276,88 @@ describe("#formatPairResponse()", function () {
 		assert.strictEqual(formatted.brokerAddress, pair.brokerAddressExternal + "." + process.env.DOMAIN_NAME);
 	});
 });
+
+describe("#healthCheckService()", function () {
+	it("should return false if one of the health checks are in critical state", function () {
+		var checkResults = [
+			{ 
+		       Name: 'hmi-alive',
+		       Status: 'critical',
+		       ServiceName: 'wat',
+		    },
+		    { 
+		       Name: 'Serf Health Status',
+		       Status: 'passing',
+		       ServiceName: 'wat',
+		    } 
+        ];
+        var healthy = core.healthCheckService(checkResults, []);
+        var healthy2 = core.healthCheckService(checkResults, ['hmi-alive']);
+        var healthy3 = core.healthCheckService(checkResults, ['Serf Health Status']);
+        assert.strictEqual(healthy, false);
+	});
+	it("should return false if one of the mandatory checks don't exist", function () {
+		var checkResults = [
+			{ 
+		       Name: 'hmi-alive',
+		       Status: 'passing',
+		       ServiceName: 'wat',
+		    },
+		    { 
+		       Name: 'Serf Health Status',
+		       Status: 'passing',
+		       ServiceName: 'wat',
+		    } 
+        ];
+        var healthy = core.healthCheckService(checkResults, ['test-http']);
+        assert.strictEqual(healthy, false);
+	});
+	it("should return true if all checks pass and all mandatory checks exist", function () {
+		var checkResults = [
+			{ 
+		       Name: 'hmi-alive',
+		       Status: 'passing',
+		       ServiceName: 'wat',
+		    },
+		    { 
+		       Name: 'Serf Health Status',
+		       Status: 'passing',
+		       ServiceName: 'wat',
+		    } 
+        ];
+        var healthy = core.healthCheckService(checkResults, ['hmi-alive']);
+        assert.strictEqual(healthy, true);
+	});
+});
+
+describe("#filterServices()", function () {
+	it("should return false if one of the health checks are in critical state", function () {
+		var serviceObj = [{ 
+			Service: { 
+				Service: 'hmi-master',
+				Tags: [ '{"id":"732","brokerPortInternal":"36879"}' ],
+				Address: '192.168.1.77',
+				Port: 50736,
+				EnableTagOverride: false,
+				CreateIndex: 1200,
+				ModifyIndex: 1202 
+			},
+			Checks: [
+				{ 
+					Name: 'hmi-alive',
+					Status: 'passing',
+					ServiceName: 'wat'
+				},
+				{ 
+					Name: 'Serf Health Status',
+					Status: 'passing',
+					ServiceName: 'wat'
+				} 
+			]
+		}];
+
+        var filterResults = core.filterServices(serviceObj, ['hmi-alive']);
+        assert.strictEqual(filterResults[0], serviceObj[0].Service);
+	});
+});
+
