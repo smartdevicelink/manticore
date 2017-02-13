@@ -46,7 +46,7 @@ module.exports = {
 		job.addGroup(groupName);
 		job.setType("batch");
 		job.addTask(groupName, "hmi-master");
-		job.setImage(groupName, "hmi-master", "crokita/discovery-generic-hmi:master");
+		job.setImage(groupName, "hmi-master", "crokita/discovery-generic-hmi:manticore");
 		job.addPort(groupName, "hmi-master", true, "user", 8080);
 		job.addPort(groupName, "hmi-master", true, "broker", 9000);
 		job.addConstraint({
@@ -68,29 +68,25 @@ module.exports = {
 
 		if (process.env.HAPROXY_OFF !== "true") { //haproxy enabled
 			//the address from the tags is just the prefix. add the domain/subdomain name too
-			var fullAddressHMI = request.hmiToCorePrefix + "." + process.env.DOMAIN_NAME;
+			//var fullAddressHMI = request.hmiToCorePrefix + "." + process.env.DOMAIN_NAME;
 			var fullAddressBroker = request.brokerAddressPrefix + "." + process.env.DOMAIN_NAME;
-			//job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", fullAddressBroker + ":" + haproxyPort);
-			//job.addEnv(groupName, "hmi-master", "BROKER_WEBSOCKET_ADDR", fullAddressHMI + ":" + haproxyPort);
 			if (process.env.ELB_SSL_PORT) {
 				//if an ELB SSL PORT was given, we want to use secure websockets
 				//override the value of haproxyPort with the port that the ELB will go through
 				//you should make sure the ELB exit port matches the port HAProxy is listening to
-				job.addEnv(groupName, "hmi-master", "HMI_TO_BROKER_ADDR", fullAddressBroker + ":" + process.env.ELB_SSL_PORT);
+				job.addEnv(groupName, "hmi-master", "HMI_TO_BROKER_ADDR", "wss:\\/\\/" + fullAddressBroker + ":" + process.env.ELB_SSL_PORT);
 			}
 			else {
-				job.addEnv(groupName, "hmi-master", "HMI_TO_BROKER_ADDR", fullAddressBroker + ":" + haproxyPort);
+				job.addEnv(groupName, "hmi-master", "HMI_TO_BROKER_ADDR", "ws:\\/\\/" + fullAddressBroker + ":" + haproxyPort);
 			}
-			job.addEnv(groupName, "hmi-master", "BROKER_TO_CORE_ADDR", core.Address + ":" + core.Port);
 		}
 		else { //no haproxy
-			//directly connect to core
-			job.addEnv(groupName, "hmi-master", "HMI_TO_BROKER_ADDR", "${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
-			job.addEnv(groupName, "hmi-master", "BROKER_TO_CORE_ADDR", core.Address + ":" + core.Port);
-			//job.addEnv(groupName, "hmi-master", "HMI_WEBSOCKET_ADDR", "${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
-			//job.addEnv(groupName, "hmi-master", "BROKER_WEBSOCKET_ADDR", core.Address + ":" + core.Port);
-		
+			//we need to have backslashes because these urls will
+			//be included in a regex and so we need to escape the forward slash
+			job.addEnv(groupName, "hmi-master", "HMI_TO_BROKER_ADDR", "ws:\\/\\/${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
 		}
+		job.addEnv(groupName, "hmi-master", "BROKER_TO_CORE_ADDR", core.Address + ":" + core.Port);
+
 		job.addService(groupName, "hmi-master", "hmi-master");
 		job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
 		//add a health check

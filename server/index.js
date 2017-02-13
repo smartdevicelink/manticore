@@ -1,4 +1,11 @@
 //main entry point
+
+//trace. only require it if the TRACE_SERVICE_NAME and TRACE_API_KEY exist
+if (process.env.TRACE_SERVICE_NAME && process.env.TRACE_API_KEY) {
+    logger.debug("Trace enabled");
+    require('@risingstack/trace');
+}
+
 //modules
 var express = require('express');
 var bodyParser = require('body-parser');
@@ -15,17 +22,6 @@ var cors = require('cors'); //easily allow cross-origin requests
 var expressJwt = require('express-jwt');
 var jwt = require('jsonwebtoken');
 var Context = require('./lib/Context.js'); //stores a set of modules and objects that are globally needed
-
-//trace. only require it if the TRACE_SERVICE_NAME and TRACE_API_KEY exist
-if (process.env.TRACE_SERVICE_NAME && process.env.TRACE_API_KEY) {
-    logger.debug("Trace enabled");
-    require('@risingstack/trace');
-}
-
-if (process.env.TRACE_SERVICE_NAME && process.env.TRACE_API_KEY) {
-    logger.debug("Trace enabled");
-    require('@risingstack/trace');
-}
 
 
 app.use(bodyParser.json()); //allow json parsing

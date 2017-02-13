@@ -143,6 +143,7 @@ function hmiWatch (context) {
 	return function (services) {
 		context.logger.debug("HMI services update");
 		var hmis = core.filterServices(services, ['hmi-alive']); //require an http alive check
+		context.logger.debug(JSON.stringify(services, null, 2));
 		context.logger.debug("Hmi services: " + hmis.length);
 
 		//get core services and manticore services (get all services as a consequence)
