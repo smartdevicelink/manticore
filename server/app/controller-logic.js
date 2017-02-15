@@ -54,10 +54,11 @@ var utility = {
 			}
 			else {
 				var taskName; //get the task name
-				for (var obj in validAllocation.TaskStates) {
-					taskName = obj;
+				for (var key in validAllocation.TaskStates) {
+					taskName = key;
 					break;
 				}
+				context.logger.debug(JSON.stringify(validAllocation, null, 4));
 				store.allocation = validAllocation;
 				store.taskName = taskName;
 				callback();
@@ -68,6 +69,7 @@ var utility = {
 		.pass(function (targetedAddress) {
 			context.logger.debug("Client agent address found:");
 			context.logger.debug(targetedAddress);
+			context.logger.debug("Task name: " + store.taskName);
 			//start streaming logs to the client once they connect using the connection details
 			context.nomader.streamLogs(store.allocation.ID, store.taskName, "stdout", targetedAddress, function (logData) {
 				//this function gets invoked whenever new data arrives from core

@@ -126,7 +126,6 @@ function waitingWatch (context) {
 //core services update
 function coreWatch (context) {
 	return function (services) {
-		context.logger.debug("Core services update");
 		var cores = core.filterServices(services, []); //no mandatory checks for core
 		context.logger.debug("Core services: " + cores.length);
 		//for every core service, ensure it has a corresponding HMI
@@ -141,9 +140,7 @@ function coreWatch (context) {
 //hmi services update
 function hmiWatch (context) {
 	return function (services) {
-		context.logger.debug("HMI services update");
 		var hmis = core.filterServices(services, ['hmi-alive']); //require an http alive check
-		context.logger.debug(JSON.stringify(services, null, 2));
 		context.logger.debug("Hmi services: " + hmis.length);
 
 		//get core services and manticore services (get all services as a consequence)
@@ -195,11 +192,10 @@ function hmiWatch (context) {
 //manticore services update
 function manticoreWatch (context) {
 	return function (services) {
-		context.logger.debug("Manticore services update");
 		var manticores = core.filterServices(services, ['manticore-alive']); //require an http alive check
 		context.logger.debug("Manticore services: " + manticores.length);	
 		//ONLY update the manticore services in the KV store
-		context.logger.debug("Updating KV Store with data for proxy!");
+		context.logger.debug("Updating KV Store with manticore data for proxy!");
 		var template = proxyLogic.generateProxyData(context, {pairs: []}, manticores);
 		proxyLogic.updateManticoreKvStore(context, template);		
 	}

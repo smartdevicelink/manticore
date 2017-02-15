@@ -53,3 +53,34 @@ function deleteCore() {
 		success: function (result) {}
 	});
 }
+
+var requestedLogs = false;
+function instanceLogs () {
+	$.post('/v1/cores', body, function (wsUrl) {
+
+		//the data contains the url we need to connect to the websocket server
+		if (!socket) {
+			//make a connection using the url given
+			console.log(wsUrl);
+			socket = io(wsUrl);
+			socket.on('connectInfo', function (data) {
+				console.log("connection information!");
+				console.log(data);
+
+				//request logs only when we have received connection info
+				if (!requestedLogs) {
+					$.post('/v1/logs', body2, function (result) {});
+					requestedLogs = true;
+				}
+			});
+			//core log data
+			socket.on('logs', function (data) {
+				console.log(data);
+			});
+			//position in queue data
+			socket.on('position', function (pos) {
+				console.log("Current position: " + pos);
+			});
+		}
+	});
+}
