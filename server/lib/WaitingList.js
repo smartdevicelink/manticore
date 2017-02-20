@@ -34,7 +34,7 @@ WaitingList.prototype.nextInQueue = function () {
 	return lowestKey;
 }
 
-WaitingList.prototype.update = function (requestKeys) {
+WaitingList.prototype.update = function (requestKeys, callback) {
 	//get the highest queue number in the waiting list
 	var highestIndex = 0;
 	for (var key in this.waiting) {
@@ -57,10 +57,14 @@ WaitingList.prototype.update = function (requestKeys) {
 	//now check if each element in the waiting list exists in the requests
 	//if it doesn't, remove it
 	for (var key in this.waiting) {
-		if (requestKeys.indexOf(key) === -1) {//not found. remove from waiting list
-			delete this.waiting[key];
+		if (requestKeys.indexOf(key) === -1) {//not found. inform the caller for additional action
+			callback(key);
 		}
 	}
+}
+
+WaitingList.prototype.remove = function (key) {
+	delete this.waiting[key];
 }
 
 WaitingList.prototype.filterRequests = function (requestKV) {

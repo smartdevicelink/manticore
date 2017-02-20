@@ -23,7 +23,7 @@ module.exports = {
 			//port that reverse proxy opens to access manticore web app
 			mainPort: "haproxy/mainPort",
 			domainName: "haproxy/domainName",
-			webApp: "haproxy/data/webAppAddresses",
+			webApp: "haproxy/webAppAddresses",
 			tcpMaps: "haproxy/data/tcpMaps",
 			httpFront: "haproxy/data/httpFront",
 			httpBack: "haproxy/data/httpBack"
