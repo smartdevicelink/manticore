@@ -1,4 +1,21 @@
 module.exports = {
+	//given a set of current watch handlers and the updated list of services,
+	//remove watches that watch non-existant services and start services that should be started
+	updateWatches: function (currentWatches, services, stopper, starter) {
+		//first, remove watches that shouldn't exist anymore
+		//let the caller function handle how to remove/start the watches
+		for (let i = 0 ; i < currentWatches.length; i++) {
+			if (services.indexOf(currentWatches[i]) === -1) {
+				stopper(currentWatches[i]);
+			}
+		}
+		//start watches that aren't in currentWatches but are in services
+		for (let i = 0 ; i < services.length; i++) {
+			if (currentWatches.indexOf(services[i]) === -1) {
+				starter(services[i]);
+			}
+		}
+	},
 	//converts Consul key/values into hashes with trimmed key names
 	//also filter keys that match the targetString passed in
 	transformKeys: function (keys, targetString) {

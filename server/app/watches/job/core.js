@@ -4,62 +4,64 @@ module.exports = {
 		//this adds a group for a user so that another core will be created
 		//since each group name must be different make the name based off of the user id
 		//core-<id>
-		var groupName = "core-" + id;
+		var groupName = "core-group-" + id;
 		job.addGroup(groupName);
-		job.setType("batch");
+		job.setType("service");
 		//set the restart policy of core so that if it dies once, it's gone for good
 		//attempts number should be 0. interval and delay don't matter since task is in fail mode
 		job.setRestartPolicy(groupName, 60000000000, 0, 60000000000, "fail");
-		job.addTask(groupName, "core-master");
-		job.setImage(groupName, "core-master", "crokita/discovery-core:master");
-		job.addPort(groupName, "core-master", true, "hmi", 8087);
-		job.addPort(groupName, "core-master", true, "tcp", 12345);
-		job.addEnv(groupName, "core-master", "DOCKER_IP", "${NOMAD_IP_hmi}");
+		var taskName = "core-task-" + id;
+		job.addTask(groupName, taskName);
+		job.setImage(groupName, taskName, "crokita/discovery-core:master");
+		job.addPort(groupName, taskName, true, "hmi", 8087);
+		job.addPort(groupName, taskName, true, "tcp", 12345);
+		job.addEnv(groupName, taskName, "DOCKER_IP", "${NOMAD_IP_hmi}");
 		job.addConstraint({
 			LTarget: "${meta.core}",
 			Operand: "=",
 			RTarget: "1"
 		}, groupName);
 		//set resource limitations
-		job.setCPU(groupName, "core-master", 100);
-		job.setMemory(groupName, "core-master", 25);
-		job.setMbits(groupName, "core-master", 1);
+		job.setCPU(groupName, taskName, 100);
+		job.setMemory(groupName, taskName, 25);
+		job.setMbits(groupName, taskName, 1);
 		job.setEphemeralDisk(groupName, 50, false, false);
-		job.setLogs(groupName, "core-master", 2, 10);
+		job.setLogs(groupName, taskName, 2, 10);
 
-		job.addService(groupName, "core-master", "core-master");
+		var serviceName = "core-service-" + id;
+		job.addService(groupName, taskName, serviceName);
 		//include the id's tag for ID purposes
 		//also include the user, hmi, and tcp external addresses for haproxy
 		//store all this information into one tag as a stringified JSON
 		//tcpPortInternal has a value because the whole object will be added as a tag to the
 		//nomad job, and nomad can interpolate variables inside the tag, even as a stringified JSON
-		request.tcpPortInternal = "${NOMAD_PORT_tcp}";
-		job.addTag(groupName, "core-master", "core-master", request.toCoreTag());
-		job.setPortLabel(groupName, "core-master", "core-master", "hmi");
+		//request.tcpPortInternal = "${NOMAD_PORT_tcp}";
+		//job.addTag(groupName, taskName, serviceName, request.getString());
+		job.setPortLabel(groupName, taskName, serviceName, "hmi");
 	},
 	//core is expected to be the object returned from consul's services API
-	addHmiGenericGroup: function (job, core, haproxyPort, request) {
+	addHmiGenericGroup: function (job, core, request) {
 		//this adds a group for a user so that another hmi will be created
 		//since each group name must be different make the name based off of the user id
-		//hmi-<id>
-		var groupName = "hmi-" + request.id;
+		var groupName = "hmi-group-" + request.id;
 		job.addGroup(groupName);
-		job.setType("batch");
-		job.addTask(groupName, "hmi-master");
-		job.setImage(groupName, "hmi-master", "crokita/discovery-generic-hmi:manticore");
-		job.addPort(groupName, "hmi-master", true, "user", 8080);
-		job.addPort(groupName, "hmi-master", true, "broker", 9000);
+		job.setType("service");
+		var taskName = "hmi-task-" + request.id;
+		job.addTask(groupName, taskName);
+		job.setImage(groupName, taskName, "crokita/discovery-generic-hmi:manticore");
+		job.addPort(groupName, taskName, true, "user", 8080);
+		job.addPort(groupName, taskName, true, "broker", 9000);
 		job.addConstraint({
 			LTarget: "${meta.core}",
 			Operand: "=",
 			RTarget: "1"
 		}, groupName);
 		//set resource limitations
-		job.setCPU(groupName, "hmi-master", 50);
-		job.setMemory(groupName, "hmi-master", 150);
-		job.setMbits(groupName, "core-master", 1);
+		job.setCPU(groupName, taskName, 50);
+		job.setMemory(groupName, taskName, 150);
+		job.setMbits(groupName, taskName, 1);
 		job.setEphemeralDisk(groupName, 30, false, false);
-		job.setLogs(groupName, "hmi-master", 1, 10);
+		job.setLogs(groupName, taskName, 1, 10);
 		//the address to pass into HMI will depend on whether the HAPROXY_OFF flag is on
 		//by default, use the external addresses so that haproxy routes users to the HMI correctly
 		//if HAPROXY_OFF is true, then give the HMI the internal address of core and connect that way
@@ -72,23 +74,24 @@ module.exports = {
 			var fullAddressBroker = request.brokerAddressPrefix + "." + process.env.DOMAIN_NAME;
 			if (process.env.ELB_SSL_PORT) {
 				//if an ELB SSL PORT was given, we want to use secure websockets
-				//override the value of haproxyPort with the port that the ELB will go through
+				//override the value of haproxy port with the port that the ELB will go through
 				//you should make sure the ELB exit port matches the port HAProxy is listening to
-				job.addEnv(groupName, "hmi-master", "HMI_TO_BROKER_ADDR", "wss:\\/\\/" + fullAddressBroker + ":" + process.env.ELB_SSL_PORT);
+				job.addEnv(groupName, taskName, "HMI_TO_BROKER_ADDR", "wss:\\/\\/" + fullAddressBroker + ":" + process.env.ELB_SSL_PORT);
 			}
 			else {
-				job.addEnv(groupName, "hmi-master", "HMI_TO_BROKER_ADDR", "ws:\\/\\/" + fullAddressBroker + ":" + haproxyPort);
+				job.addEnv(groupName, taskName, "HMI_TO_BROKER_ADDR", "ws:\\/\\/" + fullAddressBroker + ":" + process.env.HAPROXY_HTTP_LISTEN);
 			}
 		}
 		else { //no haproxy
 			//we need to have backslashes because these urls will
 			//be included in a regex and so we need to escape the forward slash
-			job.addEnv(groupName, "hmi-master", "HMI_TO_BROKER_ADDR", "ws:\\/\\/${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
+			job.addEnv(groupName, taskName, "HMI_TO_BROKER_ADDR", "ws:\\/\\/${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
 		}
-		job.addEnv(groupName, "hmi-master", "BROKER_TO_CORE_ADDR", core.Address + ":" + core.Port);
+		job.addEnv(groupName, taskName, "BROKER_TO_CORE_ADDR", core.Address + ":" + core.Port);
 
-		job.addService(groupName, "hmi-master", "hmi-master");
-		job.setPortLabel(groupName, "hmi-master", "hmi-master", "user");
+		var serviceName = "hmi-service-" + request.id;
+		job.addService(groupName, taskName, serviceName);
+		job.setPortLabel(groupName, taskName, serviceName, "user");
 		//add a health check
 		var healthObj = {
 			Type: "http",
@@ -98,12 +101,14 @@ module.exports = {
 			Path: "/",
 			Protocol: "http"
 		}
-		job.addCheck(groupName, "hmi-master", "hmi-master", healthObj);
+		job.addCheck(groupName, taskName, serviceName, healthObj);
 		//store the port of the broker
-		request.brokerPortInternal = "${NOMAD_PORT_broker}";
+		//request.brokerPortInternal = "${NOMAD_PORT_broker}";
+		//add the hmi internal address and tcp internal address since we know that already
+		//request.hmiAddressInternal = core.Address + ":" + core.Port;
+		//request.tcpAddressInternal = core.Address + ":" + this.tcpPortInternal;
 		//give hmi the same id as core so we know they're together	
-		job.addTag(groupName, "hmi-master", "hmi-master", request.toHmiTag());
-		return job;
+		//job.addTag(groupName, taskName, serviceName, request.getString());
 	},
 	//determines if the results say that nomad can allocate a job
 	checkHasResources: function (results) {

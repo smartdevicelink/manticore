@@ -28,6 +28,24 @@ module.exports = {
 		}
 		return file;
 	},
+	updateCoreHmiKvStore: function (context, pair) {
+		//extract connection information and add them to HAProxy config file
+		var template = HAProxyTemplate();
+		template.setMainPort(process.env.HAPROXY_HTTP_LISTEN);
+		template.addHttpRoute(pair.userAddressExternal, pair.userAddressInternal)
+			.addHttpRoute(pair.hmiAddressExternal, pair.hmiAddressInternal)
+			.addHttpRoute(pair.brokerAddressExternal, pair.brokerAddressInternal)
+			.addTcpRoute(pair.tcpPortExternal, pair.tcpAddressInternal);
+		for (let i = 0; i < template.tcpMaps.length; i++) {
+			var item = template.tcpMaps[i];
+			context.consuler.setKeyValue(context.keys.haproxy.tcpMaps + "/" + item.port, item.to, function (){});
+		}	
+		for (let i = 0; i < template.httpMaps.length; i++) {
+			var item = template.httpMaps[i];
+			context.consuler.setKeyValue(context.keys.haproxy.httpFront + "/" + index, item.from, function (){});
+			context.consuler.setKeyValue(context.keys.haproxy.httpBack + "/" + index, item.to, function (){});
+		}			
+	},
 	updateKvStore: function (context, template) {
 		//use the HAProxyTemplate file to submit information to the KV store so that
 		//consul-template can use that information to generate an HAProxy configuration

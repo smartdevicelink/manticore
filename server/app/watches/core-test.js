@@ -4,6 +4,31 @@ var core = require('./core.js');
 var UserRequest = require('../../lib/UserRequest.js');
 var nomader = require('nomad-helper');
 
+describe("#updateWatches()", function () {
+	it ("should invoke stopper if a watch shouldn't exist anymore", function () {
+		var currentWatches = ["2", "3"];
+		var newServices = ["2"];
+		core.updateWatches(currentWatches, newServices,
+		function (serviceName) {
+			assert.strictEqual(serviceName, "3");
+		},
+		function (serviceName) {
+			assert.fail(undefined, undefined, "starter function shouldn't have been invoked", undefined);
+		});
+	});
+	it ("should invoke starter if a watch should exist", function () {
+		var currentWatches = ["1"];
+		var newServices = ["1", "4"];
+		core.updateWatches(currentWatches, newServices,
+		function (serviceName) {
+			assert.fail(undefined, undefined, "stopper function shouldn't have been invoked", undefined);
+		},
+		function (serviceName) {
+			assert.strictEqual(serviceName, "4");
+		});
+	});
+});
+
 describe("#transformKeys()", function () {
 	it("should include keys that contain the target string (keys from recursive get all)", function () {
 		var targetString = "requests";

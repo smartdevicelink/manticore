@@ -93,6 +93,7 @@ function init (contextObj) {
 	functionite()
 	.toss(context.consuler.setKeyValue, context.keys.fillers.request, "Keep me here please!")
 	.toss(context.consuler.setKeyValue, context.keys.fillers.waiting, "Keep me here please!")
+	.toss(context.consuler.setKeyValue, context.keys.fillers.allocation, "Keep me here please!")
 	.toss(context.consuler.setKeyValue, context.keys.haproxy.mainPort, process.env.HAPROXY_HTTP_LISTEN)
 	.toss(context.consuler.setKeyValue, context.keys.haproxy.domainName, process.env.DOMAIN_NAME)
 	.toss(function () {

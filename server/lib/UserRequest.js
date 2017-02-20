@@ -20,6 +20,7 @@ function UserRequest (body) {
 	this.brokerAddressPrefix = body.brokerAddressPrefix;
 	this.tcpPortInternal = body.tcpPortInternal;
 	this.brokerPortInternal = body.brokerPortInternal;
+	this.hmiAddressInternal = body.hmiAddressInternal;
 }
 
 //make a JSON object out of the information, and stringify it
@@ -35,7 +36,8 @@ UserRequest.prototype.getString = function () {
 		tcpPortExternal: this.tcpPortExternal,
 		brokerAddressPrefix: this.brokerAddressPrefix,
 		tcpPortInternal: this.tcpPortInternal,
-		brokerPortInternal: this.brokerPortInternal
+		brokerPortInternal: this.brokerPortInternal,
+		hmiAddressInternal: this.hmiAddressInternal
 	});
 }
 
