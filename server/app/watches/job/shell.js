@@ -50,9 +50,22 @@ module.exports = {
 					core.addCoreGroup(actualJob, lowestKey, request);
 
 					self.submitJob(context, actualJob, "core-hmi-" + lowestKey, function () {
-						//submission process done. now check the next in the queue
-						var newLowest = waitingHash.nextInQueue();
-						self.coreAllocRecurse(newLowest, waitingHash, requestKV, context, updateWaitingList, callback);
+						//submission process done
+						//now check the next user in the queue only when we can confirm the job is running
+						//so that the next planJob command will take into account the job that was just submitted
+						//maximum wait of 5 seconds before we poke the nomad server again for allocation information
+						var watch = context.nomader.watchAllocations("core-hmi-" + lowestKey, context.nomadAddress, 5, function (allocations) {
+							var coreAllocation = allocations[0];
+							//this function will be called several times. only continue when we see that the 
+							//client status's state is "running". since we checked with plan that this
+							//job submission will work, it should eventually end up in the "running" state
+							if (coreAllocation.ClientStatus === "running") {
+								var newLowest = waitingHash.nextInQueue();
+								//we got what we wanted. remember to stop the watch or else bad things happen!
+								watch.end();
+								self.coreAllocRecurse(newLowest, waitingHash, requestKV, context, updateWaitingList, callback);
+							}
+						});
 					});
 				}
 				else {

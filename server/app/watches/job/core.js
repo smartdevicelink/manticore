@@ -23,7 +23,7 @@ module.exports = {
 		}, groupName);
 		//set resource limitations
 		job.setCPU(groupName, taskName, 100);
-		job.setMemory(groupName, taskName, 25);
+		job.setMemory(groupName, taskName, 400); //25
 		job.setMbits(groupName, taskName, 1);
 		job.setEphemeralDisk(groupName, 50, false, false);
 		job.setLogs(groupName, taskName, 2, 10);
