@@ -126,32 +126,12 @@ function waitingWatch (context) {
 			//recalculate the positions of the new waiting list and send that over websockets
 			var positionMap = newWaitingHash.getQueuePositions();
 			//store and submit the position information of each user by their id
+			context.logger.debug("AAAAAAAAAAAAAAAAAAAA");
+			context.logger.debug(JSON.stringify(newWaitingHash));
+			context.logger.debug(JSON.stringify(positionMap));
 			for (var id in positionMap) {
 				context.socketHandler.updatePosition(id, positionMap[id]);
 			}
-			/*
-			//delete any jobs that shouldn't be running anymore
-			//query nomad for all the jobs running
-			context.nomader.getJobs(context.nomadAddress, function (jobs) {
-				//filter jobs so we only see core-hmi jobs
-				var coreHmis = jobs.filter(function (element) {
-					return element.ID.startsWith("core-hmi");
-				});
-				//check request keys to ensure that every job that exists
-				//link back to a request key. if not, delete the job
-				for (let i = 0; i < coreHmis.length; i++) {
-					//extract the id from the job name
-					var jobName = coreHmis[i].ID;
-					//split core-hmi-X into [core, hmi, X], retrieve X
-					var userId = jobName.split("-")[2];
-					if (!requestKV[userId]) {
-						//delete the job.
-						context.logger.debug("Delete job " + userId);
-						context.consuler.delKey(context.keys.data.request + "/" + userId, function (){});
-					}
-				}
-			});
-			*/
 			//only update the waiting list if it needs to be updated.
 			if (updateWaitingList) {
 				context.logger.debug("Waiting list update!");
@@ -174,13 +154,13 @@ function allocationWatch (context) {
 		.pass(function (allocationKeys, callback) {
 			/*each key has a value that is stringified JSON of the following format:
 			var data = {
-				userPort: ...,
+				userPort: ..., //this is the same as hmiPort?
 				brokerPort: ...,
 				tcpPort: ...,
 				coreAddress: ...,
 				corePort: ...,
 				hmiAddress: ...,
-				cc: ...
+				hmiPort: ...
 			};
 			*/
 			//go through each property found (key is the id of the user)
@@ -212,7 +192,6 @@ function allocationWatch (context) {
 								brokerAddressExternal: requestObj.brokerAddressPrefix
 							}
 							//pair information!
-							context.logger.debug(JSON.stringify(pair, null, 2));
 							//post/store the connection information to the client whose id matches
 							//format the connection information and send it!
 							context.socketHandler.updateAddresses(pair.id, core.formatPairResponse(pair));
@@ -226,6 +205,7 @@ function allocationWatch (context) {
 			//theres normally a concurrency issue with this, but because of how NodeJS works
 			//keysCount should never hit 0 prematurely
 			function finished () {
+				context.logger.info(pairs);
 				keysCount--;
 				if (keysCount === 0 && context.isHaProxyEnabled()) {
 					//update the proxy information using the proxy module (not manticore addresses!)
@@ -259,7 +239,7 @@ function coreWatch (context, userId) {
 						var requestObj = context.UserRequest().parse(result.Value);
 						//add the hmi group and submit the job
 						jobLogic.addHmiGenericGroup(job, coreService, requestObj);
-						jobLogic.submitJob(context, job, jobName);	
+						jobLogic.submitJob(context, job, jobName, function () {});	
 					});
 				}
 			});	
@@ -379,26 +359,4 @@ function checkJobForHmi (job) {
 		}
 	}
 	return foundHMI;
-}
-
-function updateJob (context, localJob, jobName) {
-	context.nomader.findJob(jobName, context.nomadAddress, function (job) {
-		context.logger.debug("CHECKING CONTENTS FOR " + jobName);
-		//only submit the job if the HMI does not already exist yet in the running job spec
-		var taskGroupCount = job.getJob().Job.TaskGroups.length;
-		var foundHMI = false;
-		for (let i = 0; i < taskGroupCount; i++) {
-			if (job.getJob().Job.TaskGroups[i].Name.startsWith("hmi-group")) {
-				foundHMI = true;
-				break;
-			}
-		}
-		if (!foundHMI) {
-			//attempt to submit the updated job
-			context.logger.debug("Submitting for " + jobName);
-			localJob.submitJob(context.nomadAddress, function (result) {
-				context.logger.debug(result);
-			});
-		}
-	});
 }

@@ -49,9 +49,11 @@ module.exports = {
 					var actualJob = context.nomader.createJob("core-hmi-" + lowestKey);
 					core.addCoreGroup(actualJob, lowestKey, request);
 
-					self.submitJob(context, actualJob, "core-hmi-" + lowestKey);
-					var newLowest = waitingHash.nextInQueue();
-					self.coreAllocRecurse(newLowest, waitingHash, requestKV, context, updateWaitingList, callback);
+					self.submitJob(context, actualJob, "core-hmi-" + lowestKey, function () {
+						//submission process done. now check the next in the queue
+						var newLowest = waitingHash.nextInQueue();
+						self.coreAllocRecurse(newLowest, waitingHash, requestKV, context, updateWaitingList, callback);
+					});
 				}
 				else {
 					//error: insufficient resources. revert the claimed parameter of the lowest key
@@ -88,11 +90,12 @@ module.exports = {
 	addHmiGenericGroup: function (job, coreService, request) {
 		core.addHmiGenericGroup(job, coreService, request);
 	},
-	submitJob: function (context, localJob, jobName) {
+	submitJob: function (context, localJob, jobName, callback) {
 		//attempt to submit the updated job
 		context.logger.debug("Submitting job " + jobName);
 		localJob.submitJob(context.nomadAddress, function (result) {
 			context.logger.debug(result);
+			callback();
 		});
 	}
 }
