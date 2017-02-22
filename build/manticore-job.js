@@ -15,6 +15,7 @@ console.log("TCP_PORT_RANGE_END: " + process.env.TCP_PORT_RANGE_END);
 console.log("HAPROXY_HTTP_LISTEN: " + process.env.HAPROXY_HTTP_LISTEN);   
 console.log("HAPROXY_OFF: " + process.env.HAPROXY_OFF);   
 console.log("CORS: " + process.env.CORS);   
+console.log("AWS_REGION: " + process.env.AWS_REGION);   
 
 var nomadAddress = process.env.CLIENT_AGENT_IP + ":4646";
 
@@ -53,6 +54,7 @@ function buildManticoreJobFile () {
 		"HAPROXY_HTTP_LISTEN",
 		"HAPROXY_OFF",
 		"CORS",
+		"AWS_REGION",
 		"JWT_SECRET",
 		"TRACE_SERVICE_NAME",
 		"TRACE_API_KEY"

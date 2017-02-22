@@ -55,16 +55,29 @@ module.exports = {
 						//so that the next planJob command will take into account the job that was just submitted
 						//maximum wait of 5 seconds before we poke the nomad server again for allocation information
 						var watch = context.nomader.watchAllocations("core-hmi-" + lowestKey, context.nomadAddress, 5, function (allocations) {
-							var coreAllocation = allocations[0];
 							//this function will be called several times. only continue when we see that the 
-							//client status's state is "running". since we checked with plan that this
+							//core task group status's state is "running". since we checked with plan that this
 							//job submission will work, it should eventually end up in the "running" state
-							if (coreAllocation.ClientStatus === "running") {
-								var newLowest = waitingHash.nextInQueue();
-								//we got what we wanted. remember to stop the watch or else bad things happen!
-								watch.end();
-								self.coreAllocRecurse(newLowest, waitingHash, requestKV, context, updateWaitingList, callback);
+							//there is a small chance that the HMI will have been submitted and thus we will 
+							//see the allocation of the core group and the hmi group. make sure we get the right task group
+							var coreAllocation;
+							if (allocations[0] && allocations[0].TaskGroup === "core-group-" + lowestKey) {
+								coreAllocation = allocations[0];
 							}
+							else if (allocations[1]) { 
+								//by process of elimination, the second allocation has the core group
+								//let's make sure there is a second allocation...
+								coreAllocation = allocations[1];
+							}
+							if (coreAllocation) { //make sure we found something
+								if (coreAllocation.ClientStatus === "running") {
+									var newLowest = waitingHash.nextInQueue();
+									//we got what we wanted. remember to stop the watch or else bad things happen!
+									watch.end();
+									self.coreAllocRecurse(newLowest, waitingHash, requestKV, context, updateWaitingList, callback);
+								}
+							}
+
 						});
 					});
 				}

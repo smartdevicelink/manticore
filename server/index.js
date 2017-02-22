@@ -62,6 +62,7 @@ if (process.env.CORS === "true") {
         logger.debug("HAPROXY_HTTP_LISTEN: " + process.env.HAPROXY_HTTP_LISTEN);   
         logger.debug("HAPROXY_OFF: " + process.env.HAPROXY_OFF); 
         logger.debug("CORS: " + process.env.CORS); 
+        logger.debug("AWS_REGION: " + process.env.AWS_REGION); 
         logger.debug("CONTAINER IP ADDRESS: " + process.env.NOMAD_IP_http + ":" + process.env.NOMAD_HOST_PORT_http); 
 
         //instantiate the context

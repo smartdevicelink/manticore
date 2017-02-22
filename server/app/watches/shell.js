@@ -16,6 +16,9 @@ module.exports = {
 		context.consuler.watchKVStore(context.keys.allocation, allocationWatch(context));
 	},
 	startServiceWatch: function (context) {
+		//first, consistently watch all the manticore services!
+		context.consuler.watchServiceStatus("manticore-service", manticoreWatch(context));
+
 		//set up a watch for all services
 		var watch = context.consuler.watchAllServices(function (services) {
 			var currentWatchesArray = Object.keys(serviceWatches);
@@ -48,11 +51,6 @@ module.exports = {
 				var watch = context.consuler.watchServiceStatus(serviceName, functionCallback);
 				serviceWatches[serviceName] = watch;
 			}
-			//only get manticore services
-			var manticores = serviceArray.filter(function (element) {
-				return element === "manticore-service";
-			});
-
 		});
 	}
 }
@@ -126,9 +124,6 @@ function waitingWatch (context) {
 			//recalculate the positions of the new waiting list and send that over websockets
 			var positionMap = newWaitingHash.getQueuePositions();
 			//store and submit the position information of each user by their id
-			context.logger.debug("AAAAAAAAAAAAAAAAAAAA");
-			context.logger.debug(JSON.stringify(newWaitingHash));
-			context.logger.debug(JSON.stringify(positionMap));
 			for (var id in positionMap) {
 				context.socketHandler.updatePosition(id, positionMap[id]);
 			}
@@ -147,8 +142,16 @@ function waitingWatch (context) {
 function allocationWatch (context) {
 	return function () {
 		context.logger.debug("allocation watch hit");
-		//get allocation keys and values
+		var requestsKV;
+		//get allocation keys and values and request keys and values
 		functionite()
+		.pass(context.consuler.getKeyAll, context.keys.request)
+		.pass(functionite(core.transformKeys), context.keys.data.request)
+		.pass(function (requestKeys, callback) {
+			//store requestKeys for future use
+			requestsKV = requestKeys;
+			callback();
+		}) 
 		.pass(context.consuler.getKeyAll, context.keys.allocation)
 		.pass(functionite(core.transformKeys), context.keys.data.allocation)
 		.pass(function (allocationKeys, callback) {
@@ -167,52 +170,41 @@ function allocationWatch (context) {
 			//we also need information from the requests KV in order to complete this information
 
 			var pairs = [];
-			var keysCount = 0;
 			for (var key in allocationKeys) {
-				keysCount++;
-				//add closure
-				(function (userId) {
-					var allocData = JSON.parse(allocationKeys[userId]); //convert the string into JSON
-					//get the corresponding request KV object from the store
-					context.consuler.getKeyValue(context.keys.data.request + "/" + userId, function (result) {
-						//it's possible that in the time this function ran that some requests KVs got removed
-						//from the store, making allocationKeys out of date. simply ignore the results that
-						//are undefined since they don't exist anymore
-						if (result) {
-							var requestObj = context.UserRequest().parse(result.Value);
-							var pair = {
-								id: userId,
-								userAddressInternal: allocData.hmiAddress + ":" + allocData.hmiPort,
-								hmiAddressInternal: allocData.coreAddress + ":" + allocData.corePort,
-								tcpAddressInternal: allocData.coreAddress + ":" + allocData.tcpPort,
-								brokerAddressInternal: allocData.hmiAddress + ":" + allocData.brokerPort,
-								userAddressExternal: requestObj.userToHmiPrefix,
-								hmiAddressExternal: requestObj.hmiToCorePrefix,
-								tcpPortExternal: requestObj.tcpPortExternal,
-								brokerAddressExternal: requestObj.brokerAddressPrefix
-							}
-							//pair information!
-							//post/store the connection information to the client whose id matches
-							//format the connection information and send it!
-							context.socketHandler.updateAddresses(pair.id, core.formatPairResponse(pair));
-							//done.
-							pairs.push(pair);
-							finished();							
-						}
-					});					
-				})(key);						
-			}
-			//theres normally a concurrency issue with this, but because of how NodeJS works
-			//keysCount should never hit 0 prematurely
-			function finished () {
-				context.logger.info(pairs);
-				keysCount--;
-				if (keysCount === 0 && context.isHaProxyEnabled()) {
-					//update the proxy information using the proxy module (not manticore addresses!)
-					context.logger.debug("Updating KV Store with address and port data for proxy!");
-					var template = proxyLogic.generateProxyData(context, pairs, []);
-					proxyLogic.updateCoreHmiKvStore(context, template);
+				var userId = key;
+				var allocData = JSON.parse(allocationKeys[userId]); //convert the string into JSON
+				//get the corresponding request KV object
+				var kv = requestsKV[userId];
+				//it's possible that in the time this function ran that some requests KVs got removed
+				//from the store, making allocationKeys out of date. simply ignore the results that
+				//are undefined since they don't exist anymore
+				if (kv) {
+					var requestObj = context.UserRequest().parse(kv);
+					var pair = {
+						id: userId,
+						userAddressInternal: allocData.hmiAddress + ":" + allocData.hmiPort,
+						hmiAddressInternal: allocData.coreAddress + ":" + allocData.corePort,
+						tcpAddressInternal: allocData.coreAddress + ":" + allocData.tcpPort,
+						brokerAddressInternal: allocData.hmiAddress + ":" + allocData.brokerPort,
+						userAddressExternal: requestObj.userToHmiPrefix,
+						hmiAddressExternal: requestObj.hmiToCorePrefix,
+						tcpPortExternal: requestObj.tcpPortExternal,
+						brokerAddressExternal: requestObj.brokerAddressPrefix
+					}
+					//pair information!
+					//post/store the connection information to the client whose id matches
+					//format the connection information and send it!
+					context.socketHandler.updateAddresses(pair.id, core.formatPairResponse(pair));
+					//done.
+					pairs.push(pair);
 				}
+			}
+			context.logger.info(pairs);
+			if (context.isHaProxyEnabled()) {
+				//update the proxy information using the proxy module (not manticore addresses!)
+				context.logger.debug("Updating KV Store with address and port data for proxy!");
+				var template = proxyLogic.generateProxyData(context, pairs, []);
+				proxyLogic.updateCoreHmiKvStore(context, template);
 			}
 		})
 		.go();
@@ -341,10 +333,12 @@ function manticoreWatch (context) {
 	return function (services) {
 		var manticores = core.filterServices(services, ['manticore-alive']); //require an http alive check
 		context.logger.debug("Manticore services: " + manticores.length);	
-		//ONLY update the manticore services in the KV store
-		context.logger.debug("Updating KV Store with manticore data for proxy!");
-		var template = proxyLogic.generateProxyData(context, [], manticores);
-		proxyLogic.updateManticoreKvStore(context, template);		
+		//ONLY update the manticore services in the KV store, and only if haproxy is enabled
+		if (context.isHaProxyEnabled()) {
+			context.logger.debug("Updating KV Store with manticore data for proxy!");
+			var template = proxyLogic.generateProxyData(context, [], manticores);
+			proxyLogic.updateManticoreKvStore(context, template);
+		}
 	}
 }
 

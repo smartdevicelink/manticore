@@ -1,5 +1,5 @@
 //an object that manages and contains global information necessary across all modules
-//the majority of these modules come from the /lib folder
+//the modules come from the /lib folder are put here
 var SocketHandler = require('./SocketHandler.js');
 
 module.exports = Context;
@@ -15,6 +15,8 @@ function Context (app, socketio, logger, address) {
 	this.UserRequest = require('./UserRequest.js'); //represents a user's request for core/hmi
 	this.keys = require('./constants.js').keys; //stores locations of data inside the consul KV store
 	this.WaitingList = require('./WaitingList.js');
+	//expecting the AWS_REGION env. if not provided, AwsHandler will simply not function
+	this.AwsHandler = require('./AwsHandler.js')(process.env.AWS_REGION);
 
 	//The following are utility functions that are commonly used throughout Manticore
 	this.isHaProxyEnabled = function () {

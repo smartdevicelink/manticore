@@ -1,4 +1,3 @@
-var functionite = require('functionite');
 var HAProxyTemplate = require('./HAProxyTemplate.js');
 
 module.exports = {
@@ -33,28 +32,24 @@ module.exports = {
 		//replace everything under haproxy/data, which includes http and tcp mappings
 		context.consuler.delKeyAll(context.keys.data.haproxy, function () {
 			for (let i = 0; i < template.tcpMaps.length; i++) {
-				var item = template.tcpMaps[i];
+				let item = template.tcpMaps[i];
 				context.consuler.setKeyValue(context.keys.haproxy.tcpMaps + "/" + item.port, item.to, function (){});
 			}	
 			for (let i = 0; i < template.httpMaps.length; i++) {
-				var item = template.httpMaps[i];
-				context.consuler.setKeyValue(context.keys.haproxy.httpFront + "/" + index, item.from, function (){});
-				context.consuler.setKeyValue(context.keys.haproxy.httpBack + "/" + index, item.to, function (){});
+				let item = template.httpMaps[i];
+				context.consuler.setKeyValue(context.keys.haproxy.httpFront + "/" + i, item.from, function (){});
+				context.consuler.setKeyValue(context.keys.haproxy.httpBack + "/" + i, item.to, function (){});
 			}	
 		});
 	},
 	updateManticoreKvStore: function (context, template) {
 		//only update manticore web app addresses!
-		functionite()
-		.toss(context.consuler.delKeyAll, context.keys.haproxy.webApp) //reset only web app addresses!
-		.toss(function () {
+		//reset only web app addresses!
+		context.consuler.delKeyAll(context.keys.haproxy.webApp, function () {
 			for (let i = 0; i < template.webAppAddresses.length; i++) {
-				var item = template.webAppAddresses[i];
-				(function (index) {
-					context.consuler.setKeyValue(context.keys.haproxy.webApp + "/" + index, item, function () {});
-				})(i);
-			}	
-		})
-		.go();
+				let item = template.webAppAddresses[i];
+				context.consuler.setKeyValue(context.keys.haproxy.webApp + "/" + i, item, function () {});
+			}				
+		});
 	}
 }
