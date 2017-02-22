@@ -22,7 +22,7 @@ function AwsHandler (region) {
 
 AwsHandler.prototype.test = function () {
 	var params = {
-		LoadBalancerNames: ['STRING_VALUE'],
+		LoadBalancerNames: [process.env.ELB_MANTICORE_NAME],
 	}
 	elb.describeLoadBalancers({}, function (err, data) {
 		console.error(err);
