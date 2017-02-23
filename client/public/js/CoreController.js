@@ -1,7 +1,6 @@
 var id = Math.floor(Math.random()*1000);
 
 var body = {
-	"url": "http://192.168.1.142:3000/v1/address",
 	"build": [],
 	"branch": {
 		"hmi": "master",
