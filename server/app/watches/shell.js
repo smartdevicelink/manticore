@@ -205,6 +205,13 @@ function allocationWatch (context) {
 				context.logger.debug("Updating KV Store with address and port data for proxy!");
 				var template = proxyLogic.generateProxyData(context, pairs, []);
 				proxyLogic.updateCoreHmiKvStore(context, template);
+
+				//furthermore, if AWS_REGION is defined, use the TCP port information
+				//from the template to modify the ELB such that it is listening and routing 
+				//on those same ports
+				if (process.env.AWS_REGION) {
+					context.AwsHandler.changeState(template);
+				}
 			}
 		})
 		.go();

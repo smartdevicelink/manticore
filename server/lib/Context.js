@@ -16,7 +16,7 @@ function Context (app, socketio, logger, address) {
 	this.keys = require('./constants.js').keys; //stores locations of data inside the consul KV store
 	this.WaitingList = require('./WaitingList.js');
 	//expecting the AWS_REGION env. if not provided, AwsHandler will simply not function
-	this.AwsHandler = require('./AwsHandler.js')(process.env.AWS_REGION);
+	this.AwsHandler = require('./AwsHandler.js')(process.env.AWS_REGION, logger);
 
 	//The following are utility functions that are commonly used throughout Manticore
 	this.isHaProxyEnabled = function () {
