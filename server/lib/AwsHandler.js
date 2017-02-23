@@ -35,7 +35,10 @@ AwsHandler.prototype.changeState = function (template) {
 	//get the current state
 	this.describeLoadBalancer(function (lbStatus) {
 		//get listener information
-		var actualListeners = lbStatus.ListenerDescriptions;	
+		var actualListeners = [];
+		for (let i = 0; i < lbStatus.ListenerDescriptions.length; i++) {
+			actualListeners.push(lbStatus.ListenerDescriptions[i].Listener);
+		}	
 
 		//first, find and remove all ports that don't need to be listened on anymore
 		//then, find and add all ports that need to be listened on
@@ -50,7 +53,7 @@ AwsHandler.prototype.changeState = function (template) {
 		},
 		{
 			Protocol: "SSL",
-			LoadBalancerPort: process.env.ELB_SSL_PORT,
+			LoadBalancerPort: Number(process.env.ELB_SSL_PORT), //parse as integer, as this will be a string
 			InstanceProtocol: "TCP",
 			InstancePort: 80,
 			SSLCertificateId: process.env.SSL_CERTIFICATE_ARN
@@ -65,11 +68,11 @@ AwsHandler.prototype.changeState = function (template) {
 				InstancePort: template.tcpMaps[i].port,
 			});
 		}
+		logger.debug(JSON.stringify(expectedListeners, null, 2));
+		logger.debug(JSON.stringify(actualListeners, null, 2));
 		//determine which listeners need to be added and which need to be removed
 		var listenerChanges = self.calculateListenerChanges(expectedListeners, actualListeners);
 		//ALWAYS remove unneeded listeners before adding needed listeners
-		logger.debug(JSON.stringify(expectedListeners, null, 2));
-		logger.debug(JSON.stringify(actualListeners, null, 2));
 		logger.debug(JSON.stringify(listenerChanges, null, 2));
 		self.removeListeners(listenerChanges.toBeDeletedListeners, function () {
 			self.addListeners(listenerChanges.toBeAddedListeners, function () {
@@ -173,12 +176,17 @@ AwsHandler.prototype.addListeners = function (listeners, callback) {
 		Listeners: listeners,
 		LoadBalancerName: process.env.ELB_MANTICORE_NAME
 	};
-	elb.createLoadBalancerListeners(params, function (err, data) {
-		if (err) {
-			logger.error(err);
-		}
+	if (listeners.length > 0) { //only make a call if listeners has data
+		elb.createLoadBalancerListeners(params, function (err, data) {
+			if (err) {
+				logger.error(err);
+			}
+			callback();
+		});		
+	}
+	else {
 		callback();
-	});
+	}
 }
 
 AwsHandler.prototype.removeListeners = function (lbPorts, callback) {
@@ -186,12 +194,17 @@ AwsHandler.prototype.removeListeners = function (lbPorts, callback) {
 		LoadBalancerPorts: lbPorts,
 		LoadBalancerName: process.env.ELB_MANTICORE_NAME
 	};
-	elb.deleteLoadBalancerListeners(params, function (err, data) {
-		if (err) {
-			logger.error(err);
-		}
+	if (lbPorts.length > 0) {
+		elb.deleteLoadBalancerListeners(params, function (err, data) {
+			if (err) {
+				logger.error(err);
+			}
+			callback();
+		});		
+	}
+	else {
 		callback();
-	});
+	}
 }
 
 /*
