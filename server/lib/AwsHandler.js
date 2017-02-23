@@ -61,8 +61,10 @@ AwsHandler.prototype.changeState = function (template) {
 		//get tcp mappings. we are only interested in an array of ports that should be opened
 		for (let i = 0; i < template.tcpMaps.length; i++) {
 			expectedListeners.push({
-				protocol: "TCP",
-				port: tcpMaps[i].port
+				Protocol: "TCP",
+				LoadBalancerPort: tcpMaps[i].port,
+				InstanceProtocol: "TCP",
+				InstancePort: tcpMaps[i].port,
 			});
 		}
 		//determine which listeners need to be added and which need to be removed
