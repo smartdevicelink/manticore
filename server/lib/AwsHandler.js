@@ -31,6 +31,7 @@ function AwsHandler (region) {
 //given a template generated from HAProxyTemplate.js, update the ELB
 //with the new port data
 AwsHandler.prototype.changeState = function (template) {
+	var self = this; //consistent reference to 'this'
 	//get the current state
 	this.describeLoadBalancer(function (lbStatus) {
 		console.error(JSON.stringify(lbStatus, null, 2));
@@ -65,11 +66,11 @@ AwsHandler.prototype.changeState = function (template) {
 			});
 		}
 		//determine which listeners need to be added and which need to be removed
-		var listenerChanges = this.calculateListenerChanges(expectedListeners, actualListeners);
+		var listenerChanges = self.calculateListenerChanges(expectedListeners, actualListeners);
 		//ALWAYS remove unneeded listeners before adding needed listeners
 		logger.debug(JSON.stringify(listenerChanges, null, 2));
-		this.removeListeners(listenerChanges.toBeDeletedListeners, function () {
-			this.addListeners(listenerChanges.toBeAddedListeners, function () {
+		self.removeListeners(listenerChanges.toBeDeletedListeners, function () {
+			self.addListeners(listenerChanges.toBeAddedListeners, function () {
 				//done!
 			});
 		});
