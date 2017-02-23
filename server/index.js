@@ -64,6 +64,7 @@ if (process.env.CORS === "true") {
         logger.debug("CORS: " + process.env.CORS); 
         logger.debug("AWS_REGION: " + process.env.AWS_REGION); 
         logger.debug("ELB_MANTICORE_NAME: " + process.env.ELB_MANTICORE_NAME); 
+        logger.debug("SSL_CERTIFICATE_ID: " + process.env.SSL_CERTIFICATE_ID); 
         logger.debug("CONTAINER IP ADDRESS: " + process.env.NOMAD_IP_http + ":" + process.env.NOMAD_HOST_PORT_http); 
 
         //instantiate the context
