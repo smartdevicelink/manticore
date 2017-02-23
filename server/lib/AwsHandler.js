@@ -34,8 +34,6 @@ AwsHandler.prototype.changeState = function (template) {
 	var self = this; //consistent reference to 'this'
 	//get the current state
 	this.describeLoadBalancer(function (lbStatus) {
-		console.error(JSON.stringify(lbStatus, null, 2));
-		console.error(JSON.stringify(template, null, 2));
 		//get listener information
 		var actualListeners = lbStatus.ListenerDescriptions;	
 
@@ -62,14 +60,16 @@ AwsHandler.prototype.changeState = function (template) {
 		for (let i = 0; i < template.tcpMaps.length; i++) {
 			expectedListeners.push({
 				Protocol: "TCP",
-				LoadBalancerPort: tcpMaps[i].port,
+				LoadBalancerPort: template.tcpMaps[i].port,
 				InstanceProtocol: "TCP",
-				InstancePort: tcpMaps[i].port,
+				InstancePort: template.tcpMaps[i].port,
 			});
 		}
 		//determine which listeners need to be added and which need to be removed
 		var listenerChanges = self.calculateListenerChanges(expectedListeners, actualListeners);
 		//ALWAYS remove unneeded listeners before adding needed listeners
+		logger.debug(JSON.stringify(expectedListeners, null, 2));
+		logger.debug(JSON.stringify(actualListeners, null, 2));
 		logger.debug(JSON.stringify(listenerChanges, null, 2));
 		self.removeListeners(listenerChanges.toBeDeletedListeners, function () {
 			self.addListeners(listenerChanges.toBeAddedListeners, function () {
