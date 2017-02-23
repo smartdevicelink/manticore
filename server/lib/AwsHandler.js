@@ -20,20 +20,17 @@ function AwsHandler (region) {
 	if (region) { //only do things if region exists
 		AWS.config.update({region: region});
 	}
-	this.addListener("SSL", 5000, true);
+	var listenerObj = {
+		InstancePort: 80, //inner port
+		LoadBalancerPort: 5000, //outer port
+		Protocol: "SSL",
+		InstanceProtocol: "TCP",
+		SSLCertificateId: process.env.SSL_CERTIFICATE_ARN
+	}
+	this.addListener(listenerObj);
 }
 
-AwsHandler.prototype.addListener = function (protocol, port, includeCertificate) {
-	var listenerObj = {
-		InstancePort: port, //inner port
-		LoadBalancerPort: port, //outer port
-		Protocol: protocol,
-		InstanceProtocol: protocol,
-	}
-	if (includeCertificate) {
-		listenerObj.SSLCertificateId = process.env.SSL_CERTIFICATE_ID;
-	}
-
+AwsHandler.prototype.addListener = function (listenerObj) {
 	var params = {
 		Listeners: [
 			listenerObj
@@ -41,6 +38,8 @@ AwsHandler.prototype.addListener = function (protocol, port, includeCertificate)
 		LoadBalancerName: process.env.ELB_MANTICORE_NAME
 	};
 	elb.createLoadBalancerListeners(params, function (err, data) {
+		console.error("RESULTS");
+		console.error(err);
 		console.error(data);
 	});
 }

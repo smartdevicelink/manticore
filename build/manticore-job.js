@@ -17,7 +17,7 @@ console.log("HAPROXY_OFF: " + process.env.HAPROXY_OFF);
 console.log("CORS: " + process.env.CORS);   
 console.log("AWS_REGION: " + process.env.AWS_REGION);   
 console.log("ELB_MANTICORE_NAME: " + process.env.ELB_MANTICORE_NAME);
-console.log("SSL_CERTIFICATE_ID: " + process.env.SSL_CERTIFICATE_ID);
+console.log("SSL_CERTIFICATE_ARN: " + process.env.SSL_CERTIFICATE_ARN);
 
 var nomadAddress = process.env.CLIENT_AGENT_IP + ":4646";
 
@@ -58,7 +58,7 @@ function buildManticoreJobFile () {
 		"CORS",
 		"AWS_REGION",
 		"ELB_MANTICORE_NAME",
-		"SSL_CERTIFICATE_ID",
+		"SSL_CERTIFICATE_ARN",
 		"JWT_SECRET",
 		"TRACE_SERVICE_NAME",
 		"TRACE_API_KEY"
