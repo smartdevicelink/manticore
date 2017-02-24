@@ -84,7 +84,6 @@ function requestsWatch (context) {
 
 			context.socketHandler.cleanSockets(requestKeyArray);
 			context.logger.debug("Waiting list update");
-			context.logger.debug(waitingHash.get());
 			//update manticore/waiting/data using the updated object generated
 			context.consuler.setKeyValue(context.keys.data.waiting, waitingHash.get(), function () {});
 		})

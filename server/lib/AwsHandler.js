@@ -48,14 +48,14 @@ AwsHandler.prototype.changeState = function (template) {
 			Protocol: "HTTPS",
 			LoadBalancerPort: 443,
 			InstanceProtocol: "HTTP",
-			InstancePort: 80,
+			InstancePort: Number(process.env.HAPROXY_HTTP_LISTEN), //parse as integer, as this will be a string
 			SSLCertificateId: process.env.SSL_CERTIFICATE_ARN
 		},
 		{
 			Protocol: "SSL",
 			LoadBalancerPort: Number(process.env.ELB_SSL_PORT), //parse as integer, as this will be a string
 			InstanceProtocol: "TCP",
-			InstancePort: 80,
+			InstancePort: Number(process.env.HAPROXY_HTTP_LISTEN), //parse as integer, as this will be a string
 			SSLCertificateId: process.env.SSL_CERTIFICATE_ARN
 		}];
 
@@ -68,12 +68,9 @@ AwsHandler.prototype.changeState = function (template) {
 				InstancePort: template.tcpMaps[i].port,
 			});
 		}
-		logger.debug(JSON.stringify(expectedListeners, null, 2));
-		logger.debug(JSON.stringify(actualListeners, null, 2));
 		//determine which listeners need to be added and which need to be removed
 		var listenerChanges = self.calculateListenerChanges(expectedListeners, actualListeners);
 		//ALWAYS remove unneeded listeners before adding needed listeners
-		logger.debug(JSON.stringify(listenerChanges, null, 2));
 		self.removeListeners(listenerChanges.toBeDeletedListeners, function () {
 			self.addListeners(listenerChanges.toBeAddedListeners, function () {
 				//done!
