@@ -41,26 +41,6 @@ UserRequest.prototype.getString = function () {
 	});
 }
 
-//these two functions truncate the data to send to the tags in nomad/consul
-//still investigating why this prevents issues with consul's services watch
-UserRequest.prototype.toCoreTag = function () {
-	return JSON.stringify({
-		id: this.id,
-		tcpPortInternal: this.tcpPortInternal,
-		userToHmiPrefix: this.userToHmiPrefix,
-		hmiToCorePrefix: this.hmiToCorePrefix,
-		tcpPortExternal: this.tcpPortExternal,
-		brokerAddressPrefix: this.brokerAddressPrefix,
-	});
-}
-
-UserRequest.prototype.toHmiTag = function () {
-	return JSON.stringify({
-		id: this.id,
-		brokerPortInternal: this.brokerPortInternal,
-	});
-}
-
 //the inverse of the getString function
 UserRequest.prototype.parse = function (string) {
 	return new UserRequest(JSON.parse(string));

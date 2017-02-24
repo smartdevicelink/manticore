@@ -30,13 +30,6 @@ module.exports = {
 
 		var serviceName = "core-service-" + id;
 		job.addService(groupName, taskName, serviceName);
-		//include the id's tag for ID purposes
-		//also include the user, hmi, and tcp external addresses for haproxy
-		//store all this information into one tag as a stringified JSON
-		//tcpPortInternal has a value because the whole object will be added as a tag to the
-		//nomad job, and nomad can interpolate variables inside the tag, even as a stringified JSON
-		//request.tcpPortInternal = "${NOMAD_PORT_tcp}";
-		//job.addTag(groupName, taskName, serviceName, request.getString());
 		job.setPortLabel(groupName, taskName, serviceName, "hmi");
 	},
 	//core is expected to be the object returned from consul's services API
@@ -102,13 +95,6 @@ module.exports = {
 			Protocol: "http"
 		}
 		job.addCheck(groupName, taskName, serviceName, healthObj);
-		//store the port of the broker
-		//request.brokerPortInternal = "${NOMAD_PORT_broker}";
-		//add the hmi internal address and tcp internal address since we know that already
-		//request.hmiAddressInternal = core.Address + ":" + core.Port;
-		//request.tcpAddressInternal = core.Address + ":" + this.tcpPortInternal;
-		//give hmi the same id as core so we know they're together	
-		//job.addTag(groupName, taskName, serviceName, request.getString());
 	},
 	//determines if the results say that nomad can allocate a job
 	checkHasResources: function (results) {
