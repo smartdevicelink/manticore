@@ -17,7 +17,6 @@ console.log("HAPROXY_OFF: " + process.env.HAPROXY_OFF);
 console.log("CORS: " + process.env.CORS);   
 console.log("AWS_REGION: " + process.env.AWS_REGION);   
 console.log("ELB_MANTICORE_NAME: " + process.env.ELB_MANTICORE_NAME);
-console.log("ELB_SECURITY_GROUP_ID: " + process.env.ELB_SECURITY_GROUP_ID);
 
 var nomadAddress = process.env.CLIENT_AGENT_IP + ":4646";
 
