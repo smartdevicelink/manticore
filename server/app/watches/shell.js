@@ -278,7 +278,15 @@ function hmiWatch (context, userId) {
 			//this regex will find the allocation ID within the ID of this service
 			var hmiAllocID = hmiService.ID.match(/[a-f0-9]+-[a-f0-9]+-[a-f0-9]+-[a-f0-9]+-[a-f0-9]+/g)[0];
 			//store important information here
-			var data = context.AllocationData();
+			var data = context.AllocationData({
+ 				userPort: null,
+ 				brokerPort: null,
+				tcpPort: null,
+ 				coreAddress: null,
+ 				corePort: null,
+ 				hmiAddress: hmiService.Address,
+ 				hmiPort: hmiService.Port
+ 			});
 
 			functionite() //get the allocation info
 			.pass(context.nomader.getAllocation, hmiAllocID, context.nomadAddress)
