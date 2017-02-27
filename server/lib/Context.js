@@ -8,7 +8,7 @@ function Context (app, socketio, logger, address) {
 	this.app = app; //express app
 	this.socketHandler = new SocketHandler(socketio); //socket manager module
 	this.logger = logger; //logger module
-	this.consuler = require('consul-helper')(address); //connect to the consul agent before continuing 
+	this.consuler = require('consul-helper')(address); //connect to the consul agent before continuing
 	this.nomader = require('nomad-helper'); //creates nomad job files easily
 	this.agentAddress = address; //address of nomad and consul client agents
 	this.nomadAddress = address + ":4646"; //address of nomad agents including port
@@ -17,6 +17,7 @@ function Context (app, socketio, logger, address) {
 	this.WaitingList = require('./WaitingList.js');
 	//expecting the AWS_REGION env. if not provided, AwsHandler will simply not function
 	this.AwsHandler = require('./AwsHandler.js')(process.env.AWS_REGION, logger);
+	this.AllocationData = require('./AllocationData.js');
 
 	//The following are utility functions that are commonly used throughout Manticore
 	this.isHaProxyEnabled = function () {
@@ -27,7 +28,7 @@ function Context (app, socketio, logger, address) {
 		if (!this.isHaProxyEnabled()) { //no haproxy
 			//given we are in a nomad-scheduled docker container, use the
 			//environment variables nomad gives us to return the correct address of this manticore
-			return `http://${process.env.NOMAD_IP_http}:${process.env.NOMAD_HOST_PORT_http}`;	
+			return `http://${process.env.NOMAD_IP_http}:${process.env.NOMAD_HOST_PORT_http}`;
 		}
 		else { //haproxy enabled
 			return "//" + process.env.DOMAIN_NAME;
