@@ -73,7 +73,7 @@ function requestsWatch (context) {
 			var waitingHash = context.WaitingList(waitingValue);
 			//use the updated request list to remove any connection sockets that have info about a user
 			waitingHash.update(requestKeyArray, function (lostKey) {
-				//key not found. remove the allocation information 
+				//key not found. remove the allocation information
 				//from the KV store. stop the job if it also exists
 				//this function should be the ONLY authority on whether to delete the job
 				//any other function that wants to stop a job should remove the key from the KV store instead
@@ -84,6 +84,7 @@ function requestsWatch (context) {
 
 			context.socketHandler.cleanSockets(requestKeyArray);
 			context.logger.debug("Waiting list update");
+			context.logger.debug(waitingHash.get());
 			//update manticore/waiting/data using the updated object generated
 			context.consuler.setKeyValue(context.keys.data.waiting, waitingHash.get(), function () {});
 		})
@@ -150,7 +151,7 @@ function allocationWatch (context) {
 			//store requestKeys for future use
 			requestsKV = requestKeys;
 			callback();
-		}) 
+		})
 		.pass(context.consuler.getKeyAll, context.keys.allocation)
 		.pass(functionite(core.transformKeys), context.keys.data.allocation)
 		.pass(function (allocationKeys, callback) {
@@ -171,7 +172,7 @@ function allocationWatch (context) {
 			var pairs = [];
 			for (var key in allocationKeys) {
 				var userId = key;
-				var allocData = JSON.parse(allocationKeys[userId]); //convert the string into JSON
+				var allocData = context.AllocationData().parse(allocationKeys[userId]); //convert the string into JSON
 				//get the corresponding request KV object
 				var kv = requestsKV[userId];
 				//it's possible that in the time this function ran that some requests KVs got removed
@@ -206,7 +207,7 @@ function allocationWatch (context) {
 				proxyLogic.updateCoreHmiKvStore(context, template);
 
 				//furthermore, if AWS_REGION is defined, use the TCP port information
-				//from the template to modify the ELB such that it is listening and routing 
+				//from the template to modify the ELB such that it is listening and routing
 				//on those same ports
 				if (process.env.AWS_REGION) {
 					context.AwsHandler.changeState(template);
@@ -237,10 +238,10 @@ function coreWatch (context, userId) {
 						var requestObj = context.UserRequest().parse(result.Value);
 						//add the hmi group and submit the job
 						jobLogic.addHmiGenericGroup(job, coreService, requestObj);
-						jobLogic.submitJob(context, job, jobName, function () {});	
+						jobLogic.submitJob(context, job, jobName, function () {});
 					});
 				}
-			});	
+			});
 		}
 		else { //core for this user id has died. delete the job now
 			context.logger.debug("Core died. Delete job " + userId);
@@ -253,7 +254,7 @@ function coreWatch (context, userId) {
 function hmiWatch (context, userId) {
 	return function (services) {
 		//require an http alive check. should only be one hmi service
-		var hmiServices = core.filterServices(services, ['hmi-alive']); 
+		var hmiServices = core.filterServices(services, ['hmi-alive']);
 		context.logger.debug("Hmi service: " + userId + " " + hmiServices.length);
 		//if this returns 0 services then its probably because the health check failed.
 		//don't do anything rash
@@ -265,27 +266,19 @@ function hmiWatch (context, userId) {
 			//to make sure that this service has a corresponding job.
 			//if it's a rogue service, ignore it, as it likely cannot be removed in any elegant way
 			context.nomader.findJob(jobName, context.nomadAddress, function (job) {
-				if (job) { //job exists for this service	
+				if (job) { //job exists for this service
 					getConnectionInformation(job, hmiService);
 				}
-			});				
+			});
 		}
 
 		function getConnectionInformation (job, hmiService) {
-			//we need three things. the ID, the request data from the KV store, 
+			//we need three things. the ID, the request data from the KV store,
 			//and the allocation details of this core task
 			//this regex will find the allocation ID within the ID of this service
 			var hmiAllocID = hmiService.ID.match(/[a-f0-9]+-[a-f0-9]+-[a-f0-9]+-[a-f0-9]+-[a-f0-9]+/g)[0];
 			//store important information here
-			var data = {
-				userPort: null,
-				brokerPort: null,
-				tcpPort: null,
-				coreAddress: null,
-				corePort: null,
-				hmiAddress: hmiService.Address,
-				hmiPort: hmiService.Port
-			};
+			var data = context.AllocationData();
 
 			functionite() //get the allocation info
 			.pass(context.nomader.getAllocation, hmiAllocID, context.nomadAddress)
@@ -297,9 +290,9 @@ function hmiWatch (context, userId) {
 				}
 				else {
 					data.userPort = allocationResult.Resources.Networks[0].DynamicPorts[1].Value;
-					data.brokerPort = allocationResult.Resources.Networks[0].DynamicPorts[0].Value;							
-				}		
-				callback();		
+					data.brokerPort = allocationResult.Resources.Networks[0].DynamicPorts[0].Value;
+				}
+				callback();
 			})//get the core service for this id
 			.toss(context.consuler.getService, "core-service-" + userId)
 			.pass(function (coreServices, callback) {
@@ -308,7 +301,7 @@ function hmiWatch (context, userId) {
 					//while we are getting the core service, retrieve the core address and port to be used later
 					data.coreAddress = coreServices[0].Service.Address;
 					data.corePort = coreServices[0].Service.Port;
-					callback(coreAllocID, context.nomadAddress);					
+					callback(coreAllocID, context.nomadAddress);
 				}
 				else { //in this case, the HMI is still running but core isn't. we have to stop the job now
 					context.logger.debug("Core died. Delete job " + userId);
@@ -328,7 +321,7 @@ function hmiWatch (context, userId) {
 				//do not pass in the data stringified in another functionite toss/pass as that
 				//result will get evaluated before the data object is populated
 				context.consuler.setKeyValue(context.keys.data.allocation + "/" + userId, JSON.stringify(data), function () {});
-			}) 
+			})
 			.go();
 		}
 	}
@@ -338,7 +331,7 @@ function hmiWatch (context, userId) {
 function manticoreWatch (context) {
 	return function (services) {
 		var manticores = core.filterServices(services, ['manticore-alive']); //require an http alive check
-		context.logger.debug("Manticore services: " + manticores.length);	
+		context.logger.debug("Manticore services: " + manticores.length);
 		//ONLY update the manticore services in the KV store, and only if haproxy is enabled
 		if (context.isHaProxyEnabled()) {
 			context.logger.debug("Updating KV Store with manticore data for proxy!");
