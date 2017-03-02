@@ -27,4 +27,3 @@ defaults
     timeout check 10s
     maxconn 3000
 
-
