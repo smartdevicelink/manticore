@@ -155,17 +155,7 @@ function allocationWatch (context) {
 		.pass(context.consuler.getKeyAll, context.keys.allocation)
 		.pass(functionite(core.transformKeys), context.keys.data.allocation)
 		.pass(function (allocationKeys, callback) {
-			/*each key has a value that is stringified JSON of the following format:
-			var data = {
-				userPort: ..., //this is the same as hmiPort?
-				brokerPort: ...,
-				tcpPort: ...,
-				coreAddress: ...,
-				corePort: ...,
-				hmiAddress: ...,
-				hmiPort: ...
-			};
-			*/
+			//each key has a value that is stringified JSON in the format of the AllocationData class
 			//go through each property found (key is the id of the user)
 			//we also need information from the requests KV in order to complete this information
 

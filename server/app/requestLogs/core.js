@@ -1,8 +1,8 @@
 module.exports = {
 	findAliveCoreAllocation: function (allocations, targetID) {
 		for (let i = 0; i < allocations.length; i++) {
-			//remove "core-" from taskgroup name to get just the ID
-			var testID = allocations[i].TaskGroup.split("core-")[1];
+			//remove "core-group-" from taskgroup name to get just the ID
+			var testID = allocations[i].TaskGroup.split("core-group-")[1];
 			//allow targetID to be a string or a number
 			if (testID == targetID) {
 				//only return the alloc ID if the ClientStatus is set to "running"
