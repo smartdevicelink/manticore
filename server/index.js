@@ -42,7 +42,7 @@ if (process.env.JWT_SECRET) {
 //expose everything in public. The main index.html file should exist inside public but not inside html/
 app.use(express.static(rootLocation));  
 if (process.env.CORS === "true") {
-    app.use(cors());
+    app.use(cors({credentials: true, origin: true}));
 }
 
 //start the server
