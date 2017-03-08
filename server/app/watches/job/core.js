@@ -1,12 +1,5 @@
-/** @module app/watches/job/core */
-
 module.exports = {
-	/**
-	* Find a final state in which the maximum number of users are able to receive a core/hmi
-	* @param {object} job - Object of the job file intended for submission to Nomad
-	* @param {string} id - ID of the user
-	* @param {UserRequest} request - Request list KV
-	*/
+	//request is expected to be an object of type UserRequest
 	addCoreGroup: function (job, id, request) {
 		//this adds a group for a user so that another core will be created
 		//since each group name must be different make the name based off of the user id
@@ -39,12 +32,7 @@ module.exports = {
 		job.addService(groupName, taskName, serviceName);
 		job.setPortLabel(groupName, taskName, serviceName, "hmi");
 	},
-	/**
-	* Find a final state in which the maximum number of users are able to receive a core/hmi
-	* @param {object} job - Object of the job file intended for submission to Nomad
-	* @param {object} core - An object from Consul that describes an sdl_core service
-	* @param {UserRequest} request - Request list KV
-	*/
+	//core is expected to be the object returned from consul's services API
 	addHmiGenericGroup: function (job, core, request) {
 		//this adds a group for a user so that another hmi will be created
 		//since each group name must be different make the name based off of the user id
@@ -108,11 +96,7 @@ module.exports = {
 		}
 		job.addCheck(groupName, taskName, serviceName, healthObj);
 	},
-	/**
-	* Determines if the results say that nomad can allocate a job
-	* @param {object} results - Object of the planned allocation
-	* @returns {boolean} - Whether there are sufficient resources to run another core/hmi
-	*/
+	//determines if the results say that nomad can allocate a job
 	checkHasResources: function (results) {
 		return results.FailedTGAllocs === null;
 	}

@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "node node_modules/.bin/mocha $(find app lib -name '*-test.js')",
-    "docs": "node node_modules/.bin/jsdoc app lib -r -d docs"
+    "test": "node node_modules/.bin/mocha $(find app lib -name '*-test.js')"
   },
   "author": "Christopher Rokita",
   "license": "ISC",
@@ -22,7 +21,6 @@
     "express-jwt": "^5.1.0",
     "functionite": "^2.0.0",
     "ip": "^1.1.3",
-    "jsdoc": "^3.4.3",
     "jsonwebtoken": "^7.2.1",
     "mocha": "^3.0.2",
     "needle": "^1.1.0",

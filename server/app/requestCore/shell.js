@@ -1,14 +1,8 @@
 var core = require('./core.js');
 var randomString = require('randomstring');
-/** @module app/requestCore/shell */
 
 module.exports = {
-	/**
-	* Checks Consul's KV for requests to ensure that the ID doesn't already exist
-	* @param {string} id - ID of the user
-	* @param {Context} context - Context instance
-	* @param {checkUniqueRequestCallback} callback - callback
-	*/
+	//ensures that the user with the given id isn't already in the KV store
 	checkUniqueRequest: function (id, context, callback) {
 		//get all keys in the request list
 		context.consuler.getKeyAll(context.keys.data.request + "/", function (results) {
@@ -16,18 +10,6 @@ module.exports = {
 			callback(isUnique, results);
 		});
 	},
-	/**
-	 * Callback object for checkUniqueRequest
-	 * @callback checkUniqueRequestCallback
-	 * @param {boolean} isUnique - Whether the ID hasn't been added to the request list yet
-	 * @param {object} results - KV pairs of all the user IDs and their info in the request list
-	 */
-
-	/**
-	* Generates external address information for HAProxy routing and attaaches it to the request body
-	* @param {object} requestJSON - User's request body
-	* @param {object} requestsKV - Consul KVs in the request list
-	*/
 	addExternalAddresses: function (requestJSON, requestsKV) {
 		//get current addresses from all users
 		var usedAddresses = core.parseAddressesFromUserRequests(requestsKV);
@@ -58,11 +40,6 @@ module.exports = {
 		requestJSON.brokerAddressPrefix = brokerAddress;
 		return;
 	},
-	/**
-	* Stores the request body information in the KV store
-	* @param {object} requestJSON - User's request body
-	* @param {Context} context - Context instance
-	*/
 	storeRequestInKVStore: function (requestJSON, context) {
 		context.consuler.setKeyValue(context.keys.data.request + "/" + requestJSON.id, requestJSON.getString());
 	}

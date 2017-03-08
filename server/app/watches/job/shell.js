@@ -1,16 +1,10 @@
 var core = require('./core.js');
 
-/** @module app/watches/job/shell */
-
 module.exports = {
-	/**
-	* Find a final state in which the maximum number of users are able to receive a core/hmi
-	* @param {string} lowestKey - ID of the user in front of the waiting list
-	* @param {object} waitingHash - Waiting list KV
-	* @param {object} requestKV - Request list KV
-	* @param {Context} context - Context instance
-	* @param {attemptCoreAllocationCallback} callback - callback
-	*/
+	//this will find a final state in which the maximum number of users are able to receive
+	//a core/hmi so that only one job submission to Nomad is necessary
+	//this is a recursive function
+	//job, waitinglist update
 	attemptCoreAllocation: function (lowestKey, waitingHash, requestKV, context, callback) {
 		//call the recursive function with an empty job and no update to the waiting list
 		this.coreAllocRecurse(lowestKey, waitingHash, requestKV, context, false, 
@@ -18,22 +12,6 @@ module.exports = {
 			callback(newWaitingHash, updateWaitingList);
 		});
 	},
-	/**
-	* Callback object for attemptCoreAllocation
-	* @callback attemptCoreAllocationCallback
-	* @param {object} newWaitingHash - The new representation of the waiting list
-	* @param {boolean} updateWaitingList - A boolean saying whether the waiting list has changed
-	*/
-
-	/**
-	* Find a final state in which the maximum number of users are able to receive a core/hmi. Recursive
-	* @param {string} lowestKey - ID of the user in front of the waiting list
-	* @param {object} waitingHash - Waiting list KV
-	* @param {object} requestKV - Request list KV
-	* @param {Context} context - Context instance
-	* @param {boolean} updateWaitingList - A boolean saying whether the waiting list has changed
-	* @param {coreAllocRecurseCallback} callback - callback
-	*/
 	coreAllocRecurse: function (lowestKey, waitingHash, requestKV, context, updateWaitingList, callback) {
 		var self = this; //consistent reference to this exported object
 		//check if lowestKey exists (aka someone is in front of the waiting list, waiting)
@@ -71,11 +49,36 @@ module.exports = {
 					var actualJob = context.nomader.createJob("core-hmi-" + lowestKey);
 					core.addCoreGroup(actualJob, lowestKey, request);
 
-					self.submitJobAndWaitForAllocation(context, actualJob, lowestKey, function () {
-						//allocation exists. the planJob will consider the allocation now
-						var newLowest = waitingHash.nextInQueue();
-						//try again
-						self.coreAllocRecurse(newLowest, waitingHash, requestKV, context, updateWaitingList, callback);
+					self.submitJob(context, actualJob, "core-hmi-" + lowestKey, function () {
+						//submission process done
+						//now check the next user in the queue only when we can confirm the job is running
+						//so that the next planJob command will take into account the job that was just submitted
+						//maximum wait of 5 seconds before we poke the nomad server again for allocation information
+						var watch = context.nomader.watchAllocations("core-hmi-" + lowestKey, context.nomadAddress, 5, function (allocations) {
+							//this function will be called several times. only continue when we see that the 
+							//core task group status's state is "running". since we checked with plan that this
+							//job submission will work, it should eventually end up in the "running" state
+							//there is a small chance that the HMI will have been submitted and thus we will 
+							//see the allocation of the core group and the hmi group. make sure we get the right task group
+							var coreAllocation;
+							if (allocations[0] && allocations[0].TaskGroup === "core-group-" + lowestKey) {
+								coreAllocation = allocations[0];
+							}
+							else if (allocations[1]) { 
+								//by process of elimination, the second allocation has the core group
+								//let's make sure there is a second allocation...
+								coreAllocation = allocations[1];
+							}
+							if (coreAllocation) { //make sure we found something
+								if (coreAllocation.ClientStatus === "running") {
+									var newLowest = waitingHash.nextInQueue();
+									//we got what we wanted. remember to stop the watch or else bad things happen!
+									watch.end();
+									self.coreAllocRecurse(newLowest, waitingHash, requestKV, context, updateWaitingList, callback);
+								}
+							}
+
+						});
 					});
 				}
 				else {
@@ -99,76 +102,20 @@ module.exports = {
 			callback(waitingHash, updateWaitingList);
 		}
 	},
-	/**
-	* Callback object for coreAllocRecurse
-	* @callback coreAllocRecurseCallback
-	* @param {object} waitingHash - The new representation of the waiting list
-	* @param {boolean} updateWaitingList - A boolean saying whether the waiting list has changed
-	*/
-
-	/**
-	* Submits a job and pauses execution of submitting new jobs until the allocation for this submitted job runs
-	* @param {Context} context - Context instance
-	* @param {object} actualJob - Object of the job file intended for submission to Nomad
-	* @param {string} lowestKey - ID of the user in front of the waiting list
-	* @param {function} callback - empty callback
-	*/
-	submitJobAndWaitForAllocation: function (context, actualJob, lowestKey, callback) {
-		this.submitJob(context, actualJob, "core-hmi-" + lowestKey, function () {
-			//submission process done
-			//now check the next user in the queue only when we can confirm the job is running
-			//so that the next planJob command will take into account the job that was just submitted
-			//maximum wait of 5 seconds before we poke the nomad server again for allocation information
-			var watch = context.nomader.watchAllocations("core-hmi-" + lowestKey, context.nomadAddress, 5, function (allocations) {
-				//this function will be called several times. only continue when we see that the 
-				//core task group status's state is "running". since we checked with plan that this
-				//job submission will work, it should eventually end up in the "running" state
-				//there is a small chance that the HMI will have been submitted and thus we will 
-				//see the allocation of the core group and the hmi group. make sure we get the right task group
-				var coreAllocation;
-				if (allocations[0] && allocations[0].TaskGroup === "core-group-" + lowestKey) {
-					coreAllocation = allocations[0];
-				}
-				else if (allocations[1]) { 
-					//by process of elimination, the second allocation has the core group
-					//let's make sure there is a second allocation...
-					coreAllocation = allocations[1];
-				}
-				if (coreAllocation) { //make sure we found something
-					if (coreAllocation.ClientStatus === "running") {
-						//we got what we wanted. remember to stop the watch or else bad things happen!
-						watch.end();
-						callback();
-					}
-				}
-			});
-		});
+	addHmisToJob: function (context, job, cores) {
+		for (let i = 0; i < cores.length; i++) {
+			//pass in what is repesenting the user in order to name the service
+			//pass in the external address prefix of core so that when the user tries to connect to it
+			//from outside the network haproxy can route that IP address to the correct internal one
+			core.addHmiGenericGroup(job, cores[i], context.UserRequest().parse(cores[i].Tags[0]));
+		}	
 	},
-	/**
-	* Add a task group for sdl_core to the job file
-	* @param {object} job - Object of the job file intended for submission to Nomad
-	* @param {string} userId - ID of the user
-	* @param {UserRequest} request - A single request from the request list
-	*/
 	addCoreGroup: function (job, userId, request) {
 		core.addCoreGroup(job, userId, request);
 	},
-	/**
-	* Add a task group for the generic HMI to the job file
-	* @param {object} job - Object of the job file intended for submission to Nomad
-	* @param {object} coreService - An object from Consul that describes a service
-	* @param {UserRequest} request - A single request from the request list
-	*/
 	addHmiGenericGroup: function (job, coreService, request) {
 		core.addHmiGenericGroup(job, coreService, request);
 	},
-	/**
-	* 
-	* @param {Context} context - Context instance
-	* @param {object} localJob - Object of the job file intended for submission to Nomad
-	* @param {string} jobName - Name of the job
-	* @param {function} callback - empty callback
-	*/
 	submitJob: function (context, localJob, jobName, callback) {
 		//attempt to submit the updated job
 		context.logger.debug("Submitting job " + jobName);

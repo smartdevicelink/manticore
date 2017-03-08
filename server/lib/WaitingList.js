@@ -2,12 +2,7 @@ module.exports = function (waitingObj) {
     return new WaitingList(waitingObj);
 }
 
-/**
-* Stores information about the state of all users in the waiting list
-* @constructor
-* @param {object} waitingObj - An object retrieved from Consul's KV store 
-* @param {string} waitingObj.Value - Stringified JSON of all user information in the waiting list
-*/
+//converts the stringified input into JSON
 function WaitingList (waitingObj) {
 	this.waiting = {};
 	if (waitingObj) {
@@ -15,28 +10,14 @@ function WaitingList (waitingObj) {
 	}
 }
 
-/**
-* Converts users' waiting list information back into a string for Consul's KV store
-* @param {string} waitingObj.Value - Stringified JSON of all user information in the waiting list
-* @returns {string} - Stringified JSON
-*/
 WaitingList.prototype.get = function () {
 	return JSON.stringify(this.waiting);
 }
 
-/**
-* Sets a particular user's claimed property which states that they can use a core/hmi
-* @param {string} key - The ID of the user
-* @param {boolean} value - whether the user is able to use a core/hmi
-*/
 WaitingList.prototype.setClaimed = function (key, value) {
 	this.waiting[key].claimed = value;
 }
 
-/**
-* Searches the waiting list for the user ID with the lowest waiting property (front of waiting list)
-* @returns {string} - ID of the user
-*/
 WaitingList.prototype.nextInQueue = function () {
 	//return the key that is the next in the queue that hasn't claimed a core
 	//if returned null, there were no more in the waiting list
@@ -53,11 +34,6 @@ WaitingList.prototype.nextInQueue = function () {
 	return lowestKey;
 }
 
-/**
-* Uses requestKeys to determine what the current state of the waiting list should be
-* @param {array} requestKeys - An array of all the keys in the KV store for the request list
-* @param {WaitingList~updateCallback} callback - callback
-*/
 WaitingList.prototype.update = function (requestKeys, callback) {
 	//get the highest queue number in the waiting list
 	var highestIndex = 0;
@@ -86,26 +62,23 @@ WaitingList.prototype.update = function (requestKeys, callback) {
 		}
 	}
 }
-/**
- * Callback object for WaitingList.updateCallback
- * @callback WaitingList~updateCallback
- * @param {string} key - A user ID that shouldn't exist in the waiting list anymore
- */
 
-
-/**
-* Removes a user ID from the waiting list
-* @param {string} key - A user ID 
-*/
 WaitingList.prototype.remove = function (key) {
 	delete this.waiting[key];
 }
 
-/**
-* Calculates for each user how many people are in front of them in the queue
-* Warning: this is an O(n^2) operation, where n is the number of people in the waiting list
-* @returns {object} - An object which maps user IDs to the number of people in front of them as KV pairs
-*/
+WaitingList.prototype.filterRequests = function (requestKV) {
+	var filteredKV = {};
+	for (var key in requestKV) {
+		if (this.waiting[key] && this.waiting[key].claimed) {
+			//this request key is part of the waiting list and is claimed
+			filteredKV[key] = requestKV[key];
+		}
+	}
+	return filteredKV;
+}
+
+//warning: this is an O(n^2) operation, where n is the number of people in the waiting list
 WaitingList.prototype.getQueuePositions = function () {
 	//calculate the position each user is in the waiting list that hasn't claimed a core/hmi
 	var results = {};
