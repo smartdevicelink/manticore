@@ -1,6 +1,15 @@
 var HAProxyTemplate = require('./HAProxyTemplate.js');
 
+/** @module app/watches/proxy/shell */
+
 module.exports = {
+	/**
+	* Generate a template of routing configurations for HAProxy
+	* @param {Context} context - Context instance
+	* @param {array} pairs - An array of pair objects. Currently not defined
+	* @param {array} manticores - An array of service objects, returned by Consul's service watches
+	* @returns {HAProxyTemplate} - A template of routing configurations 
+	*/
 	generateProxyData: function (context, pairs, manticores) {
 		//for each pair, extract connection information and add them to HAProxy config file
 		//put TCP blocks in a separate file
@@ -26,6 +35,11 @@ module.exports = {
 		}
 		return file;
 	},
+	/**
+	* Updates the KV store with new information from a template for core/hmi routing
+	* @param {Context} context - Context instance
+	* @param {HAProxyTemplate} template - Template storing routing configurations
+	*/
 	updateCoreHmiKvStore: function (context, template) {
 		//use the HAProxyTemplate file to submit information to the KV store so that
 		//consul-template can use that information to generate an HAProxy configuration
@@ -42,6 +56,11 @@ module.exports = {
 			}	
 		});
 	},
+	/**
+	* Updates the KV store with new information from a template for Manticore routing
+	* @param {Context} context - Context instance
+	* @param {HAProxyTemplate} template - Template storing routing configurations
+	*/
 	updateManticoreKvStore: function (context, template) {
 		//only update manticore web app addresses!
 		//reset only web app addresses!

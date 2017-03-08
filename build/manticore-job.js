@@ -19,8 +19,7 @@ console.log("AWS_REGION: " + process.env.AWS_REGION);
 console.log("ELB_MANTICORE_NAME: " + process.env.ELB_MANTICORE_NAME);
 
 var nomadAddress = process.env.CLIENT_AGENT_IP + ":4646";
-
-var job = buildManticoreJobFile();
+buildManticoreJobFile();
 /*
 var file = fs.readFileSync("../../example.json");
 needle.post("http://192.168.1.144:4646/v1/jobs", file.toString(), function (err, res) {

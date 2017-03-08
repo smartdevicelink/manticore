@@ -10,7 +10,15 @@ var context; //context object provided by init()
 
 module.exports = init;
 
+/** @module app/controller-logic */
+
 var utility = {
+	/**
+	* Requests an instance of sdl_core and HMI to be ran
+	* @function requestCore
+	* @param {object} body - The body of the user request
+	* @returns {string} - The address of Manticore for the user to connect to via websockets
+	*/
 	requestCore: function (body) {
 		//check that the user hasn't already tried to request a core
 		requestCoreLogic.checkUniqueRequest(body.id, context, function (isUnique, requestsKV) {
@@ -39,6 +47,11 @@ var utility = {
 		context.logger.debug("Connection URL:" + websocketAddress);
 		return websocketAddress;
 	}, 
+	/**
+	* Requests sdl_core logs to be streamed from Nomad to Manticore to the user
+	* @function requestLogs
+	* @param {string} userId - The user's ID
+	*/
 	requestLogs: function (userId) {
 		//make sure there is an allocation for core intended for this user before starting up a connection
 		var store = { //reference of object which holds information that functionite could use
@@ -78,6 +91,11 @@ var utility = {
 		})
 		.go();
 	},
+	/**
+	* Requests sdl_core and HMI to be stopped
+	* @function deleteCore
+	* @param {string} userId - The user's ID
+	*/
 	deleteCore: function (userId) {
 		//remove the request id of the same id from the KV store
 		context.consuler.delKey(context.keys.data.request + "/" + userId, function () {
@@ -86,6 +104,12 @@ var utility = {
 	}
 };
 
+
+/**
+* Sets up watches to the KV store and to Consul's service changes
+* @param {Context} contextObj - Instantiated Context object
+* @returns {object} - A utility object defined in this module
+*/
 function init (contextObj) {
 	context = contextObj; //set context
 	context.logger.debug("Nomad address: " + context.agentAddress + ":4646");
