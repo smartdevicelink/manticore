@@ -1,20 +1,12 @@
 module.exports = SocketHandler;
-//a client connected to Manticore. holds extra information per socket
 
-/**
-* Manages websocket connections across users and sends information about their core/hmi locations
-* @constructor
-* @param {object} io - A socket.io instance
-*/
+//a client connected to Manticore. holds extra information per socket
 function SocketHandler (io) {
     this.websocket = io;
     this.sockets = {};
 }
 
-/**
-* Starts a websocket server that is able to stream information to the client
-* @param {string} id - The id of the user that is connecting to Manticore
-*/
+//starts a websocket server that is able to stream information to the client
 SocketHandler.prototype.requestConnection = function (id) {
     var self = this;
     var custom = this.websocket.of('/' + id);
@@ -31,10 +23,7 @@ SocketHandler.prototype.requestConnection = function (id) {
     });
 }
 
-/**
-* Remove outdated information of connection objects that shouldn't exist anymore
-* @param {array} requestKeyArray - Array of ids whose websocket servers should be open for
-*/
+//remove outdated information of connection objects that shouldn't exist anymore
 SocketHandler.prototype.cleanSockets = function (requestKeyArray) {
     //now check if each element in the sockets object exists in the requests
     //if it doesn't, remove the cached information
@@ -47,30 +36,18 @@ SocketHandler.prototype.cleanSockets = function (requestKeyArray) {
     }
 }
 
-/**
-* Make a connection socket object but without the socket itself
-* @param {string} id - Id of a user using Manticore
-*/
+//make a connection socket object but without the socket itself
 SocketHandler.prototype.newSocket = function (id) {
     this.sockets[id] = new ConnectionSocket();
 }
 
-/**
-* Remove the ConnectionSocket attached to the id of a user
-* @param {string} id - Id of a user using Manticore
-*/
 SocketHandler.prototype.removeConnection = function (id) {
     if (this.checkId(id)) {
-        //remove all information. call this if the user is not in the waiting list anymore
+        //remove all information. call this is the user is not in the waiting list anymore
         delete this.sockets[id];
     }
 }
 
-/**
-* Add a socket and attach it to the id of a user
-* @param {string} id - Id of a user using Manticore
-* @param {object} socket - socket of the connection to the user
-*/
 SocketHandler.prototype.addSocket = function (id, socket) {
     if (this.checkId(id)) { 
         //this id was found before! associate the id with the new socket
@@ -82,10 +59,6 @@ SocketHandler.prototype.addSocket = function (id, socket) {
     }
 }
 
-/**
-* Remove the socket attached to the id of a user in the ConnectionSocket
-* @param {string} id - Id of a user using Manticore
-*/
 SocketHandler.prototype.removeSocket = function (id) {
     if (this.checkId(id)) {
         //only remove the socket itself! cache the other information
@@ -94,11 +67,6 @@ SocketHandler.prototype.removeSocket = function (id) {
     }
 }
 
-/**
-* Send the user new information about the position in the waiting list
-* @param {string} id - Id of a user using Manticore
-* @param {number} data - The new position of the id of the user in the waiting list
-*/
 SocketHandler.prototype.updatePosition = function (id, data) {
     if (!this.checkId(id)) { //make a new connection socket if it doesn't exist
         this.newSocket(id);
@@ -111,11 +79,6 @@ SocketHandler.prototype.updatePosition = function (id, data) {
     }
 }
 
-/**
-* Send the user new information about their core/hmi address locations
-* @param {string} id - Id of a user using Manticore
-* @param {object} data - The new position of the id of the user in the waiting list
-*/
 SocketHandler.prototype.updateAddresses = function (id, data) {
     if (!this.checkId(id)) { //make a new connection socket if it doesn't exist
         this.newSocket(id);
@@ -128,21 +91,11 @@ SocketHandler.prototype.updateAddresses = function (id, data) {
     }
 }
 
-/**
-* Tries to find a ConnectionSocket associated with an id
-* @param {string} id - Id of a user using Manticore
-* @returns {ConnectionSocket} - A connection socket object of the id, if it exists. May be null
-*/
 SocketHandler.prototype.checkId = function (id) {
     return this.sockets[id];
 }
 
-/**
-* Sends address information and position, if any
-* @param {string} id - Id of a user using Manticore
-* @param {string} keyword - String that informs the function what kind of information to transmit
-* @param {string} logData - Optional. The log stream data from the Nomad HTTP API
-*/
+//sends address information and position, if any
 SocketHandler.prototype.send = function (id, keyword, logData) {
     //also check if the socket exists
     if (this.checkId(id) && this.sockets[id].socket) {
@@ -163,13 +116,8 @@ SocketHandler.prototype.send = function (id, keyword, logData) {
     }
 }
 
-/**
-* Inner class that contains the socket, as well as other important information.
-* Includes a position property which stores information about a user's position in the waiting list
-* Includes an addresses property which stores an object about address information for a user
-* @constructor
-* @param {object} socket - The socket from a connection to the user
-*/
+//inner class that is the socket itself, as well as other important information 
+//such as waiting list position and core/hmi connection information
 function ConnectionSocket (socket) {
     this.socket = socket;
     this.position;

@@ -2,34 +2,34 @@ var AWS = require('aws-sdk');
 var ec2 = new AWS.EC2();
 var elb = new AWS.ELB();
 var logger;
+//further requirements: Will use the IAM role associated with the machine Manticore runs in
+//in order to deal with credentials for using Amazon's API. Make sure the instances are
+//launched with an IAM role that is allowed to configure EC2 instance data such as 
+//ELBs and security groups
+//see http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html
+//for a list of regions to choose from
 
-/**
-* Sets up AwsHandler with logging
-* @param {string} region - The AWS region to be used (ex. us-east-1)
-* @param {winston.Logger} log - An instance of the logger to use
-* @returns {AwsHandler} - An AwsHandler object
-*/
+//also, an SSL certificate should already exist that is meant for the ELB that will distribute traffic
+//to manticore, where the domain name that certificate covers matches the DOMAIN_NAME env var passed in
+
+//furthermore, manticore will not edit any security group attached to your ELB, since there
+//could be multiple security groups, some of which you do not want to be edited. it is your
+//responsibility to ensure that the range of ports that are allowable for the security group
+//match the range you specified in the env variables TCP_PORT_RANGE_START and TCP_PORT_RANGE_END
 module.exports = function (region, log) {
 	logger = log;
     return new AwsHandler(region);
 };
 
-
-/**
-* Allows usage of the AWS SDK API
-* @constructor
-* @param {string} region - The AWS region to be used (ex. us-east-1)
-*/
+//a module that connects to AWS in order to change information such as the ELB
 function AwsHandler (region) {
 	if (region) { //only do things if region exists
 		AWS.config.update({region: region});
 	}
 }
 
-/**
-* Given a template generated from HAProxyTemplate.js, update the ELB with the new port data
-* @param {HAProxyTemplate} template - Information meant for consumption by HAProxy
-*/
+//given a template generated from HAProxyTemplate.js, update the ELB
+//with the new port data
 AwsHandler.prototype.changeState = function (template) {
 	var self = this; //consistent reference to 'this'
 	//get the current state
@@ -37,36 +37,36 @@ AwsHandler.prototype.changeState = function (template) {
 		//get listener information
 		var actualListeners = [];
 		for (let i = 0; i < lbStatus.ListenerDescriptions.length; i++) {
-			actualListeners.push(new Listener(lbStatus.ListenerDescriptions[i].Listener));
+			actualListeners.push(lbStatus.ListenerDescriptions[i].Listener);
 		}	
 
 		//first, find and remove all ports that don't need to be listened on anymore
 		//then, find and add all ports that need to be listened on
 		//port 443 should always be open for HTTPS connections
 		//the websocket connections should always be open to whatever ELB_SSL_PORT is 		
-		var expectedListeners = [new Listener({
+		var expectedListeners = [{
 			Protocol: "HTTPS",
 			LoadBalancerPort: 443,
 			InstanceProtocol: "HTTP",
 			InstancePort: Number(process.env.HAPROXY_HTTP_LISTEN), //parse as integer, as this will be a string
 			SSLCertificateId: process.env.SSL_CERTIFICATE_ARN
-		}),
-		new Listener({
+		},
+		{
 			Protocol: "SSL",
 			LoadBalancerPort: Number(process.env.ELB_SSL_PORT), //parse as integer, as this will be a string
 			InstanceProtocol: "TCP",
 			InstancePort: Number(process.env.HAPROXY_HTTP_LISTEN), //parse as integer, as this will be a string
 			SSLCertificateId: process.env.SSL_CERTIFICATE_ARN
-		})];
+		}];
 
 		//get tcp mappings. we are only interested in an array of ports that should be opened
 		for (let i = 0; i < template.tcpMaps.length; i++) {
-			expectedListeners.push(new Listener({
+			expectedListeners.push({
 				Protocol: "TCP",
 				LoadBalancerPort: template.tcpMaps[i].port,
 				InstanceProtocol: "TCP",
-				InstancePort: template.tcpMaps[i].port
-			}));
+				InstancePort: template.tcpMaps[i].port,
+			});
 		}
 		//determine which listeners need to be added and which need to be removed
 		var listenerChanges = self.calculateListenerChanges(expectedListeners, actualListeners);
@@ -79,14 +79,6 @@ AwsHandler.prototype.changeState = function (template) {
 	}); 
 }
 
-/**
-* Determines what the new state of the ELB listeners should be using differences
-* @param {Listener} expectedListeners - The Listeners that should exist
-* @param {Listener} actualListeners - What Listeners are currently on the ELB
-* @returns {object} listenerChanges - Describes changes necessary to the ELB
-* @returns {array} listenerChanges.toBeDeletedListeners - An array of port numbers to be removed from the ELB
-* @returns {array} listenerChanges.toBeAddedListeners - An array of Listener objects to be added to the ELB
-*/
 AwsHandler.prototype.calculateListenerChanges = function (expectedListeners, actualListeners) {
 	var listenerChanges = {
 		toBeDeletedListeners: [], //NOTE: only save the LoadBalancer ports of the listeners here!
@@ -145,14 +137,6 @@ AwsHandler.prototype.calculateListenerChanges = function (expectedListeners, act
 	return listenerChanges;
 }
 
-/**
-* Determines whether two Listener objects are equivalent, and which listener LoadBalancer port is higher
-* @param {Listener} listener1 - A Listener to compare against
-* @param {Listener} listener2 - A Listener to compare against
-* @returns {object} status - States the relationship between Listener objects
-* @returns {boolean} status.equivalent - States whether the Listener objects are equivalent
-* @returns {number} status.diff - The difference between two Listener objects' LoadBalancer ports
-*/
 AwsHandler.prototype.comparelistenerStates = function (listener1, listener2) {
 	var status = {
 		equivalent: true,
@@ -170,10 +154,6 @@ AwsHandler.prototype.comparelistenerStates = function (listener1, listener2) {
 	return status;
 }
 
-/**
-* Finds the current state of Listeners on the ELB
-* @param {AwsHandler~describeLoadBalancerCallback} callback - callback
-*/
 AwsHandler.prototype.describeLoadBalancer = function (callback) {
 	var params = {
 		LoadBalancerNames: [process.env.ELB_MANTICORE_NAME],
@@ -187,18 +167,7 @@ AwsHandler.prototype.describeLoadBalancer = function (callback) {
 		}
 	});
 }
-/**
- * Callback object for AwsHandler.describeLoadBalancer
- * @callback AwsHandler~describeLoadBalancerCallback
- * @param {object} lbStatus - An AWS response object describing everything about the ELB
- */
 
-
-/**
-* Adds listeners to the ELB
-* @param {array} listeners - An array of Listener objects
-* @param {function} callback - empty callback
-*/
 AwsHandler.prototype.addListeners = function (listeners, callback) {
 	var params = {
 		Listeners: listeners,
@@ -217,11 +186,6 @@ AwsHandler.prototype.addListeners = function (listeners, callback) {
 	}
 }
 
-/**
-* Removes listeners from the ELB
-* @param {array} lbPorts - An array of numbers that are port numbers
-* @param {function} callback - empty callback
-*/
 AwsHandler.prototype.removeListeners = function (lbPorts, callback) {
 	var params = {
 		LoadBalancerPorts: lbPorts,
@@ -240,20 +204,62 @@ AwsHandler.prototype.removeListeners = function (lbPorts, callback) {
 	}
 }
 
-/**
-* Inner class that describes an ELB listener
-* @constructor
-* @param {object} body - The format of the data
-* @param {string} body.Protocol - Protocol that is used for accepting public-facing traffic (ex. HTTPS, SSL)
-* @param {number} body.LoadBalancerPort - The port that's opened for accepting public-facing traffic
-* @param {string} body.InstanceProtocol - Protocol that is used for sending traffic internally (ex. HTTP, TCP)
-* @param {number} body.InstancePort - The port that's opened for the sending traffic internally
-* @param {string} body.SSLCertificateId - The ARN of the SSL certificate used for allowing HTTPS and SSL protocols
+/*
+	var listenerObj = {
+		InstancePort: 80, //inner port
+		LoadBalancerPort: 5000, //outer port
+		Protocol: "SSL",
+		InstanceProtocol: "TCP",
+		SSLCertificateId: process.env.SSL_CERTIFICATE_ARN
+	}
+	this.describeLoadBalancer();
 */
-function Listener (body) {
-	this.Protocol = body.Protocol;
-	this.LoadBalancerPort = body.LoadBalancerPort;
-	this.InstanceProtocol = body.InstanceProtocol;
-	this.InstancePort = body.InstancePort;
-	this.SSLCertificateId = body.SSLCertificateId;
-}
+
+/*
+AwsHandler.prototype.addPortRule = function () {
+var params = {
+	GroupId: process.env.ELB_SECURITY_GROUP_ID,
+	FromPort: 0,
+  IpPermissions: [
+    {
+      FromPort: 0,
+      IpProtocol: 'STRING_VALUE',
+      IpRanges: [
+        {
+          CidrIp: 'STRING_VALUE'
+        },
+      ],
+      Ipv6Ranges: [
+        {
+          CidrIpv6: 'STRING_VALUE'
+        },
+      ],
+      PrefixListIds: [
+        {
+          PrefixListId: 'STRING_VALUE'
+        },
+      ],
+      ToPort: 0,
+      UserIdGroupPairs: [
+        {
+          GroupId: 'STRING_VALUE',
+          GroupName: 'STRING_VALUE',
+          PeeringStatus: 'STRING_VALUE',
+          UserId: 'STRING_VALUE',
+          VpcId: 'STRING_VALUE',
+          VpcPeeringConnectionId: 'STRING_VALUE'
+        },
+      ]
+    },
+  ],
+  IpProtocol: 'STRING_VALUE',
+  SourceSecurityGroupName: 'STRING_VALUE',
+  SourceSecurityGroupOwnerId: 'STRING_VALUE',
+  ToPort: 0
+};
+ec2.authorizeSecurityGroupEgress(params, function(err, data) {
+  if (err) console.log(err, err.stack); // an error occurred
+  else     console.log(data);           // successful response
+});	
+	
+}*/

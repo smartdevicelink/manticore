@@ -7,13 +7,7 @@ var proxyLogic = require('./proxy/shell.js');
 //watches that are handled by this module
 var serviceWatches = {};
 
-/** @module app/watches/shell */
-
 module.exports = {
-	/**
-	* Sets up watches for Consul's KV store in the request, waiting, and allocation list
-	* @param {Context} context - Context instance
-	*/
 	startKvWatch: function (context) {
 		//set up watches for the KV store
 		//pass in the context to the watch functions
@@ -21,10 +15,6 @@ module.exports = {
 		context.consuler.watchKVStore(context.keys.waiting, waitingWatch(context));
 		context.consuler.watchKVStore(context.keys.allocation, allocationWatch(context));
 	},
-	/**
-	* Sets up watches for Consul's services for core, hmi, and manticore services
-	* @param {Context} context - Context instance
-	*/
 	startServiceWatch: function (context) {
 		//first, consistently watch all the manticore services!
 		context.consuler.watchServiceStatus("manticore-service", manticoreWatch(context));
@@ -67,10 +57,8 @@ module.exports = {
 
 //wrap the context in these functions so we have necessary functionality
 //warning: releasing locks triggers an update for the KV store
-/**
-* The watch invoked when a change is found in the request list
-* @param {Context} context - Context instance
-*/
+
+//request list update
 function requestsWatch (context) {
 	return function (requestKeyArray) { //given from Consul
 		context.logger.debug("request watch hit");
@@ -104,10 +92,7 @@ function requestsWatch (context) {
 	}
 }
 
-/**
-* The watch invoked when a change is found in the waiting list
-* @param {Context} context - Context instance
-*/
+//waiting list update
 function waitingWatch (context) {
 	return function () {
 		context.logger.debug("waiting watch hit");
@@ -153,10 +138,7 @@ function waitingWatch (context) {
 	}
 }
 
-/**
-* The watch invoked when a change is found in the allocation list
-* @param {Context} context - Context instance
-*/
+//allocation list update
 function allocationWatch (context) {
 	return function () {
 		context.logger.debug("allocation watch hit");
@@ -226,11 +208,7 @@ function allocationWatch (context) {
 	}
 }
 
-/**
-* The watch invoked when a change is found in core services
-* @param {Context} context - Context instance
-* @param {string} userId - ID of a user
-*/
+//core service update
 function coreWatch (context, userId) {
 	return function (services) {
 		//should just be one core per job
@@ -262,11 +240,7 @@ function coreWatch (context, userId) {
 	}
 }
 
-/**
-* The watch invoked when a change is found in hmi services
-* @param {Context} context - Context instance
-* @param {string} userId - ID of a user
-*/
+//hmi service update
 function hmiWatch (context, userId) {
 	return function (services) {
 		//require an http alive check. should only be one hmi service
@@ -351,10 +325,7 @@ function hmiWatch (context, userId) {
 	}
 }
 
-/**
-* The watch invoked when a change is found in manticore services
-* @param {Context} context - Context instance
-*/
+//manticore services update
 function manticoreWatch (context) {
 	return function (services) {
 		var manticores = core.filterServices(services, ['manticore-alive']); //require an http alive check
@@ -368,12 +339,8 @@ function manticoreWatch (context) {
 	}
 }
 
-/**
-* Finds whether this job has an HMI in it
-* @param {object} job - Object of the job file intended for submission to Nomad
-* @returns {boolean} - Shows whether an HMI exists in the job file
-*/
 function checkJobForHmi (job) {
+	//return whether this job has an HMI in it
 	var taskGroupCount = job.getJob().Job.TaskGroups.length;
 	var foundHMI = false;
 	for (let i = 0; i < taskGroupCount; i++) {
