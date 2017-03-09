@@ -4,6 +4,14 @@ var SocketHandler = require('./SocketHandler.js');
 
 module.exports = Context;
 
+/**
+* Manages and contains global information necessary across all modules
+* @constructor
+* @param {object} app - An express instance
+* @param {object} socketio - A socket.io instance attached to an http server
+* @param {winston.Logger} logger - A logging instance 
+* @param {string} address - The address of the machine that this web app is running in
+*/
 function Context (app, socketio, logger, address) {
 	this.app = app; //express app
 	this.socketHandler = new SocketHandler(socketio); //socket manager module
@@ -20,10 +28,18 @@ function Context (app, socketio, logger, address) {
 	this.AllocationData = require('./AllocationData.js');
 
 	//The following are utility functions that are commonly used throughout Manticore
+	/**
+	* Returns whether HAProxy should be on via HAPROXY_OFF flag
+	* @returns {boolean} - Whether HAProxy should be enabled
+	*/
 	this.isHaProxyEnabled = function () {
 		return process.env.HAPROXY_OFF !== "true";
 	};
 	//determines the correct url address to use to connect to the Manticore websocket server
+	/**
+	* Creates the correct url to connect to Manticore's websocket servers
+	* @returns {string} - The location of this web app
+	*/
 	this.getWsUrl = function () {
 		if (!this.isHaProxyEnabled()) { //no haproxy
 			//given we are in a nomad-scheduled docker container, use the

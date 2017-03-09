@@ -9,6 +9,8 @@ var logger; //logger module provided by context
 var logic; //controller logic which handles all endpoint logic
 var controllerLogic = require('./controller-logic.js');
 
+/** @module app/controller */
+
 module.exports = function (context) {
 	app = context.app;
 	logger = context.logger;
@@ -82,7 +84,12 @@ module.exports = function (context) {
 	});
 }
 
-//middleware function that handles JWT data, if enabled
+/**
+* Middleware function that handles JWT data, if enabled
+* @param {object} req - HTTP request
+* @param {object} res - HTTP response
+* @param {callback} next - Calls the next express middleware
+*/
 function extractUserId (req, res, next) {
 	//find the user id from the JWT (if JWT is enabled)
 	//and place it in the body of the request as <id>
@@ -97,6 +104,12 @@ function extractUserId (req, res, next) {
 	VALIDATION METHODS
 */
 
+/**
+* Middleware function that determines if the request for requesting core has the correct info
+* @param {object} req - HTTP request
+* @param {object} res - HTTP response
+* @param {callback} next - Calls the next express middleware
+*/
 function validateRequestCore (req, res, next) {
 	//validate input. right now only the id is required
 	if (!req.body.id) {
@@ -107,6 +120,12 @@ function validateRequestCore (req, res, next) {
 	}
 }
 
+/**
+* Middleware function that determines if the request for requesting logs has the correct info
+* @param {object} req - HTTP request
+* @param {object} res - HTTP response
+* @param {callback} next - Calls the next express middleware
+*/
 function validateRequestLogs (req, res, next) {
 	//validate input. right now only the id is required
 	if (!req.body.id) {
@@ -117,6 +136,12 @@ function validateRequestLogs (req, res, next) {
 	}
 }
 
+/**
+* Middleware function that determines if the request for deleting core/hmi has the correct info
+* @param {object} req - HTTP request
+* @param {object} res - HTTP response
+* @param {callback} next - Calls the next express middleware
+*/
 function validateDeleteCore (req, res, next) {
 	//validate input. right now only the id is required
 	if (!req.body.id) {

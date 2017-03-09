@@ -1,23 +1,35 @@
+/** @module app/watches/core */
+
 module.exports = {
-	//given a set of current watch handlers and the updated list of services,
-	//remove watches that watch non-existant services and start services that should be started
-	updateWatches: function (currentWatches, services, stopper, starter) {
+	/**
+	* Determine which watches should be created and which should be destroyed
+	* @param {currentWatchesArray} currentWatches - Array of watch keys that are the names of the services
+	* @param {array} services - Array of Consul services of cores and HMIs
+	* @param {function} stopper - Function which passes a service name to the caller to stop the service watch 
+	* @param {function} starter - Function which passes a service name to the caller to start the service watch 
+	*/
+	updateWatches: function (currentWatchesArray, services, stopper, starter) {
 		//first, remove watches that shouldn't exist anymore
 		//let the caller function handle how to remove/start the watches
-		for (let i = 0 ; i < currentWatches.length; i++) {
-			if (services.indexOf(currentWatches[i]) === -1) {
-				stopper(currentWatches[i]);
+		for (let i = 0 ; i < currentWatchesArray.length; i++) {
+			if (services.indexOf(currentWatchesArray[i]) === -1) {
+				stopper(currentWatchesArray[i]);
 			}
 		}
-		//start watches that aren't in currentWatches but are in services
+		//start watches that aren't in currentWatchesArray but are in services
 		for (let i = 0 ; i < services.length; i++) {
-			if (currentWatches.indexOf(services[i]) === -1) {
+			if (currentWatchesArray.indexOf(services[i]) === -1) {
 				starter(services[i]);
 			}
 		}
 	},
-	//converts Consul key/values into hashes with trimmed key names
-	//also filter keys that match the targetString passed in
+	/**
+	* Converts Consul key/values into hashes with trimmed key names
+	* Also filter keys that match the targetString passed in
+	* @param {array} keys - Array of full path strings in the KV store for an ID
+	* @param {string} targetString - The string used to filter the keys with and to trim the keys with
+	* @returns {object} - KV object which maps all IDs to each of their request values found in the KV store
+	*/
 	transformKeys: function (keys, targetString) {
 		var filtered = keys.filter(function (element) {
 			return element.Key.includes(targetString);
@@ -33,84 +45,11 @@ module.exports = {
 		}
 		return KV;
 	},
-	//WARNING: assumes that the taskgroups are in order!
-	compareJobStates: function (job1, job2) {
-		var infoChanged = false;
-
-		//first check how many task groups are in each job
-		var jobCount1 = 0;
-		var jobCount2 = 0;
-
-		if (job1 && job1.getJob().Job && job1.getJob().Job.TaskGroups) {
-			jobCount1 = job1.getJob().Job.TaskGroups.length;
-		}
-		if (job2 && job2.getJob().Job && job2.getJob().Job.TaskGroups) {
-			jobCount2 = job2.getJob().Job.TaskGroups.length;
-		}
-
-		if (jobCount1 !== jobCount2) {
-			infoChanged = true; //task group count isn't the same
-		}
-		else if (jobCount1 !== 0 && jobCount2 !== 0) {
-			//we may not be able to access TaskGroups if either task group count is 0
-			//this if statement protects this method
-			var groups1 = job1.getJob().Job.TaskGroups;
-			var groups2 = job2.getJob().Job.TaskGroups;
-			for (let i = 0; i < groups1.length; i++) {
-				if (groups1[i].Name !== groups2[i].Name) {
-					infoChanged = true;
-				}
-			}
-			for (let i = 0; i < groups2.length; i++) {
-				if (groups2[i].Name !== groups1[i].Name) {
-					infoChanged = true;
-				}
-			}					
-		}
-
-		return infoChanged;
-	},
-	findPairs: function (cores, hmis, callback) {
-		//for each HMI found, find its paired core, determine who that core belongs to, 
-		//and send the connection information to the owner
-		//we search through HMIs because HMIs depend on cores, and there could be a core
-		//but no paired HMI yet
-		var pairs = [];
-		for (let i = 0; i < hmis.length; i++) {
-			let corePair = undefined;
-			let corePairTagRequest = undefined;
-			let hmiTagRequest = hmis[i].Tags[0];
-			for (let j = 0; j < cores.length; j++) {
-				//check if there is a pair using the user id
-				let coreTagRequest = cores[j].Tags[0];
-				if (hmiTagRequest.id === coreTagRequest.id) {
-					corePair = cores[j];
-					corePairTagRequest = coreTagRequest;
-					j = cores.length; //break out of the loop
-				}
-			}
-			if (corePair) {
-				//parse the name of the service to get just the user id
-				//the pair should have the same id as the first tag string
-				let body = corePairTagRequest.generatePairInfo(corePair, hmis[i]);
-				pairs.push(body);
-			}
-			else {
-				//an HMI doesn't have a corresponding core
-				//cores are made first, then corresponding HMIs
-				//this means that core has died while the two were connected
-				//should only happen if the user disconnected from the webpage and the
-				//shutdown signal was sent from HMI to core to kill it
-				//interpret this as the user being done with the pair and send back
-				//the id of the user from the request to be removed from the KV store
-				if (typeof callback === "function") {
-					callback(hmiTagRequest.id);
-				}
-			}
-		}
-		return pairs;
-	},
-	//convert a JSON pair object to something more usable
+	/**
+	* Convert a JSON pair object into a more standard format
+	* @param {object} pair - Object full of address information for cores and HMIs. No documented format 
+	* @returns {object} - KV object which describes all addresses a user needs to use core/hmi. No documented format
+	*/	
 	formatPairResponse: function (pair) {
 		var userAddress;
 		var hmiAddress;
@@ -150,6 +89,12 @@ module.exports = {
 			brokerAddress: brokerAddress
 		}
 	},
+	/**
+	* Filters services out with failed healh checks
+	* @param {array} services - Array of service objects from Consul's service watches
+	* @param {array} mandatoryChecks - An array of strings, where each string is the name of a health check required to pass
+	* @returns {array} - Array of service objects, filtered
+	*/	
 	filterServices: function (services, mandatoryChecks) {
 	    var servicesArr = [];
 	    for (let i = 0; i < services.length; i++) {
@@ -162,9 +107,13 @@ module.exports = {
 	    }
 	    return servicesArr;
 	},
-	//ensure that all health checks that exist passed
-	//if provided a list of mandatory checks, will fail if the
-	//check does not exist in the service health object
+	/**
+	* Ensures that all health checks that exist pass. A service will fail if the
+	* check does not exist in the service health object
+	* @param {array} healthCheckArr - Array of service checks that currently exist and their statuses
+	* @param {array} mandatoryChecks - An array of strings, where each string is the name of a health check required to pass
+	* @returns {boolean} - Whether this service is healthy
+	*/	
 	healthCheckService: function (healthCheckArr, mandatoryChecks) {
 		if (!mandatoryChecks) {
 			mandatoryChecks = [];
