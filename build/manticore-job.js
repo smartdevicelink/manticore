@@ -17,6 +17,7 @@ console.log("HAPROXY_OFF: " + process.env.HAPROXY_OFF);
 console.log("CORS: " + process.env.CORS);   
 console.log("AWS_REGION: " + process.env.AWS_REGION);   
 console.log("ELB_MANTICORE_NAME: " + process.env.ELB_MANTICORE_NAME);
+console.log("SSL_CERTIFICATE_ARN: " + process.env.SSL_CERTIFICATE_ARN);
 
 var nomadAddress = process.env.CLIENT_AGENT_IP + ":4646";
 buildManticoreJobFile();
@@ -67,7 +68,7 @@ function buildManticoreJobFile () {
 		Type: "http",
 		Name: "manticore-alive",
 		Interval: 3000000000, //in nanoseconds
-		Timeout: 2000000000, //in nanoseconds
+		Timeout: 5000000000, //in nanoseconds
 		Path: "/",
 		Protocol: "http"
 	});

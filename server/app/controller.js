@@ -16,6 +16,12 @@ module.exports = function (context) {
 	logger = context.logger;
 	//initialize controller logic
 	logic = controllerLogic(context);
+
+	//For loader.io only
+	app.get('/loaderio-e24b4bb0195a1b9ca4bbea3191a2dfdd', function (req, res) {
+		res.send("loaderio-e24b4bb0195a1b9ca4bbea3191a2dfdd");
+	});
+
 	//all APIs are prepended with /v1
 	//contain these APIs in this router
 	app.use('/v1', router);

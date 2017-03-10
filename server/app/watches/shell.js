@@ -122,6 +122,52 @@ function waitingWatch (context) {
 			callback();
 		})
 		//get waiting list. the waiting list is one value as a stringified JSON
+		.toss(context.consuler.getSetCheck, context.keys.data.waiting)
+		.pass(function (waitingObj, setter, callback) {
+			var waitingHash = context.WaitingList(waitingObj);
+			context.logger.debug("Find next in waiting list");
+			//get the request with the lowest index (front of waiting list)
+			var lowestKey = waitingHash.nextInQueue();
+			//there may be a request that needs to claim a core, or there may not
+			//designate logic of allocating cores to the allocation module
+			//pass all the information needed to the allocation module
+			//callback(lowestKey, waitingHash, requestKV, context);		
+			jobLogic.attemptCoreAllocation2(lowestKey, waitingHash, requestKV, context, function (newWaitingHash, updateWaitingList) {
+				callback(setter, newWaitingHash, updateWaitingList);
+			});
+		})
+		.pass(function (setter, newWaitingHash, updateWaitingList) {
+			//recalculate the positions of the new waiting list and send that over websockets
+			var positionMap = newWaitingHash.getQueuePositions();
+			//store and submit the position information of each user by their id
+			for (var id in positionMap) {
+				context.socketHandler.updatePosition(id, positionMap[id]);
+			}
+			//only update the waiting list if it needs to be updated.
+			if (updateWaitingList) {
+				context.logger.debug("Waiting list update!");
+				//update the waiting list
+				setter(newWaitingHash.get(), function (res) {
+					context.logger.debug("Result of waiting list update: " + res);
+				});
+			}
+		})
+		.go();
+	}
+	/*
+	return function () {
+		context.logger.debug("waiting watch hit");
+		var requestKV;
+		//get request keys and values
+		functionite()
+		.pass(context.consuler.getKeyAll, context.keys.request)
+		.pass(functionite(core.transformKeys), context.keys.data.request)
+		.pass(function (requestKeys, callback) {
+			//store requestKeys for future use
+			requestKV = requestKeys;
+			callback();
+		})
+		//get waiting list. the waiting list is one value as a stringified JSON
 		.toss(context.consuler.getKeyValue, context.keys.data.waiting)
 		.pass(function (waitingObj, callback) {
 			var waitingHash = context.WaitingList(waitingObj);
@@ -151,6 +197,7 @@ function waitingWatch (context) {
 		})
 		.go();
 	}
+	*/
 }
 
 /**
@@ -235,7 +282,7 @@ function coreWatch (context, userId) {
 	return function (services) {
 		//should just be one core per job
 		var coreServices = core.filterServices(services, []);
-		context.logger.debug("Core service: " + userId + " " + coreServices.length);
+		//context.logger.debug("Core service: " + userId + " " + coreServices.length);
 		if (coreServices.length > 0) {
 			var coreService = coreServices[0];
 			var jobName = "core-hmi-" + userId;
@@ -247,10 +294,12 @@ function coreWatch (context, userId) {
 				if (job && !checkJobForHmi(job)) { //job exists for this service and doesn't have an HMI. add an hmi and submit
 					//get the request object stored for this user id
 					context.consuler.getKeyValue(context.keys.data.request + "/" + userId, function (result) {
-						var requestObj = context.UserRequest().parse(result.Value);
-						//add the hmi group and submit the job
-						jobLogic.addHmiGenericGroup(job, coreService, requestObj);
-						jobLogic.submitJob(context, job, jobName, function () {});
+						if (result) {
+							var requestObj = context.UserRequest().parse(result.Value);
+							//add the hmi group and submit the job
+							jobLogic.addHmiGenericGroup(job, coreService, requestObj);
+							jobLogic.submitJob(context, job, jobName, function () {});							
+						}
 					});
 				}
 			});
@@ -271,7 +320,7 @@ function hmiWatch (context, userId) {
 	return function (services) {
 		//require an http alive check. should only be one hmi service
 		var hmiServices = core.filterServices(services, ['hmi-alive']);
-		context.logger.debug("Hmi service: " + userId + " " + hmiServices.length);
+		//context.logger.debug("Hmi service: " + userId + " " + hmiServices.length);
 		//if this returns 0 services then its probably because the health check failed.
 		//don't do anything rash
 		if (hmiServices.length > 0) {

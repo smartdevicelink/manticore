@@ -3,6 +3,70 @@ var core = require('./core.js');
 /** @module app/watches/job/shell */
 
 module.exports = {
+	attemptCoreAllocation2: function (lowestKey, waitingHash, requestKV, context, callback) {
+		var self = this; //consistent reference to this exported object
+		var updateWaitingList = false; //whether the waiting list has changed as a result of this operation
+		//check if lowestKey exists (aka someone is in front of the waiting list, waiting)
+		if (lowestKey) {
+			context.logger.debug("Lowest key found:");
+			context.logger.debug(lowestKey);
+			//since we are testing if the user from the waiting list can claim core/hmi
+			//we must include that information for this test!
+			waitingHash.setClaimed(lowestKey, true);
+			//make a job to test the submission of a new core/hmi
+			var job = context.nomader.createJob("core-hmi-" + lowestKey);
+			var request = context.UserRequest().parse(requestKV[lowestKey]);
+
+			core.addCoreGroup(job, lowestKey, request);
+			//make a mock HMI
+			var coreServiceExample = {
+				Tags: [request.getString()],
+				Address: "127.0.0.1",
+				Port: 3000
+			};
+			core.addHmiGenericGroup(job, 
+				coreServiceExample,
+				context.UserRequest().parse(coreServiceExample.Tags[0]));
+
+			//test submission!
+			job.planJob(context.nomadAddress, "core-hmi-" + lowestKey, function (results) {
+				var canAllocate = core.checkHasResources(results);
+				if (canAllocate) {
+					context.logger.debug("Core and HMI can be allocated!");
+					//we will update the waiting list for this new allocation
+					updateWaitingList = true;
+					//recurse through this function again with the new waitingHash
+					//furthermore, submit the job since we have the resources!
+					var actualJob = context.nomader.createJob("core-hmi-" + lowestKey);
+					core.addCoreGroup(actualJob, lowestKey, request);
+
+					self.submitJobAndWaitForAllocation(context, actualJob, lowestKey, function () {
+						//allocation exists. the planJob will consider the allocation now
+						//done.
+						callback(waitingHash, updateWaitingList);
+					});
+				}
+				else {
+					//error: insufficient resources. revert the claimed parameter of the lowest key
+					context.logger.debug("Core and HMI cannot be allocated!");
+					if (!results.FailedTGAllocs) {
+						context.logger.debug(JSON.stringify(results, null, 4));
+					}
+					else {
+						context.logger.debug(JSON.stringify(results.FailedTGAllocs, null, 4));
+					}
+					
+					waitingHash.setClaimed(lowestKey, false);
+					//done.
+					callback(waitingHash, updateWaitingList);
+				};
+			});
+		}
+		else { //we are done: no more users in the waiting list
+			context.logger.debug("No more in waiting list");
+			callback(waitingHash, updateWaitingList);
+		}
+	},
 	/**
 	* Find a final state in which the maximum number of users are able to receive a core/hmi
 	* @param {string} lowestKey - ID of the user in front of the waiting list
@@ -45,7 +109,6 @@ module.exports = {
 			waitingHash.setClaimed(lowestKey, true);
 			//make a job to test the submission of a new core/hmi
 			var job = context.nomader.createJob("core-hmi-" + lowestKey);
-			context.logger.debug(JSON.stringify(requestKV, null, 2));
 			var request = context.UserRequest().parse(requestKV[lowestKey]);
 
 			core.addCoreGroup(job, lowestKey, request);
