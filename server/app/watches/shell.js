@@ -111,93 +111,63 @@ function requestsWatch (context) {
 function waitingWatch (context) {
 	return function () {
 		context.logger.debug("waiting watch hit");
-		var requestKV;
-		//get request keys and values
 		functionite()
-		.pass(context.consuler.getKeyAll, context.keys.request)
-		.pass(functionite(core.transformKeys), context.keys.data.request)
-		.pass(function (requestKeys, callback) {
-			//store requestKeys for future use
-			requestKV = requestKeys;
-			callback();
-		})
 		//get waiting list. the waiting list is one value as a stringified JSON
 		.toss(context.consuler.getSetCheck, context.keys.data.waiting)
 		.pass(function (waitingObj, setter, callback) {
 			var waitingHash = context.WaitingList(waitingObj);
-			context.logger.debug("Find next in waiting list");
-			//get the request with the lowest index (front of waiting list)
-			var lowestKey = waitingHash.nextInQueue();
-			//there may be a request that needs to claim a core, or there may not
-			//designate logic of allocating cores to the allocation module
-			//pass all the information needed to the allocation module
-			//callback(lowestKey, waitingHash, requestKV, context);		
-			jobLogic.attemptCoreAllocation2(lowestKey, waitingHash, requestKV, context, function (newWaitingHash, updateWaitingList) {
-				callback(setter, newWaitingHash, updateWaitingList);
-			});
-		})
-		.pass(function (setter, newWaitingHash, updateWaitingList) {
 			//recalculate the positions of the new waiting list and send that over websockets
-			var positionMap = newWaitingHash.getQueuePositions();
+			var positionMap = waitingHash.getQueuePositions();
 			//store and submit the position information of each user by their id
 			for (var id in positionMap) {
 				context.socketHandler.updatePosition(id, positionMap[id]);
 			}
-			//only update the waiting list if it needs to be updated.
-			if (updateWaitingList) {
-				context.logger.debug("Waiting list update!");
-				//update the waiting list
-				setter(newWaitingHash.get(), function (res) {
-					context.logger.debug("Result of waiting list update: " + res);
+
+			var pendingKey = waitingHash.checkPending();
+			if (pendingKey) { //user is in the "pending" state
+				//don't do any waiting list logic other than determining the status of 
+				//core and hmi allocations for a user
+				context.logger.debug("found pending user " + pendingKey);
+				jobLogic.waitForAllocations(context, pendingKey, function (success) {
+					if (success) {
+						context.logger.debug("allocation success " + pendingKey);
+						//set the user's ID to claimed and update the waiting list
+						waitingHash.setClaimed(pendingKey);
+						setter(waitingHash.get(), function (res) {
+							context.logger.debug(pendingKey + " set to claimed: " + res);
+						});
+					}
+					else {
+						context.logger.debug("allocation failed. set to waiting " + pendingKey);
+						//set the user's ID to waiting and update the waiting list
+						waitingHash.setWaiting(pendingKey);
+						setter(waitingHash.get(), function (res) {
+							context.logger.debug(pendingKey + " set to waiting (failed job): " + res);
+						});						
+					}
 				});
 			}
-		})
-		.go();
-	}
-	/*
-	return function () {
-		context.logger.debug("waiting watch hit");
-		var requestKV;
-		//get request keys and values
-		functionite()
-		.pass(context.consuler.getKeyAll, context.keys.request)
-		.pass(functionite(core.transformKeys), context.keys.data.request)
-		.pass(function (requestKeys, callback) {
-			//store requestKeys for future use
-			requestKV = requestKeys;
-			callback();
-		})
-		//get waiting list. the waiting list is one value as a stringified JSON
-		.toss(context.consuler.getKeyValue, context.keys.data.waiting)
-		.pass(function (waitingObj, callback) {
-			var waitingHash = context.WaitingList(waitingObj);
-			context.logger.debug("Find next in waiting list");
-			//get the request with the lowest index (front of waiting list)
-			var lowestKey = waitingHash.nextInQueue();
-			//there may be a request that needs to claim a core, or there may not
-			//designate logic of allocating cores to the allocation module
-			//pass all the information needed to the allocation module
-			callback(lowestKey, waitingHash, requestKV, context);
-		}) //"this" keyword won't work for attemptCoreAllocation when passed through
-		//functionite. use the "with" function in functionite to establish context
-		.pass(jobLogic.attemptCoreAllocation).with(jobLogic)
-		.pass(function (newWaitingHash, updateWaitingList) {
-			//recalculate the positions of the new waiting list and send that over websockets
-			var positionMap = newWaitingHash.getQueuePositions();
-			//store and submit the position information of each user by their id
-			for (var id in positionMap) {
-				context.socketHandler.updatePosition(id, positionMap[id]);
-			}
-			//only update the waiting list if it needs to be updated.
-			if (updateWaitingList) {
-				context.logger.debug("Waiting list update!");
-				//update the waiting list
-				context.consuler.setKeyValue(context.keys.data.waiting, newWaitingHash.get(), function (){});
+			else { //all users are in the "waiting" or "claimed" state
+				//plan a job submission for the next user in the waiting list
+				//to determine if there are enough resources available
+				context.logger.debug("find next in waiting list");
+				var lowestKey = waitingHash.nextInQueue();
+				jobLogic.testAllocation(lowestKey, waitingHash, context, function (job) {
+					if (job) { //resources available!
+						//set the user to pending, assuming noone else has already set it
+						waitingHash.setPending(lowestKey);
+						setter(waitingHash.get(), function (res) {
+							context.logger.debug(lowestKey + " set to pending: " + res);
+							//submit the job!	
+							var jobName = "core-hmi-" + lowestKey;
+							jobLogic.submitJob(context, job, "core-group-" + lowestKey, function () {});
+						});	
+					}
+				});				
 			}
 		})
 		.go();
 	}
-	*/
 }
 
 /**
@@ -298,7 +268,7 @@ function coreWatch (context, userId) {
 							var requestObj = context.UserRequest().parse(result.Value);
 							//add the hmi group and submit the job
 							jobLogic.addHmiGenericGroup(job, coreService, requestObj);
-							jobLogic.submitJob(context, job, jobName, function () {});							
+							jobLogic.submitJob(context, job, "hmi-group-" + userId, function () {});							
 						}
 					});
 				}

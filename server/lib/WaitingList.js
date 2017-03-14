@@ -25,12 +25,41 @@ WaitingList.prototype.get = function () {
 }
 
 /**
-* Sets a particular user's claimed property which states that they can use a core/hmi
+* Sets a particular user's state to claimed which states that they can use a core/hmi
 * @param {string} key - The ID of the user
-* @param {boolean} value - whether the user is able to use a core/hmi
 */
-WaitingList.prototype.setClaimed = function (key, value) {
-	this.waiting[key].claimed = value;
+WaitingList.prototype.setClaimed = function (key) {
+	this.waiting[key].state = "claimed";
+}
+
+/**
+* Sets a particular user's state to waiting
+* @param {string} key - The ID of the user
+*/
+WaitingList.prototype.setWaiting = function (key) {
+	this.waiting[key].state = "waiting";
+}
+
+/**
+* Sets a particular user's state to pending which means the allocation is trying to run
+* @param {string} key - The ID of the user
+*/
+WaitingList.prototype.setPending = function (key) {
+	this.waiting[key].state = "pending";
+}
+
+/**
+* Figures out if there are any users whose ID indicates that they are waiting for the 
+* status of a job submission
+* @returns {string} - A user ID whose state is "pending"
+*/
+WaitingList.prototype.checkPending = function () {
+	for (var key in this.waiting) {
+		if (this.waiting[key].state === "pending") {
+			return key;
+		}
+	}
+	return null;
 }
 
 /**
@@ -44,8 +73,8 @@ WaitingList.prototype.nextInQueue = function () {
 	var lowestKey = null;
 	for (var key in this.waiting) {
 		var value = this.waiting[key].queue;
-		var claimed = this.waiting[key].claimed;
-		if (claimed === false && value < lowestIndex) {
+		var state = this.waiting[key].state;
+		if (state === "waiting" && value < lowestIndex) {
 			lowestIndex = value;
 			lowestKey = key;
 		}
@@ -73,7 +102,7 @@ WaitingList.prototype.update = function (requestKeys, callback) {
 		if (!this.waiting[requestKeys[i]]) {
 			this.waiting[requestKeys[i]] = {
 				queue: highestIndex + 1, //end of the queue
-				claimed: false
+				state: "waiting"
 			}
 			highestIndex++;
 		}
@@ -112,13 +141,13 @@ WaitingList.prototype.getQueuePositions = function () {
 
 	for (var key in this.waiting) {
 		var user = this.waiting[key];
-		if (!user.claimed) {
+		if (user.state === "waiting") {
 			var queueNumber = user.queue;
 			//find how many users are before this user
 			//a user is in front of another if their queue number is lower and claimed is false
 			var waitingCount = 0;
 			for (var target in this.waiting) {
-				if (!this.waiting[target].claimed && this.waiting[target].queue < queueNumber) {
+				if (this.waiting[target].state === "waiting" && this.waiting[target].queue < queueNumber) {
 					waitingCount++;
 				}
 			}

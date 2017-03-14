@@ -78,6 +78,9 @@ module.exports = {
 
 		if (pair.brokerAddressExternal) {
 			brokerAddress = pair.brokerAddressExternal + "." + process.env.DOMAIN_NAME;
+			if (process.env.ELB_SSL_PORT) {
+				brokerAddress += ":" + process.env.ELB_SSL_PORT;
+			}
 		}
 		else {
 			brokerAddress = pair.brokerAddressInternal;
