@@ -81,6 +81,9 @@ module.exports = {
 			if (process.env.ELB_SSL_PORT) {
 				brokerAddress += ":" + process.env.ELB_SSL_PORT;
 			}
+			else {
+				brokerAddress += ":" + process.env.HAPROXY_HTTP_LISTEN;
+			}
 		}
 		else {
 			brokerAddress = pair.brokerAddressInternal;

@@ -193,7 +193,6 @@ function allocationWatch (context) {
 			//each key has a value that is stringified JSON in the format of the AllocationData class
 			//go through each property found (key is the id of the user)
 			//we also need information from the requests KV in order to complete this information
-
 			var pairs = [];
 			for (var key in allocationKeys) {
 				var userId = key;
