@@ -7,6 +7,7 @@ var router = express.Router();
 var app; //express app route provided by context
 var logger; //logger module provided by context
 var logic; //controller logic which handles all endpoint logic
+var config; //config from the context
 var controllerLogic = require('./controller-logic.js');
 
 /** @module app/controller */
@@ -16,6 +17,7 @@ module.exports = function (context) {
 	logger = context.logger;
 	//initialize controller logic
 	logic = controllerLogic(context);
+	config = context.config;
 
 	//For loader.io only
 	app.get('/loaderio-e24b4bb0195a1b9ca4bbea3191a2dfdd', function (req, res) {
@@ -99,7 +101,7 @@ module.exports = function (context) {
 function extractUserId (req, res, next) {
 	//find the user id from the JWT (if JWT is enabled)
 	//and place it in the body of the request as <id>
-	if (process.env.JWT_SECRET && req.user) {
+	if (config.jwt && req.user) {
 		var id = req.user.user_id;
 		req.body.id = id;
 	}

@@ -14,7 +14,7 @@ module.exports = {
 		//for each pair, extract connection information and add them to HAProxy config file
 		//put TCP blocks in a separate file
 		var file = HAProxyTemplate();
-		file.setMainPort(process.env.HAPROXY_HTTP_LISTEN);
+		file.setMainPort(context.config.haproxy.httpListen);
 
 		for (let i = 0; i < manticores.length; i++) {
 			var manticore = manticores[i];

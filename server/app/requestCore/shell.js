@@ -25,10 +25,11 @@ module.exports = {
 
 	/**
 	* Generates external address information for HAProxy routing and attaaches it to the request body
+	* @param {Context} context - Context instance
 	* @param {object} requestJSON - User's request body
 	* @param {object} requestsKV - Consul KVs in the request list
 	*/
-	addExternalAddresses: function (requestJSON, requestsKV) {
+	addExternalAddresses: function (context, requestJSON, requestsKV) {
 		//get current addresses from all users
 		var usedAddresses = core.parseAddressesFromUserRequests(requestsKV);
 		var usedPorts = core.getTcpPortsFromUserRequests(requestsKV);
@@ -48,8 +49,8 @@ module.exports = {
 		//generate a number within reasonable bounds and isn't already used by other core connections
 		//WARNING: this does not actually check if the port is used on the OS! please make sure the
 		//port range specified in the environment variables are all open!
-		const tcpPortExternal = core.getUniquePort(process.env.TCP_PORT_RANGE_START, 
-			process.env.TCP_PORT_RANGE_END, usedPorts);
+		const tcpPortExternal = core.getUniquePort(context.config.haproxy.tcpPortRangeStart, 
+			context.config.haproxy.tcpPortRangeEnd, usedPorts);
 		
 		//attach the new addresses to the request object
 		requestJSON.userToHmiPrefix = userToHmiAddress;

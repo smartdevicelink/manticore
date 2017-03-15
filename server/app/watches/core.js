@@ -48,41 +48,44 @@ module.exports = {
 	/**
 	* Convert a JSON pair object into a more standard format
 	* @param {object} pair - Object full of address information for cores and HMIs. No documented format 
+	* @param {string} domainName - Domain name used to route users
+	* @param {string} haproxyListen - The port HAProxy listens on for HTTP/Websocket connections
+	* @param {string} elbSslPort - The ELB listener's port for SSL (Websocket) connections
 	* @returns {object} - KV object which describes all addresses a user needs to use core/hmi. No documented format
 	*/	
-	formatPairResponse: function (pair) {
+	formatPairResponse: function (pair, domainName, haproxyListen, elbSslPort) {
 		var userAddress;
 		var hmiAddress;
 		var tcpAddress;
 		var brokerAddress;
 		if (pair.userAddressExternal) {
-			userAddress = pair.userAddressExternal + "." + process.env.DOMAIN_NAME;
+			userAddress = pair.userAddressExternal + "." + domainName;
 		}
 		else {
 			userAddress = pair.userAddressInternal;
 		}
 
 		if (pair.hmiAddressExternal) {
-			hmiAddress = pair.hmiAddressExternal + "." + process.env.DOMAIN_NAME;
+			hmiAddress = pair.hmiAddressExternal + "." + domainName;
 		}
 		else {
 			hmiAddress = pair.hmiAddressInternal;
 		}
 
 		if (pair.tcpPortExternal) {
-			tcpAddress = process.env.DOMAIN_NAME + ":" + pair.tcpPortExternal;
+			tcpAddress = domainName + ":" + pair.tcpPortExternal;
 		}
 		else {
 			tcpAddress = pair.tcpAddressInternal;
 		}
 
 		if (pair.brokerAddressExternal) {
-			brokerAddress = pair.brokerAddressExternal + "." + process.env.DOMAIN_NAME;
-			if (process.env.ELB_SSL_PORT) {
-				brokerAddress += ":" + process.env.ELB_SSL_PORT;
+			brokerAddress = pair.brokerAddressExternal + "." + domainName;
+			if (elbSslPort) { //ELB enabled
+				brokerAddress += ":" + elbSslPort;
 			}
-			else {
-				brokerAddress += ":" + process.env.HAPROXY_HTTP_LISTEN;
+			else { //ELB not enabled. fall back to haproxy's port
+				brokerAddress += ":" + haproxyListen;
 			}
 		}
 		else {

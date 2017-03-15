@@ -111,10 +111,8 @@ function requestsWatch (context) {
 function waitingWatch (context) {
 	return function () {
 		context.logger.debug("waiting watch hit");
-		functionite()
 		//get waiting list. the waiting list is one value as a stringified JSON
-		.toss(context.consuler.getSetCheck, context.keys.data.waiting)
-		.pass(function (waitingObj, setter, callback) {
+		context.consuler.getSetCheck(context.keys.data.waiting, function (waitingObj, setter, callback) {
 			var waitingHash = context.WaitingList(waitingObj);
 			//recalculate the positions of the new waiting list and send that over websockets
 			var positionMap = waitingHash.getQueuePositions();
@@ -165,8 +163,7 @@ function waitingWatch (context) {
 					}
 				});				
 			}
-		})
-		.go();
+		});
 	}
 }
 
@@ -218,22 +215,36 @@ function allocationWatch (context) {
 					//pair information!
 					//post/store the connection information to the client whose id matches
 					//format the connection information and send it!
-					context.socketHandler.updateAddresses(pair.id, core.formatPairResponse(pair));
+
+					var domainName;
+					var httpListen;
+					var sslPort;
+					if (context.config.haproxy) {
+						domainName = context.config.haproxy.domainName;
+						httpListen = context.config.haproxy.httpListen;
+						if (context.config.haproxy.elb) {
+							sslPort = context.haproxy.elb.sslPort;
+						}
+					}
+
+					context.socketHandler.updateAddresses(pair.id, 
+						core.formatPairResponse(pair, domainName, httpListen, sslPort));						
+
 					//done.
 					pairs.push(pair);
 				}
 			}
 			context.logger.info(pairs);
-			if (context.isHaProxyEnabled()) {
+			if (context.config.haproxy) {
 				//update the proxy information using the proxy module (not manticore addresses!)
 				context.logger.debug("Updating KV Store with address and port data for proxy!");
 				var template = proxyLogic.generateProxyData(context, pairs, []);
 				proxyLogic.updateCoreHmiKvStore(context, template);
 
-				//furthermore, if AWS_REGION is defined, use the TCP port information
+				//furthermore, if ELB is enabled, use the TCP port information
 				//from the template to modify the ELB such that it is listening and routing
 				//on those same ports
-				if (process.env.AWS_REGION) {
+				if (context.config.haproxy && context.config.haproxy.elb) {
 					context.AwsHandler.changeState(template);
 				}
 			}
@@ -266,7 +277,7 @@ function coreWatch (context, userId) {
 						if (result) {
 							var requestObj = context.UserRequest().parse(result.Value);
 							//add the hmi group and submit the job
-							jobLogic.addHmiGenericGroup(job, coreService, requestObj);
+							jobLogic.addHmiGenericGroup(context, job, coreService, requestObj);
 							jobLogic.submitJob(context, job, "hmi-group-" + userId, function () {});							
 						}
 					});
@@ -378,7 +389,7 @@ function manticoreWatch (context) {
 		var manticores = core.filterServices(services, ['manticore-alive']); //require an http alive check
 		context.logger.debug("Manticore services: " + manticores.length);
 		//ONLY update the manticore services in the KV store, and only if haproxy is enabled
-		if (context.isHaProxyEnabled()) {
+		if (context.config.haproxy) {
 			context.logger.debug("Updating KV Store with manticore data for proxy!");
 			var template = proxyLogic.generateProxyData(context, [], manticores);
 			proxyLogic.updateManticoreKvStore(context, template);

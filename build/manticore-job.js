@@ -4,21 +4,6 @@ var nomader = require('nomad-helper'); //for submitting manticore to nomad
 var needle = require('needle');
 var fs = require('fs');
 
-console.log("Environment variable NODE_LOGS=" + process.env.NODE_LOGS);
-console.log("Manticore's environment variables:");
-console.log("CLIENT_AGENT_IP: " + process.env.CLIENT_AGENT_IP);
-console.log("DOMAIN_NAME: " + process.env.DOMAIN_NAME);
-console.log("ELB_SSL_PORT: " + process.env.ELB_SSL_PORT);
-console.log("HTTP_PORT: " + process.env.HTTP_PORT);
-console.log("TCP_PORT_RANGE_START: " + process.env.TCP_PORT_RANGE_START);   
-console.log("TCP_PORT_RANGE_END: " + process.env.TCP_PORT_RANGE_END);   
-console.log("HAPROXY_HTTP_LISTEN: " + process.env.HAPROXY_HTTP_LISTEN);   
-console.log("HAPROXY_OFF: " + process.env.HAPROXY_OFF);   
-console.log("CORS: " + process.env.CORS);   
-console.log("AWS_REGION: " + process.env.AWS_REGION);   
-console.log("ELB_MANTICORE_NAME: " + process.env.ELB_MANTICORE_NAME);
-console.log("SSL_CERTIFICATE_ARN: " + process.env.SSL_CERTIFICATE_ARN);
-
 var nomadAddress = process.env.CLIENT_AGENT_IP + ":4646";
 buildManticoreJobFile();
 /*

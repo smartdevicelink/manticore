@@ -1,5 +1,7 @@
+//The authorative module for valid environment configuration
 var e = process.env; //for less verbose typing
 
+//any env vars that should be numbers should be converted to numbers
 var config = {
   logLevel: e.NODE_LOGS || "DEBUG",
   clientAgentIp: e.CLIENT_AGENT_IP,
@@ -26,8 +28,12 @@ var config = {
   }
 }
 
-// Logic to test that properties are properly set
-
+/**
+* Tests that properties are properly set. Recursive function
+* @param {object} obj - The config object used to check for validity, populated with environment variables
+* @param {string} prop - The name of a property in the config that is an object for nested checking
+* @returns {object} - A property inside config that is also an object
+*/
 function checkObj(obj, prop = 'config'){
   let arr = [], // array to hold properties that are objects to be checked only after all other properties have passed
     pass, // boolean to say whether last property passed check
@@ -78,4 +84,23 @@ function checkObj(obj, prop = 'config'){
   return obj
 }
 
-module.exports = checkObj(config);
+/**
+* Modifies the config by coercing the environment variables with numbers to Numbers.
+* @returns {object} - The config object
+*/
+function coerceToNumbers () {
+  //we must do this last because doing it before the checking process means that the env vars
+  //will not be undefined anymore which will cause issues with the checking process
+  config.httpPort = Number(config.httpPort);
+  if (config.haproxy) {
+    config.haproxy.tcpPortRangeStart = Number(config.haproxy.tcpPortRangeStart);
+    config.haproxy.tcpPortRangeEnd = Number(config.haproxy.tcpPortRangeEnd);
+    config.haproxy.httpListen = Number(config.haproxy.httpListen);
+    if (config.haproxy.elb) {
+      config.haproxy.elb.sslPort = Number(config.haproxy.elb.sslPort);
+    }
+  }
+  return config;
+}
+
+module.exports = coerceToNumbers(checkObj(config));

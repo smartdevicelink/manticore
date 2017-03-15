@@ -43,9 +43,10 @@ module.exports = {
 	* Find a final state in which the maximum number of users are able to receive a core/hmi
 	* @param {object} job - Object of the job file intended for submission to Nomad
 	* @param {object} core - An object from Consul that describes an sdl_core service
+	* @param {string} fullAddressBroker - The address the HMI uses to connect to the broker
 	* @param {UserRequest} request - Request list KV
 	*/
-	addHmiGenericGroup: function (job, core, request) {
+	addHmiGenericGroup: function (job, core, request, fullAddressBroker) {
 		//this adds a group for a user so that another hmi will be created
 		//since each group name must be different make the name based off of the user id
 		var groupName = "hmi-group-" + request.id;
@@ -67,31 +68,7 @@ module.exports = {
 		job.setMbits(groupName, taskName, 1);
 		job.setEphemeralDisk(groupName, 30, false, false);
 		job.setLogs(groupName, taskName, 1, 10);
-		//the address to pass into HMI will depend on whether the HAPROXY_OFF flag is on
-		//by default, use the external addresses so that haproxy routes users to the HMI correctly
-		//if HAPROXY_OFF is true, then give the HMI the internal address of core and connect that way
-		//HAPROXY_OFF being true assumes everything is accessible on the same network and should only
-		//be used for the ease of local development
-
-		if (process.env.HAPROXY_OFF !== "true") { //haproxy enabled
-			//the address from the tags is just the prefix. add the domain/subdomain name too
-			//var fullAddressHMI = request.hmiToCorePrefix + "." + process.env.DOMAIN_NAME;
-			var fullAddressBroker = request.brokerAddressPrefix + "." + process.env.DOMAIN_NAME;
-			if (process.env.ELB_SSL_PORT) {
-				//if an ELB SSL PORT was given, we want to use secure websockets
-				//override the value of haproxy port with the port that the ELB will go through
-				//you should make sure the ELB exit port matches the port HAProxy is listening to
-				job.addEnv(groupName, taskName, "HMI_TO_BROKER_ADDR", "wss:\\/\\/" + fullAddressBroker + ":" + process.env.ELB_SSL_PORT);
-			}
-			else {
-				job.addEnv(groupName, taskName, "HMI_TO_BROKER_ADDR", "ws:\\/\\/" + fullAddressBroker + ":" + process.env.HAPROXY_HTTP_LISTEN);
-			}
-		}
-		else { //no haproxy
-			//we need to have backslashes because these urls will
-			//be included in a regex and so we need to escape the forward slash
-			job.addEnv(groupName, taskName, "HMI_TO_BROKER_ADDR", "ws:\\/\\/${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}");
-		}
+		job.addEnv(groupName, taskName, "HMI_TO_BROKER_ADDR", fullAddressBroker);
 		job.addEnv(groupName, taskName, "BROKER_TO_CORE_ADDR", core.Address + ":" + core.Port);
 
 		var serviceName = "hmi-service-" + request.id;

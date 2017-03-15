@@ -27,8 +27,8 @@ var utility = {
 				var requestJSON = context.UserRequest(body);
 				//check if haproxy is enabled. if it is, we need to generate external URL prefixes
 				//that would be used for HAProxy and store them in the request object
-				if (context.isHaProxyEnabled()) { 
-					requestCoreLogic.addExternalAddresses(requestJSON, requestsKV);
+				if (context.config.haproxy) { 
+					requestCoreLogic.addExternalAddresses(context, requestJSON, requestsKV);
 				}
 				//store the request object!
 				context.logger.debug("Store request " + body.id);
@@ -114,12 +114,18 @@ function init (contextObj) {
 	context = contextObj; //set context
 	context.logger.debug("Nomad address: " + context.agentAddress + ":4646");
 	//add filler keys so we can detect changes to empty lists in the KV store
+	var httpListen;
+	var domainName;
+	if (context.config.haproxy) {
+		httpListen = context.config.haproxy.httpListen;
+		domainName = context.config.haproxy.domainName;
+	}
 	functionite()
 	.toss(context.consuler.setKeyValue, context.keys.fillers.request, "Keep me here please!")
 	.toss(context.consuler.setKeyValue, context.keys.fillers.waiting, "Keep me here please!")
 	.toss(context.consuler.setKeyValue, context.keys.fillers.allocation, "Keep me here please!")
-	.toss(context.consuler.setKeyValue, context.keys.haproxy.mainPort, process.env.HAPROXY_HTTP_LISTEN)
-	.toss(context.consuler.setKeyValue, context.keys.haproxy.domainName, process.env.DOMAIN_NAME)
+	.toss(context.consuler.setKeyValue, context.keys.haproxy.mainPort, httpListen)
+	.toss(context.consuler.setKeyValue, context.keys.haproxy.domainName, domainName)
 	.toss(function () {
 		//set up watches once. listen forever for changes in consul's services
 		watchesLogic.startKvWatch(context);

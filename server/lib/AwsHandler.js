@@ -9,20 +9,21 @@ var logger;
 * @param {winston.Logger} log - An instance of the logger to use
 * @returns {AwsHandler} - An AwsHandler object
 */
-module.exports = function (region, log) {
+module.exports = function (config, log) {
 	logger = log;
-    return new AwsHandler(region);
+    return new AwsHandler(config);
 };
 
 
 /**
 * Allows usage of the AWS SDK API
 * @constructor
-* @param {string} region - The AWS region to be used (ex. us-east-1)
+* @param {object} config - The config object exported from config.js
 */
-function AwsHandler (region) {
-	if (region) { //only do things if region exists
-		AWS.config.update({region: region});
+function AwsHandler (config) {
+	this.haproxy = config.haproxy;
+	if (this.haproxy && this.haproxy.elb) { //only do things if ELB is enabled
+		AWS.config.update({region: this.haproxy.elb.awsRegion});
 	}
 }
 
@@ -31,6 +32,9 @@ function AwsHandler (region) {
 * @param {HAProxyTemplate} template - Information meant for consumption by HAProxy
 */
 AwsHandler.prototype.changeState = function (template) {
+	if (!this.haproxy || !this.haproxy.elb) {
+		return; //do nothing if ELB isn't enabled
+	}
 	var self = this; //consistent reference to 'this'
 	//get the current state
 	this.describeLoadBalancer(function (lbStatus) {
@@ -48,15 +52,15 @@ AwsHandler.prototype.changeState = function (template) {
 			Protocol: "HTTPS",
 			LoadBalancerPort: 443,
 			InstanceProtocol: "HTTP",
-			InstancePort: Number(process.env.HAPROXY_HTTP_LISTEN), //parse as integer, as this will be a string
-			SSLCertificateId: process.env.SSL_CERTIFICATE_ARN
+			InstancePort: self.haproxy.httpListen, 
+			SSLCertificateId: self.haproxy.elb.sslCertificateArn
 		}),
 		new Listener({
 			Protocol: "SSL",
-			LoadBalancerPort: Number(process.env.ELB_SSL_PORT), //parse as integer, as this will be a string
+			LoadBalancerPort: self.haproxy.elb.sslPort, 
 			InstanceProtocol: "TCP",
-			InstancePort: Number(process.env.HAPROXY_HTTP_LISTEN), //parse as integer, as this will be a string
-			SSLCertificateId: process.env.SSL_CERTIFICATE_ARN
+			InstancePort: self.haproxy.httpListen, 
+			SSLCertificateId: self.haproxy.elb.sslCertificateArn
 		})];
 
 		//get tcp mappings. we are only interested in an array of ports that should be opened
@@ -176,7 +180,7 @@ AwsHandler.prototype.comparelistenerStates = function (listener1, listener2) {
 */
 AwsHandler.prototype.describeLoadBalancer = function (callback) {
 	var params = {
-		LoadBalancerNames: [process.env.ELB_MANTICORE_NAME],
+		LoadBalancerNames: [this.haproxy.elb.manticoreName],
 	}
 	elb.describeLoadBalancers(params, function (err, data) {
 		//check if we got the load balancer that was requested via env variable
@@ -202,7 +206,7 @@ AwsHandler.prototype.describeLoadBalancer = function (callback) {
 AwsHandler.prototype.addListeners = function (listeners, callback) {
 	var params = {
 		Listeners: listeners,
-		LoadBalancerName: process.env.ELB_MANTICORE_NAME
+		LoadBalancerName: this.haproxy.elb.manticoreName
 	};
 	if (listeners.length > 0) { //only make a call if listeners has data
 		elb.createLoadBalancerListeners(params, function (err, data) {
@@ -225,7 +229,7 @@ AwsHandler.prototype.addListeners = function (listeners, callback) {
 AwsHandler.prototype.removeListeners = function (lbPorts, callback) {
 	var params = {
 		LoadBalancerPorts: lbPorts,
-		LoadBalancerName: process.env.ELB_MANTICORE_NAME
+		LoadBalancerName: this.haproxy.elb.manticoreName
 	};
 	if (lbPorts.length > 0) {
 		elb.deleteLoadBalancerListeners(params, function (err, data) {

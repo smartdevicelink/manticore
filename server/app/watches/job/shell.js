@@ -32,7 +32,7 @@ module.exports = {
 						Address: "127.0.0.1",
 						Port: 3000
 					};
-					core.addHmiGenericGroup(job, 
+					self.addHmiGenericGroup(context, job, 
 						coreServiceExample,
 						context.UserRequest().parse(coreServiceExample.Tags[0]));
 					//test submission!
@@ -124,12 +124,39 @@ module.exports = {
 	},
 	/**
 	* Add a task group for the generic HMI to the job file
+	* @param {Context} context - Context instance
 	* @param {object} job - Object of the job file intended for submission to Nomad
 	* @param {object} coreService - An object from Consul that describes a service
 	* @param {UserRequest} request - A single request from the request list
 	*/
-	addHmiGenericGroup: function (job, coreService, request) {
-		core.addHmiGenericGroup(job, coreService, request);
+	addHmiGenericGroup: function (context, job, coreService, request) {
+		//determine what the address of the broker is here, and then pass it through the
+		//addHmiGenericGroup function
+
+		//the address to pass into the HMI will depend on whether HAProxy is used.
+		var fullAddressBroker;
+		if (context.config.haproxy) { //haproxy enabled
+			//use the external addresses so that haproxy routes users to the HMI correctly
+			fullAddressBroker = request.brokerAddressPrefix + "." + context.config.haproxy.domainName;
+			if (context.config.haproxy.elb) { //elb enabled. use secure websockets
+				//override the value of haproxy port with the port that the ELB will go through
+				//you should make sure the ELB exit port matches the port HAProxy is listening to
+				fullAddressBroker = "wss:\\/\\/" + fullAddressBroker + ":" + context.config.haproxy.elb.sslPort;
+			}
+			else { //regular websockets
+				fullAddressBroker = "ws:\\/\\/" + fullAddressBroker + ":" + context.config.haproxy.httpListen;
+			}
+		}
+		else { //no haproxy
+			//then give the HMI the internal address of core and connect that way
+			//HAPROXY_OFF being true assumes everything is accessible on the same network and should only
+			//be used for the ease of local development
+
+			//we need to have backslashes because these urls will
+			//be included in a regex and so we need to escape the forward slash
+			fullAddressBroker = "ws:\\/\\/${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}";
+		}
+		core.addHmiGenericGroup(job, coreService, request, fullAddressBroker);
 	},
 	/**
 	* 
