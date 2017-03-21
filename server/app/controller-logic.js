@@ -71,7 +71,6 @@ var utility = {
 					taskName = key;
 					break;
 				}
-				context.logger.debug(JSON.stringify(validAllocation, null, 4));
 				store.allocation = validAllocation;
 				store.taskName = taskName;
 				callback();

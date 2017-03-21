@@ -50,7 +50,7 @@ if (config.cors === "true") {
 
 //start the server
 (function () {
-    http.listen(process.env.HTTP_PORT, function () {
+    http.listen(config.httpPort, function () {
         logger.info("HTTP Server started");
         //general stuff
         logger.info("Environment variable NODE_LOGS=" + config.logLevel);

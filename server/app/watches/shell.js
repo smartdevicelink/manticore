@@ -223,7 +223,7 @@ function allocationWatch (context) {
 						domainName = context.config.haproxy.domainName;
 						httpListen = context.config.haproxy.httpListen;
 						if (context.config.haproxy.elb) {
-							sslPort = context.haproxy.elb.sslPort;
+							sslPort = context.config.haproxy.elb.sslPort;
 						}
 					}
 

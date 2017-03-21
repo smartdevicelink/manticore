@@ -28,6 +28,7 @@ var config = {
   }
 }
 
+
 /**
 * Tests that properties are properly set. Recursive function
 * @param {object} obj - The config object used to check for validity, populated with environment variables
