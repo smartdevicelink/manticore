@@ -4,7 +4,7 @@ var e = process.env; //for less verbose typing
 //any env vars that should be numbers should be converted to numbers
 var config = {
   logLevel: e.NODE_LOGS || "DEBUG",
-  clientAgentIp: e.CLIENT_AGENT_IP,
+  clientAgentIp: process.env.NOMAD_IP_http, //get the environment variable from nomad
   httpPort: e.HTTP_PORT || 4000,
   cors: e.CORS || false,
   jwt: {
