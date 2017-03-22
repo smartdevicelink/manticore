@@ -3,8 +3,9 @@ require('dotenv').config();
 var nomader = require('nomad-helper'); //for submitting manticore to nomad
 var needle = require('needle');
 var fs = require('fs');
-
-var nomadAddress = process.env.CLIENT_AGENT_IP + ":4646";
+var ip = require('ip');
+ 
+var nomadAddress = ip.address() + ":4646";
 buildManticoreJobFile();
 /*
 var file = fs.readFileSync("../../example.json");
@@ -31,7 +32,6 @@ function buildManticoreJobFile () {
 	//add all environment variables from .env here
 	addEnvs(job, groupName, taskName, [
 		"NODE_LOGS",
-		"CLIENT_AGENT_IP",
 		"DOMAIN_NAME",
 		"ELB_SSL_PORT",
 		"HTTP_PORT",
