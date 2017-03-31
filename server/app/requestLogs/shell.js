@@ -10,8 +10,8 @@ module.exports = {
 	*/
 	checkValidAllocation: function (context, id, callback) {
 		//make sure there is an allocation for core intended for this user before starting up a connection
-		context.nomader.getAllocations("core-hmi-" + id, context.nomadAddress, function (res) {
-			callback(core.findAliveCoreAllocation(res.allocations, id));
+		context.nomader.getAllocations(strings.coreHmiJobPrefix + id, context.nomadAddress, function (res) {
+			callback(core.findAliveCoreAllocation(res.allocations, id, context.strings));
 		});
 	},
 	/**

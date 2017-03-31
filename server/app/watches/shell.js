@@ -27,7 +27,7 @@ module.exports = {
 	*/
 	startServiceWatch: function (context) {
 		//first, consistently watch all the manticore services!
-		context.consuler.watchServiceStatus("manticore-service", manticoreWatch(context));
+		context.consuler.watchServiceStatus(context.strings.manticoreServiceName, manticoreWatch(context));
 
 		//set up a watch for all services
 		var watch = context.consuler.watchAllServices(function (services) {
@@ -37,7 +37,7 @@ module.exports = {
 			var serviceArray = Object.keys(services);
 			//only get core services and hmi services
 			var coresAndHmis = serviceArray.filter(function (element) {
-				return element.startsWith("core-service") || element.startsWith("hmi-service");
+				return element.startsWith(context.strings.coreServicePrefix) || element.startsWith(context.strings.hmiServicePrefix);
 			});
 
 			core.updateWatches(currentWatchesArray, coresAndHmis, stopper, starter);
@@ -51,12 +51,12 @@ module.exports = {
 				//this service exists with no watch. start it
 				var functionCallback;
 				//extract userID for future reference
-				if (serviceName.startsWith("core-service")) {
-					var userId = serviceName.split("-")[2];
+				if (serviceName.startsWith(context.strings.coreServicePrefix)) {
+					var userId = serviceName.split(context.strings.coreServicePrefix)[1];
 					functionCallback = coreWatch(context, userId);
 				}
-				if (serviceName.startsWith("hmi-service")) {
-					var userId = serviceName.split("-")[2];
+				if (serviceName.startsWith(context.strings.hmiServicePrefix)) {
+					var userId = serviceName.split(context.strings.hmiServicePrefix)[1];
 					functionCallback = hmiWatch(context, userId);
 				}
 				//start the watch!
@@ -93,7 +93,7 @@ function requestsWatch (context) {
 				//any other function that wants to stop a job should remove the key from the KV store instead
 				waitingHash.remove(lostKey);
 				context.consuler.delKey(context.keys.data.allocation + "/" + lostKey, function (){});
-				context.nomader.deleteJob("core-hmi-" + lostKey, context.nomadAddress, function (){});
+				context.nomader.deleteJob(context.strings.coreHmiJobPrefix + lostKey, context.nomadAddress, function (){});
 			});
 
 			context.socketHandler.cleanSockets(requestKeyArray);
@@ -159,8 +159,8 @@ function waitingWatch (context) {
 						setter(waitingHash.get(), function (res) {
 							context.logger.debug(lowestKey + " set to pending: " + res);
 							//submit the job!	
-							var jobName = "core-hmi-" + lowestKey;
-							jobLogic.submitJob(context, job, "core-group-" + lowestKey, function () {});
+							var jobName = context.strings.coreHmiJobPrefix + lowestKey;
+							jobLogic.submitJob(context, job, context.strings.coreGroupPrefix + lowestKey, function () {});
 						});	
 					}
 				});				
@@ -267,20 +267,20 @@ function coreWatch (context, userId) {
 		//context.logger.debug("Core service: " + userId + " " + coreServices.length);
 		if (coreServices.length > 0) {
 			var coreService = coreServices[0];
-			var jobName = "core-hmi-" + userId;
+			var jobName = context.strings.coreHmiJobPrefix + userId;
 			//due to bugs with Consul, we need to make a check with Nomad
 			//to make sure that this service has a corresponding job.
 			//if it's a rogue service, ignore it, as it likely cannot be removed in any elegant way
 			context.nomader.findJob(jobName, context.nomadAddress, function (job) {
 				//use the job that was submitted to append an hmi group and resubmit it
-				if (job && !checkJobForHmi(job)) { //job exists for this service and doesn't have an HMI. add an hmi and submit
+				if (job && !checkJobForHmi(job, context.strings.hmiGroupPrefix)) { //job exists for this service and doesn't have an HMI. add an hmi and submit
 					//get the request object stored for this user id
 					context.consuler.getKeyValue(context.keys.data.request + "/" + userId, function (result) {
 						if (result) {
 							var requestObj = context.UserRequest().parse(result.Value);
 							//add the hmi group and submit the job
-							jobLogic.addHmiGenericGroup(context, job, coreService, requestObj);
-							jobLogic.submitJob(context, job, "hmi-group-" + userId, function () {});							
+							jobLogic.addHmiGenericGroup(context, job, coreService, requestObj, context.strings);
+							jobLogic.submitJob(context, job, context.strings.hmiGroupPrefix + userId, function () {});							
 						}
 					});
 				}
@@ -301,13 +301,13 @@ function coreWatch (context, userId) {
 function hmiWatch (context, userId) {
 	return function (services) {
 		//require an http alive check. should only be one hmi service
-		var hmiServices = core.filterServices(services, ['hmi-alive']);
+		var hmiServices = core.filterServices(services, [context.strings.hmiAliveHealth]);
 		//context.logger.debug("Hmi service: " + userId + " " + hmiServices.length);
 		//if this returns 0 services then its probably because the health check failed.
 		//don't do anything rash
 		if (hmiServices.length > 0) {
 			var hmiService = hmiServices[0];
-			var jobName = "core-hmi-" + userId;
+			var jobName = context.strings.coreHmiJobPrefix + userId;
 			//should just be one hmi per job
 			//due to bugs with Consul, we need to make a check with Nomad
 			//to make sure that this service has a corresponding job.
@@ -349,7 +349,7 @@ function hmiWatch (context, userId) {
 				}
 				callback();
 			})//get the core service for this id
-			.toss(context.consuler.getService, "core-service-" + userId)
+			.toss(context.consuler.getService, context.strings.coreServicePrefix + userId)
 			.pass(function (coreServices, callback) {
 				if (coreServices.length > 0) {
 					var coreAllocID = coreServices[0].Service.ID.match(/[a-f0-9]+-[a-f0-9]+-[a-f0-9]+-[a-f0-9]+-[a-f0-9]+/g)[0];
@@ -389,7 +389,7 @@ function hmiWatch (context, userId) {
 */
 function manticoreWatch (context) {
 	return function (services) {
-		var manticores = core.filterServices(services, ['manticore-alive']); //require an http alive check
+		var manticores = core.filterServices(services, [context.strings.manticoreAliveHealth]); //require an http alive check
 		context.logger.debug("Manticore services: " + manticores.length);
 		//ONLY update the manticore services in the KV store, and only if haproxy is enabled
 		if (context.config.haproxy) {
@@ -403,13 +403,14 @@ function manticoreWatch (context) {
 /**
 * Finds whether this job has an HMI in it
 * @param {object} job - Object of the job file intended for submission to Nomad
+* @param {string} prefix - The prefix to check the task group name against
 * @returns {boolean} - Shows whether an HMI exists in the job file
 */
-function checkJobForHmi (job) {
+function checkJobForHmi (job, prefix) {
 	var taskGroupCount = job.getJob().Job.TaskGroups.length;
 	var foundHMI = false;
 	for (let i = 0; i < taskGroupCount; i++) {
-		if (job.getJob().Job.TaskGroups[i].Name.startsWith("hmi-group")) {
+		if (job.getJob().Job.TaskGroups[i].Name.startsWith(prefix)) {
 			foundHMI = true;
 			break;
 		}

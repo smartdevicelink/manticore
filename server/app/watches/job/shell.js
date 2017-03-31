@@ -20,13 +20,13 @@ module.exports = {
 			context.logger.debug("Lowest key found:");
 			context.logger.debug(lowestKey);
 			//make a job to test the submission of a new core/hmi
-			var job = context.nomader.createJob("core-hmi-" + lowestKey);
+			var job = context.nomader.createJob(context.strings.coreHmiJobPrefix + lowestKey);
 
 			//get the request value for this user
 			context.consuler.getKeyValue(context.keys.data.request + "/" + lowestKey, function (result) {
 				if (result) {
 					var request = context.UserRequest().parse(result.Value);
-					core.addCoreGroup(job, lowestKey, request);
+					core.addCoreGroup(job, lowestKey, request, context.strings);
 					//make a mock HMI
 					var coreServiceExample = {
 						Tags: [request.getString()],
@@ -35,15 +35,16 @@ module.exports = {
 					};
 					self.addHmiGenericGroup(context, job, 
 						coreServiceExample,
-						context.UserRequest().parse(coreServiceExample.Tags[0]));
+						context.UserRequest().parse(coreServiceExample.Tags[0]),
+						context.strings);
 					//test submission!
-					job.planJob(context.nomadAddress, "core-hmi-" + lowestKey, function (results) {
+					job.planJob(context.nomadAddress, context.strings.coreHmiJobPrefix + lowestKey, function (results) {
 						var canAllocate = core.checkHasResources(results);
 						if (canAllocate) {
 							context.logger.debug("Core and HMI can be allocated!");
 							//create a job for easy submission
-							var actualJob = context.nomader.createJob("core-hmi-" + lowestKey);
-							core.addCoreGroup(actualJob, lowestKey, request);
+							var actualJob = context.nomader.createJob(context.strings.coreHmiJobPrefix + lowestKey);
+							core.addCoreGroup(actualJob, lowestKey, request, context.strings);
 							callback(actualJob); //change for this user should happen
 						}
 						else {
@@ -87,7 +88,7 @@ module.exports = {
 		var self = this; //consistent reference to this
 		//confirm whether the job is running for BOTH core and hmi!
 		//maximum wait of 5 seconds before we poke the nomad server again for allocation information
-		var watch = context.nomader.watchAllocations("core-hmi-" + key, context.nomadAddress, 5, function (allocations) {
+		var watch = context.nomader.watchAllocations(context.strings.coreHmiJobPrefix + key, context.nomadAddress, 5, function (allocations) {
 			//this function will be called several times. only continue when we see that the 
 			//core task group and hmi task group status's state is "running". since we checked with plan that this
 			//job submission will work, it should eventually end up in the "running" state (or just fail...)
@@ -121,9 +122,10 @@ module.exports = {
 	* @param {object} job - Object of the job file intended for submission to Nomad
 	* @param {string} userId - ID of the user
 	* @param {UserRequest} request - A single request from the request list
+	* @param {object} strings - An object of string constants that come from constants.js
 	*/
-	addCoreGroup: function (job, userId, request) {
-		core.addCoreGroup(job, userId, request);
+	addCoreGroup: function (job, userId, request, strings) {
+		core.addCoreGroup(job, userId, request, strings);
 	},
 	/**
 	* Add a task group for the generic HMI to the job file
@@ -131,8 +133,9 @@ module.exports = {
 	* @param {object} job - Object of the job file intended for submission to Nomad
 	* @param {object} coreService - An object from Consul that describes a service
 	* @param {UserRequest} request - A single request from the request list
+	* @param {object} strings - An object of string constants that come from constants.js
 	*/
-	addHmiGenericGroup: function (context, job, coreService, request) {
+	addHmiGenericGroup: function (context, job, coreService, request, strings) {
 		//determine what the address of the broker is here, and then pass it through the
 		//addHmiGenericGroup function
 
@@ -159,7 +162,7 @@ module.exports = {
 			//be included in a regex and so we need to escape the forward slash
 			fullAddressBroker = "ws:\\/\\/${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}";
 		}
-		core.addHmiGenericGroup(job, coreService, request, fullAddressBroker);
+		core.addHmiGenericGroup(job, coreService, request, fullAddressBroker, strings);
 	},
 	/**
 	* 

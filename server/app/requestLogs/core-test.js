@@ -2,41 +2,46 @@ var mocha = require('mocha');
 var assert = require('assert');
 var core = require('./core.js');
 
+//constant name for the core group prefix
+var strings = {
+	coreGroupPrefix: "core-group-"
+}
 describe("#findAliveCoreAllocation()", function () {
 	it("should return null if no ID matches", function () {
+
 		var id = "12345";
 		var allocations = [{
 			ID: "234710237512",
-			TaskGroup: "core-15515",
+			TaskGroup: "core-group-15515",
 			ClientStatus: "running"
 		},{
 			ID: "12312361163",
-			TaskGroup: "core-24242",
+			TaskGroup: "core-group-24242",
 			ClientStatus: "running"
 		},{
 			ID: "8425245674",
-			TaskGroup: "core-35782",
+			TaskGroup: "core-group-35782",
 			ClientStatus: "running"
 		}];
-		var result = core.findAliveCoreAllocation(allocations, id);
+		var result = core.findAliveCoreAllocation(allocations, id, strings);
 		assert.strictEqual(result, null);
 	});
 	it("should return null if there's no matching ID that is also running", function () {
 		var id = "35782";
 		var allocations = [{
 			ID: "234710237512",
-			TaskGroup: "core-15515",
+			TaskGroup: "core-group-15515",
 			ClientStatus: "complete"
 		},{
 			ID: "12312361163",
-			TaskGroup: "core-24242",
+			TaskGroup: "core-group-24242",
 			ClientStatus: "running"
 		},{
 			ID: "8425245674",
-			TaskGroup: "core-35782",
+			TaskGroup: "core-group-35782",
 			ClientStatus: "complete"
 		}];
-		var result = core.findAliveCoreAllocation(allocations, id);
+		var result = core.findAliveCoreAllocation(allocations, id, strings);
 		assert.strictEqual(result, null);
 	});
 
@@ -59,7 +64,7 @@ describe("#findAliveCoreAllocation()", function () {
 			TaskGroup: "core-group-12345",
 			ClientStatus: "running"
 		},];
-		var result = core.findAliveCoreAllocation(allocations, id);
+		var result = core.findAliveCoreAllocation(allocations, id, strings);
 		assert.strictEqual(result.ID, "8425245674");
 	});
 });

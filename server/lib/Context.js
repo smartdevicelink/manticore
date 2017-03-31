@@ -1,6 +1,7 @@
 //an object that manages and contains global information necessary across all modules
 //the modules come from the /lib folder are put here
 var SocketHandler = require('./SocketHandler.js');
+var AwsHandler = require('./AwsHandler.js');
 
 module.exports = Context;
 
@@ -14,6 +15,8 @@ module.exports = Context;
 */
 function Context (app, socketio, logger, config) {
 	this.app = app; //express app
+	this.keys = require('./constants.js').keys; //stores locations of data inside the consul KV store
+	this.strings = require('./constants.js').strings; //stores locations of arbitrary string constants
 	this.socketHandler = new SocketHandler(socketio); //socket manager module
 	this.logger = logger; //logger module
 	this.consuler = require('consul-helper')(config.clientAgentIp); //connect to the consul agent before continuing
@@ -21,10 +24,9 @@ function Context (app, socketio, logger, config) {
 	this.agentAddress = config.clientAgentIp; //address of nomad and consul client agents
 	this.nomadAddress = config.clientAgentIp + ":4646"; //address of nomad agents including port
 	this.UserRequest = require('./UserRequest.js'); //represents a user's request for core/hmi
-	this.keys = require('./constants.js').keys; //stores locations of data inside the consul KV store
 	this.WaitingList = require('./WaitingList.js');
 	//expecting the AWS_REGION env. if not provided, AwsHandler will simply not function
-	this.AwsHandler = new require('./AwsHandler.js')
+	this.AwsHandler = new AwsHandler();
 	this.AwsHandler.init(config, logger);
 	this.AllocationData = require('./AllocationData.js');
 	this.config = config; //config object which stores all environment variables
