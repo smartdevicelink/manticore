@@ -24,7 +24,8 @@ function Context (app, socketio, logger, config) {
 	this.keys = require('./constants.js').keys; //stores locations of data inside the consul KV store
 	this.WaitingList = require('./WaitingList.js');
 	//expecting the AWS_REGION env. if not provided, AwsHandler will simply not function
-	this.AwsHandler = require('./AwsHandler.js')(config, logger);
+	this.AwsHandler = new require('./AwsHandler.js')
+	this.AwsHandler.init(config, logger);
 	this.AllocationData = require('./AllocationData.js');
 	this.config = config; //config object which stores all environment variables
 

@@ -1,4 +1,5 @@
 var core = require('./core.js');
+var needle = require('needle');
 
 /** @module app/watches/job/shell */
 
@@ -83,6 +84,7 @@ module.exports = {
 	* @param {waitForAllocationsCallback} callback - callback
 	*/
 	waitForAllocations: function (context, key, callback) {
+		var self = this; //consistent reference to this
 		//confirm whether the job is running for BOTH core and hmi!
 		//maximum wait of 5 seconds before we poke the nomad server again for allocation information
 		var watch = context.nomader.watchAllocations("core-hmi-" + key, context.nomadAddress, 5, function (allocations) {
@@ -95,7 +97,8 @@ module.exports = {
 				if (allocations[0].ClientStatus === "running" && allocations[1].ClientStatus === "running") {
 					//we got what we wanted. remember to stop the watch or else bad things happen!
 					watch.end();
-					callback(true); //done. allocation successful
+					//allocation successful
+					callback(true); 
 				}
 				if (allocations[0].ClientStatus === "failed" || allocations[1].ClientStatus === "failed") {
 					//uhoh.
@@ -112,7 +115,7 @@ module.exports = {
 	* @param {object} waitingHash - The new representation of the waiting list
 	* @param {boolean} updateWaitingList - A boolean saying whether the waiting list has changed
 	*/
-
+	
 	/**
 	* Add a task group for sdl_core to the job file
 	* @param {object} job - Object of the job file intended for submission to Nomad
@@ -169,7 +172,7 @@ module.exports = {
 		//attempt to submit the updated job
 		context.logger.debug("Submitting job for " + taskGroupName);
 		localJob.submitJob(context.nomadAddress, function (result) {
-			context.logger.debug(result);
+			//context.logger.debug(result);
 			callback();
 		});
 	}

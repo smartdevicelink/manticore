@@ -44,19 +44,19 @@ describe("#findAliveCoreAllocation()", function () {
 		var id = "12345";
 		var allocations = [{
 			ID: "234710237512",
-			TaskGroup: "core-15515",
+			TaskGroup: "core-group-15515",
 			ClientStatus: "complete"
 		},{
 			ID: "12312361163",
-			TaskGroup: "core-17614",
+			TaskGroup: "core-group-17614",
 			ClientStatus: "running"
 		},{
 			ID: "76343762266",
-			TaskGroup: "core-26434",
+			TaskGroup: "core-group-26434",
 			ClientStatus: "complete"
 		},{
 			ID: "8425245674",
-			TaskGroup: "core-12345",
+			TaskGroup: "core-group-12345",
 			ClientStatus: "running"
 		},];
 		var result = core.findAliveCoreAllocation(allocations, id);

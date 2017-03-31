@@ -3,29 +3,30 @@ var ec2 = new AWS.EC2();
 var elb = new AWS.ELB();
 var logger;
 
-/**
-* Sets up AwsHandler with logging
-* @param {string} region - The AWS region to be used (ex. us-east-1)
-* @param {winston.Logger} log - An instance of the logger to use
-* @returns {AwsHandler} - An AwsHandler object
-*/
-module.exports = function (config, log) {
-	logger = log;
-    return new AwsHandler(config);
-};
-
+module.exports = AwsHandler;
 
 /**
 * Allows usage of the AWS SDK API
 * @constructor
-* @param {object} config - The config object exported from config.js
 */
-function AwsHandler (config) {
+function AwsHandler () {
+	this.haproxy; //haproxy config object
+}
+
+
+/**
+* Sets up AwsHandler with logging 
+* @param {string} region - The AWS region to be used (ex. us-east-1)
+* @param {winston.Logger} log - An instance of the logger to use
+* @returns {AwsHandler} - An AwsHandler object
+*/
+AwsHandler.prototype.init = function (config, log) {
+	logger = log;
 	this.haproxy = config.haproxy;
 	if (this.haproxy && this.haproxy.elb) { //only do things if ELB is enabled
 		AWS.config.update({region: this.haproxy.elb.awsRegion});
 	}
-}
+};
 
 /**
 * Given a template generated from HAProxyTemplate.js, update the ELB with the new port data
@@ -84,14 +85,14 @@ AwsHandler.prototype.changeState = function (template) {
 }
 
 /**
-* Determines what the new state of the ELB listeners should be using differences
+* Determines what the new state of the ELB listeners should be using differences. Static method
 * @param {Listener} expectedListeners - The Listeners that should exist
 * @param {Listener} actualListeners - What Listeners are currently on the ELB
 * @returns {object} listenerChanges - Describes changes necessary to the ELB
 * @returns {array} listenerChanges.toBeDeletedListeners - An array of port numbers to be removed from the ELB
 * @returns {array} listenerChanges.toBeAddedListeners - An array of Listener objects to be added to the ELB
 */
-AwsHandler.prototype.calculateListenerChanges = function (expectedListeners, actualListeners) {
+AwsHandler.calculateListenerChanges = function (expectedListeners, actualListeners) {
 	var listenerChanges = {
 		toBeDeletedListeners: [], //NOTE: only save the LoadBalancer ports of the listeners here!
 		toBeAddedListeners: []
@@ -113,7 +114,7 @@ AwsHandler.prototype.calculateListenerChanges = function (expectedListeners, act
 		//take the expected and current listener with the next lowest LB port number
 		var expected = expectedListeners[0];
 		var actual = actualListeners[0];
-		var comparison = this.comparelistenerStates(expected, actual);
+		var comparison = AwsHandler.comparelistenerStates(expected, actual);
 		if (comparison.diff < 0) { 
 			//an expected listener is missing. add expected listener into toBeAddedListeners
 			listenerChanges.toBeAddedListeners.push(expectedListeners.shift()); 
@@ -150,14 +151,14 @@ AwsHandler.prototype.calculateListenerChanges = function (expectedListeners, act
 }
 
 /**
-* Determines whether two Listener objects are equivalent, and which listener LoadBalancer port is higher
+* Determines whether two Listener objects are equivalent, and which listener LoadBalancer port is higher. Static method
 * @param {Listener} listener1 - A Listener to compare against
 * @param {Listener} listener2 - A Listener to compare against
 * @returns {object} status - States the relationship between Listener objects
 * @returns {boolean} status.equivalent - States whether the Listener objects are equivalent
 * @returns {number} status.diff - The difference between two Listener objects' LoadBalancer ports
 */
-AwsHandler.prototype.comparelistenerStates = function (listener1, listener2) {
+AwsHandler.comparelistenerStates = function (listener1, listener2) {
 	var status = {
 		equivalent: true,
 		diff: 0

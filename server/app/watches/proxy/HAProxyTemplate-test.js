@@ -12,7 +12,6 @@ describe("#constructor()", function () {
 		assert.strictEqual(template.tcpMaps.length, 0);
 		assert.notStrictEqual(template.httpMaps, undefined);
 		assert.strictEqual(template.httpMaps.length, 0);
-		assert.notStrictEqual(template.file, undefined);
 	});
 });
 

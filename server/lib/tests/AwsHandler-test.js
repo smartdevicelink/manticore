@@ -1,6 +1,6 @@
 var mocha = require('mocha');
 var assert = require('assert');
-var AwsHandler = require('../AwsHandler.js')();
+var AwsHandler = new require('../AwsHandler.js');
 
 //sample data
 var expectedListeners0;

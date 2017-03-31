@@ -59,7 +59,7 @@ if (config.cors === "true") {
         logger.info("HTTP Server Port: " + config.httpPort);
         logger.info("CORS enabled: " + config.cors); 
         //jwt secret and trace info purposely not logged
-        //HAPRoxy stuff
+        //HAProxy stuff
         if (config.haproxy) {
             logger.info("Domain Name: " + config.haproxy.domainName);
             logger.info("TCP Starting Port Range: " + config.haproxy.tcpPortRangeStart);   

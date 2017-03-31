@@ -7,9 +7,13 @@ but rather the logic of the configuration files****
 property checks************************************
 **************************************************/
 
+//clear the cache of requiring the config for each test
+beforeEach(function() {
+  delete require.cache[require.resolve('./../config.js')];
+});
 
 describe('#configuration file', function(){
-  it('should throw Error when CLIENT_AGENT_IP is not set', function(){
+  it('should throw Error when NOMAD_IP_http is not set', function(){
     assert.throws(
       function(){
         require('./../config.js')
@@ -21,23 +25,22 @@ describe('#configuration file', function(){
         return false
       }
     );
-    delete require.cache[require.resolve('./../config.js')]
+    
   })
   it('should disable JWT, HAProxy, and Trace when properties sent are empty', function(){
     let e = process.env // save process state
     process.env = {
-      CLIENT_AGENT_IP: 8
+      NOMAD_IP_http: 8
     },
     config = require('./../config.js')
     assert.strictEqual(config.jwt, undefined);
     assert.strictEqual(config.haproxy, undefined);
     assert.strictEqual(config.trace, undefined);
-    delete require.cache[require.resolve('./../config.js')]
     process.env = e // return process.env to how it was before the test
   })
   it('should throw Error when some HAProxy properties are not set', function(){
     let options = {
-      CLIENT_AGENT_IP: 8,
+      NOMAD_IP_http: 8,
       DOMAIN_NAME: 'Clarice'
     },
     e = process.env
@@ -49,12 +52,11 @@ describe('#configuration file', function(){
         return true
       }
     });
-    delete require.cache[require.resolve('./../config.js')]
     process.env = e
   })
   it('should throw Error when some HAProxy ELB properties are not set', function(){
     let options = {
-      CLIENT_AGENT_IP: 8,
+      NOMAD_IP_http: 8,
       DOMAIN_NAME: 'Clarice',
       TCP_PORT_RANGE_START: 0,
       TCP_PORT_RANGE_END: 57,
@@ -70,12 +72,11 @@ describe('#configuration file', function(){
         return true
       }
     });
-    delete require.cache[require.resolve('./../config.js')]
     process.env = e
   })
   it('should throw Error when some Trace properties are not set', function(){
     let options = {
-      CLIENT_AGENT_IP: 8,
+      NOMAD_IP_http: 8,
       TRACE_API_KEY: 7
     },
     e = process.env
@@ -87,7 +88,6 @@ describe('#configuration file', function(){
         return true
       }
     });
-    delete require.cache[require.resolve('./../config.js')]
     process.env = e
   })
 })

@@ -1,3 +1,5 @@
+var needle = require('needle');
+
 module.exports = SocketHandler;
 //a client connected to Manticore. holds extra information per socket
 
@@ -116,7 +118,8 @@ SocketHandler.prototype.updatePosition = function (id, data) {
 * @param {string} id - Id of a user using Manticore
 * @param {object} data - The new position of the id of the user in the waiting list
 */
-SocketHandler.prototype.updateAddresses = function (id, data) {
+SocketHandler.prototype.updateAddresses = function (context, id, data) {
+    var self = this;
     if (!this.checkId(id)) { //make a new connection socket if it doesn't exist
         this.newSocket(id);
     }
@@ -124,7 +127,16 @@ SocketHandler.prototype.updateAddresses = function (id, data) {
     var newInfo = (JSON.stringify(this.sockets[id].addresses) !== JSON.stringify(data));
     this.sockets[id].addresses = data;
     if (newInfo) {
-        this.send(id, "connectInfo");
+        //for new address information, make an http check to that HMI to ensure that 
+        //the address info actually gets routed by HAProxy to the HMI before sending the addresses
+        if (context.config.haproxy) {
+            waitForHmiCheck(context, id, function () {
+                self.send(id, "connectInfo");
+            });
+        }
+        else {
+            this.send(id, "connectInfo");
+        }
     }
 }
 
@@ -174,4 +186,44 @@ function ConnectionSocket (socket) {
     this.socket = socket;
     this.position;
     this.addresses;
+}
+
+/**
+* Gets the specific allocation of the HMI and calls back when an HTTP connection 
+* can get to the HMI through HAProxy. This is a recursive function
+* @param {Context} context - Context instance
+* @param {string} userId - ID of a user
+* @param {function} callback - empty callback
+*/
+function waitForHmiCheck (context, userId, callback) {
+    //check the userId in request every time in case something happened to the user while checking the HMI
+    context.consuler.getKeyValue(context.keys.data.request + "/" + userId, function (result) {
+        if (result) {
+            var requestObj = context.UserRequest().parse(result.Value);
+            var url = `http://${requestObj.userToHmiPrefix}.${context.config.haproxy.domainName}`;
+
+            //keep continually hitting the endpoint until we get a 200 response
+            needle.get(url, function (err, res) {
+                if (err) { //try again after .5 seconds
+                    setTimeout(function () {
+                        waitForHmiCheck(context, userId, callback);
+                    }, 500);
+                }
+                else {
+                    context.logger.debug("HMI CHECK FOR " + userId + ": " + url + " : " + res.statusCode);
+                    if (res.statusCode === 200) { //status code is good!
+                        callback();
+                    }
+                    else { //try again after .5 seconds
+                        setTimeout(function () {
+                            waitForHmiCheck(context, userId, callback);
+                        }, 500);
+                    }
+                }
+            }); 
+        }
+        else { //no user exists anymore...
+            callback();
+        }
+    });
 }

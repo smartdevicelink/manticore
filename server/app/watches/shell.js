@@ -32,6 +32,8 @@ module.exports = {
 		//set up a watch for all services
 		var watch = context.consuler.watchAllServices(function (services) {
 			var currentWatchesArray = Object.keys(serviceWatches);
+			context.logger.debug("watches list");
+			context.logger.debug(currentWatchesArray);
 			var serviceArray = Object.keys(services);
 			//only get core services and hmi services
 			var coresAndHmis = serviceArray.filter(function (element) {
@@ -226,15 +228,15 @@ function allocationWatch (context) {
 							sslPort = context.config.haproxy.elb.sslPort;
 						}
 					}
-
-					context.socketHandler.updateAddresses(pair.id, 
+					//send address information to the client(s)
+					context.socketHandler.updateAddresses(context, pair.id, 
 						core.formatPairResponse(pair, domainName, httpListen, sslPort));						
 
 					//done.
 					pairs.push(pair);
 				}
 			}
-			context.logger.info(pairs);
+			context.logger.debug(pairs);
 			if (context.config.haproxy) {
 				//update the proxy information using the proxy module (not manticore addresses!)
 				context.logger.debug("Updating KV Store with address and port data for proxy!");
@@ -379,6 +381,7 @@ function hmiWatch (context, userId) {
 		}
 	}
 }
+
 
 /**
 * The watch invoked when a change is found in manticore services
