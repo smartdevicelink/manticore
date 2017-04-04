@@ -74,7 +74,7 @@ AwsHandler.prototype.changeState = function (template) {
 			}));
 		}
 		//determine which listeners need to be added and which need to be removed
-		var listenerChanges = self.calculateListenerChanges(expectedListeners, actualListeners);
+		var listenerChanges = AwsHandler.calculateListenerChanges(expectedListeners, actualListeners);
 		//ALWAYS remove unneeded listeners before adding needed listeners
 		self.removeListeners(listenerChanges.toBeDeletedListeners, function () {
 			self.addListeners(listenerChanges.toBeAddedListeners, function () {
