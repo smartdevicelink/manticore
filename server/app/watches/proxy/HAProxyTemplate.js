@@ -1,4 +1,3 @@
-var fs = require('fs');
 
 module.exports = function () {
     return new HAProxyTemplate();

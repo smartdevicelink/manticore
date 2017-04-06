@@ -43,7 +43,9 @@ if (config.jwt) {
 
 //allow any content from inside /client/public to be brought to the user
 //expose everything in public. The main index.html file should exist inside public but not inside html/
-app.use(express.static(rootLocation));  
+if (!config.disableWebpage) {
+    app.use(express.static(rootLocation));
+}
 if (config.cors === "true") {
     app.use(cors({credentials: true, origin: true}));
 }
@@ -58,6 +60,7 @@ if (config.cors === "true") {
         logger.info("Client Agent IP: " + config.clientAgentIp);
         logger.info("HTTP Server Port: " + config.httpPort);
         logger.info("CORS enabled: " + config.cors); 
+        logger.info("Webpage disabled: " + config.disableWebpage); 
         //jwt secret and trace info purposely not logged
         //HAProxy stuff
         if (config.haproxy) {

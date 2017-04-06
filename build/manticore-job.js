@@ -40,6 +40,7 @@ function buildManticoreJobFile () {
 		"HAPROXY_HTTP_LISTEN",
 		"HAPROXY_OFF",
 		"CORS",
+		"DISABLE_WEBPAGE",
 		"AWS_REGION",
 		"ELB_MANTICORE_NAME",
 		"SSL_CERTIFICATE_ARN",

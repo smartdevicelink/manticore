@@ -24,6 +24,11 @@ module.exports = function (context) {
 		res.send("loaderio-e24b4bb0195a1b9ca4bbea3191a2dfdd");
 	});
 
+	//for status checks. will be used if the webpage for testing the API is disabled
+	app.get('/', function (req, res) {
+		res.sendStatus(200);
+	});
+
 	//all APIs are prepended with /v1
 	//contain these APIs in this router
 	app.use('/v1', router);

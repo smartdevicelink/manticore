@@ -7,6 +7,7 @@ var config = {
   clientAgentIp: process.env.NOMAD_IP_http, //get the environment variable from nomad
   httpPort: e.HTTP_PORT || 4000,
   cors: e.CORS || false,
+  disableWebpage: e.DISABLE_WEBPAGE || false,
   jwt: {
     secret: e.JWT_SECRET
   },
