@@ -36,6 +36,7 @@ frontend main
     {{range ls "haproxy/data/httpFront"}}
     use_backend http-back-{{.Key}} if http-front-{{.Key}}{{end}}
 
+    monitor-uri /haproxy
     acl web-app hdr_beg(host) {{key "haproxy/domainName"}}
     use_backend app if web-app
 
