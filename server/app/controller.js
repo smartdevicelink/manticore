@@ -129,6 +129,11 @@ function validateRequestCore (req, res, next) {
 		res.status(400).send("Please provide user identification");
 	}
 	else {
+		//trim the body object of anything that shouldn't exist.
+		var newBody = {
+			id: req.body.id
+		};
+		req.body = newBody;
 		next();
 	}
 }
@@ -145,6 +150,11 @@ function validateRequestLogs (req, res, next) {
 		res.status(400).send("Please provide user identification");
 	}
 	else {
+		//trim the body object of anything that shouldn't exist.
+		var newBody = {
+			id: req.body.id
+		};
+		req.body = newBody;
 		next();
 	}
 }
@@ -161,6 +171,11 @@ function validateDeleteCore (req, res, next) {
 		res.status(400).send("Please provide user identification");
 	}
 	else {
+		//trim the body object of anything that shouldn't exist.
+		var newBody = {
+			id: req.body.id
+		};
+		req.body = newBody;
 		next();
 	}
 }

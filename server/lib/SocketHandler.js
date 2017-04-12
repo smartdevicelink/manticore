@@ -1,4 +1,12 @@
 var needle = require('needle');
+var randomString = require('randomstring');
+
+var options = {
+    length: 24,
+    charset: 'alphanumeric'
+};
+//generate random strings for connection urls
+var generatorFunc = randomString.generate.bind(undefined, options);
 
 module.exports = SocketHandler;
 //a client connected to Manticore. holds extra information per socket
@@ -19,7 +27,10 @@ function SocketHandler (io) {
 */
 SocketHandler.prototype.requestConnection = function (id) {
     var self = this;
-    var custom = this.websocket.of('/' + id);
+    //all connection socket instances will have a connection string on instantiation
+    //getConnectionString will force instantiation if needed
+    var custom = this.websocket.of('/' + this.getConnectionString(id));
+
     custom.on('connection', function (socket) {
         //save this socket object
         self.addSocket(id, socket);
@@ -45,6 +56,7 @@ SocketHandler.prototype.cleanSockets = function (requestKeyArray) {
             //not found. remove the cached information
             delete this.sockets[key].position;
             delete this.sockets[key].addresses;
+            delete this.sockets[key].connectionString;
         }
     }
 }
@@ -52,9 +64,13 @@ SocketHandler.prototype.cleanSockets = function (requestKeyArray) {
 /**
 * Make a connection socket object but without the socket itself
 * @param {string} id - Id of a user using Manticore
+* @param {object} socket - socket of the connection to the user
 */
-SocketHandler.prototype.newSocket = function (id) {
-    this.sockets[id] = new ConnectionSocket();
+SocketHandler.prototype.newSocket = function (id, socket) {
+    //a user should communicate with the same Manticore in a cluster, so store the random connection
+    //string in memory via the ConnectionSocket. unlike other random strings generated, we will not
+    //check for uniqueness here
+    this.sockets[id] = new ConnectionSocket(socket, generatorFunc());
 }
 
 /**
@@ -77,10 +93,9 @@ SocketHandler.prototype.addSocket = function (id, socket) {
     if (this.checkId(id)) { 
         //this id was found before! associate the id with the new socket
         this.sockets[id].socket = socket;
-        
     }
-    else { //if the id doesn't exist in the cache
-        this.sockets[id] = new ConnectionSocket(socket);
+    else { //if the id doesn't exist in the cache, then make a brand new ConnectionSocket
+        this.newSocket(id, socket);
     }
 }
 
@@ -141,6 +156,19 @@ SocketHandler.prototype.updateAddresses = function (context, id, data) {
 }
 
 /**
+* Gets the connection string suffix for a specific user. Will force an instantiation of ConnectionSocket
+* in order to guarantee the existance of the connection string
+* @param {string} id - Id of a user using Manticore
+* @returns {string} - Connection string suffix
+*/
+SocketHandler.prototype.getConnectionString = function (id) {
+    if (!this.checkId(id)) { //make a new connection socket if it doesn't exist
+        this.newSocket(id);
+    }
+    return this.sockets[id].connectionString;
+}
+
+/**
 * Tries to find a ConnectionSocket associated with an id
 * @param {string} id - Id of a user using Manticore
 * @returns {ConnectionSocket} - A connection socket object of the id, if it exists. May be null
@@ -181,11 +209,13 @@ SocketHandler.prototype.send = function (id, keyword, logData) {
 * Includes an addresses property which stores an object about address information for a user
 * @constructor
 * @param {object} socket - The socket from a connection to the user
+* @param {string} randomString - A random string that is the suffix of the websocket connection for a user
 */
-function ConnectionSocket (socket) {
+function ConnectionSocket (socket, randomString) {
     this.socket = socket;
     this.position;
     this.addresses;
+    this.connectionString = randomString;
 }
 
 /**

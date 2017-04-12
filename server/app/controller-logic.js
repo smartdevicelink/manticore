@@ -17,7 +17,6 @@ var utility = {
 	* Requests an instance of sdl_core and HMI to be ran
 	* @function requestCore
 	* @param {object} body - The body of the user request
-	* @returns {string} - The address of Manticore for the user to connect to via websockets
 	*/
 	requestCore: function (body) {
 		//check that the user hasn't already tried to request a core
@@ -38,12 +37,12 @@ var utility = {
 				context.logger.debug("Duplicate request from " + body.id);
 			} 
 		});
-		//start the websocket server for this id
+		//start the websocket server for this id and get the random string generated for this id
 		context.socketHandler.requestConnection(body.id);
+		var suffixString = context.socketHandler.getConnectionString(body.id);
 		//return the appropriate address the client should connect to
-		var websocketAddress = context.getWsUrl() + "/" + body.id;
+		var websocketAddress = context.getWsUrl() + "/" + suffixString;
 		//use the id for the socket connection
-		context.logger.debug("Connection ID:" + body.id);
 		context.logger.debug("Connection URL:" + websocketAddress);
 		return websocketAddress;
 	}, 
