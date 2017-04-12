@@ -230,7 +230,7 @@ function waitForHmiCheck (context, userId, callback) {
     context.consuler.getKeyValue(context.keys.data.request + "/" + userId, function (result) {
         if (result) {
             var requestObj = context.UserRequest().parse(result.Value);
-            var url = `http://${requestObj.userToHmiPrefix}.${context.config.haproxy.domainName}`;
+            var url = `//${requestObj.userToHmiPrefix}.${context.config.haproxy.domainName}`;
 
             //keep continually hitting the endpoint until we get a 200 response
             needle.get(url, function (err, res) {
