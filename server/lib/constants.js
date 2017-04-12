@@ -11,7 +11,7 @@ module.exports = {
 		hmiTaskPrefix: "hmi-task-",
 		hmiAliveHealth: "hmi-alive",
 		manticoreAliveHealth: "manticore-alive",
-		baseImageSdlCore: "crokita/discovery-core",
+		baseImageSdlCore: "smartdevicelink/manticore-sdl-core",
 		baseImageGenericHmi: "smartdevicelink/manticore-generic-hmi",
 		imageTagMaster: ":master",
 		imageTagDevelop: ":develop",
