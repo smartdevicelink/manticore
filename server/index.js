@@ -61,6 +61,9 @@ if (config.cors === "true") {
         logger.info("HTTP Server Port: " + config.httpPort);
         logger.info("CORS enabled: " + config.cors); 
         logger.info("Webpage disabled: " + config.disableWebpage); 
+        if (config.cloudWatch) {
+            logger.info("Cloud watch testing: " + config.cloudWatch.testing);
+        }
         //jwt secret and trace info purposely not logged
         //HAProxy stuff
         if (config.haproxy) {

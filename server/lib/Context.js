@@ -1,7 +1,8 @@
 //an object that manages and contains global information necessary across all modules
-//the modules come from the /lib folder are put here
+//the modules that come from the /lib folder are put here
 var SocketHandler = require('./SocketHandler.js');
 var AwsHandler = require('./AwsHandler.js');
+var Publisher = require('./Publisher.js');
 
 module.exports = Context;
 
@@ -19,6 +20,7 @@ function Context (app, socketio, logger, config) {
 	this.strings = require('./constants.js').strings; //stores locations of arbitrary string constants
 	this.socketHandler = new SocketHandler(socketio); //socket manager module
 	this.logger = logger; //logger module
+	this.publisher = Publisher(config); //publishing and logger module
 	this.consuler = require('consul-helper')(config.clientAgentIp); //connect to the consul agent before continuing
 	this.nomader = require('nomad-helper'); //creates nomad job files easily
 	this.agentAddress = config.clientAgentIp; //address of nomad and consul client agents

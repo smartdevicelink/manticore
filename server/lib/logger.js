@@ -1,3 +1,4 @@
+//module meant for logging to stdout and stderr to the user of immediate information
 var winston = require('winston');
 
 module.exports = function (logEnv) {

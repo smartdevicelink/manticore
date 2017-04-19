@@ -15,6 +15,9 @@ var config = {
     serviceName: e.TRACE_SERVICE_NAME,
     apiKey: e.TRACE_API_KEY
   },
+  cloudWatch: {
+    testing: e.ENABLE_CLOUD_WATCH
+  },
   haproxy: {
     domainName: e.DOMAIN_NAME,
     tcpPortRangeStart: e.TCP_PORT_RANGE_START,
