@@ -30,6 +30,7 @@ function Context (app, socketio, logger, config) {
 	//expecting the AWS_REGION env. if not provided, AwsHandler will simply not function
 	this.AwsHandler = new AwsHandler();
 	this.AwsHandler.init(config, logger);
+	this.AwsHandler.describeAlarms();
 	this.AllocationData = require('./AllocationData.js');
 	this.config = config; //config object which stores all environment variables
 

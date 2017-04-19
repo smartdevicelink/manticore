@@ -224,8 +224,8 @@ function allocationWatch (context) {
 					if (context.config.haproxy) {
 						domainName = context.config.haproxy.domainName;
 						httpListen = context.config.haproxy.httpListen;
-						if (context.config.haproxy.elb) {
-							sslPort = context.config.haproxy.elb.sslPort;
+						if (context.config.aws && context.config.aws.elb) {
+							sslPort = context.config.aws.elb.sslPort;
 						}
 					}
 					//send address information to the client(s)
@@ -246,7 +246,7 @@ function allocationWatch (context) {
 				//furthermore, if ELB is enabled, use the TCP port information
 				//from the template to modify the ELB such that it is listening and routing
 				//on those same ports
-				if (context.config.haproxy && context.config.haproxy.elb) {
+				if (context.config.aws && context.config.aws.elb) {
 					context.AwsHandler.changeState(template);
 				}
 			}

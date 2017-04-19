@@ -1,6 +1,6 @@
 var AWS = require('aws-sdk');
-var ec2 = new AWS.EC2();
 var elb = new AWS.ELB();
+var cloudWatch = new AWS.CloudWatch();
 var logger;
 
 module.exports = AwsHandler;
@@ -10,8 +10,15 @@ module.exports = AwsHandler;
 * @constructor
 */
 function AwsHandler () {
-	this.haproxy; //haproxy config object
+	this.config; //config object
 }
+
+AwsHandler.prototype.describeAlarms = function () {
+	cloudWatch.describeAlarms({}, function (err, data) {
+		console.error(err);
+		console.error(JSON.stringify(data, null, 4));
+	});	
+};
 
 
 /**
@@ -22,9 +29,9 @@ function AwsHandler () {
 */
 AwsHandler.prototype.init = function (config, log) {
 	logger = log;
-	this.haproxy = config.haproxy;
-	if (this.haproxy && this.haproxy.elb) { //only do things if ELB is enabled
-		AWS.config.update({region: this.haproxy.elb.awsRegion});
+	this.config = config;
+	if (this.config.aws) { //only do things if AWS is enabled
+		AWS.config.update({region: this.config.aws.awsRegion});
 	}
 };
 
@@ -33,7 +40,7 @@ AwsHandler.prototype.init = function (config, log) {
 * @param {HAProxyTemplate} template - Information meant for consumption by HAProxy
 */
 AwsHandler.prototype.changeState = function (template) {
-	if (!this.haproxy || !this.haproxy.elb) {
+	if (!this.config.aws || !this.config.aws.elb) {
 		return; //do nothing if ELB isn't enabled
 	}
 	var self = this; //consistent reference to 'this'
@@ -53,15 +60,15 @@ AwsHandler.prototype.changeState = function (template) {
 			Protocol: "HTTPS",
 			LoadBalancerPort: 443,
 			InstanceProtocol: "HTTP",
-			InstancePort: self.haproxy.httpListen, 
-			SSLCertificateId: self.haproxy.elb.sslCertificateArn
+			InstancePort: self.config.haproxy.httpListen, 
+			SSLCertificateId: self.config.aws.elb.sslCertificateArn
 		}),
 		new Listener({
 			Protocol: "SSL",
-			LoadBalancerPort: self.haproxy.elb.sslPort, 
+			LoadBalancerPort: self.config.aws.elb.sslPort, 
 			InstanceProtocol: "TCP",
-			InstancePort: self.haproxy.httpListen, 
-			SSLCertificateId: self.haproxy.elb.sslCertificateArn
+			InstancePort: self.config.haproxy.httpListen, 
+			SSLCertificateId: self.config.aws.elb.sslCertificateArn
 		})];
 
 		//get tcp mappings. we are only interested in an array of ports that should be opened
@@ -181,7 +188,7 @@ AwsHandler.comparelistenerStates = function (listener1, listener2) {
 */
 AwsHandler.prototype.describeLoadBalancer = function (callback) {
 	var params = {
-		LoadBalancerNames: [this.haproxy.elb.manticoreName],
+		LoadBalancerNames: [this.config.aws.elb.manticoreName],
 	}
 	elb.describeLoadBalancers(params, function (err, data) {
 		//check if we got the load balancer that was requested via env variable
@@ -207,7 +214,7 @@ AwsHandler.prototype.describeLoadBalancer = function (callback) {
 AwsHandler.prototype.addListeners = function (listeners, callback) {
 	var params = {
 		Listeners: listeners,
-		LoadBalancerName: this.haproxy.elb.manticoreName
+		LoadBalancerName: this.config.aws.elb.manticoreName
 	};
 	if (listeners.length > 0) { //only make a call if listeners has data
 		elb.createLoadBalancerListeners(params, function (err, data) {
@@ -230,7 +237,7 @@ AwsHandler.prototype.addListeners = function (listeners, callback) {
 AwsHandler.prototype.removeListeners = function (lbPorts, callback) {
 	var params = {
 		LoadBalancerPorts: lbPorts,
-		LoadBalancerName: this.haproxy.elb.manticoreName
+		LoadBalancerName: this.config.aws.elb.manticoreName
 	};
 	if (lbPorts.length > 0) {
 		elb.deleteLoadBalancerListeners(params, function (err, data) {

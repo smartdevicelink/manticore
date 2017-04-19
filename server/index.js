@@ -61,9 +61,6 @@ if (config.cors === "true") {
         logger.info("HTTP Server Port: " + config.httpPort);
         logger.info("CORS enabled: " + config.cors); 
         logger.info("Webpage disabled: " + config.disableWebpage); 
-        if (config.cloudWatch) {
-            logger.info("Cloud watch testing: " + config.cloudWatch.testing);
-        }
         //jwt secret and trace info purposely not logged
         //HAProxy stuff
         if (config.haproxy) {
@@ -71,14 +68,21 @@ if (config.cors === "true") {
             logger.info("TCP Starting Port Range: " + config.haproxy.tcpPortRangeStart);   
             logger.info("TCP Ending Port Range: " + config.haproxy.tcpPortRangeEnd);   
             logger.info("HAProxy HTTP Listening Port: " + config.haproxy.httpListen);  
-            if (config.haproxy.elb) {
+        }
+        //AWS stuff
+        if (config.aws) {
+            logger.info("AWS Region Name: " + config.aws.awsRegion); 
+            if (config.aws.cloudWatch) {
+                logger.info("Cloud watch testing: " + config.aws.cloudWatch.testing);              
+            }
+            if (config.aws.elb) {
                 //AWS ELB stuff
-                logger.info("AWS Region Name: " + config.haproxy.elb.awsRegion); 
-                logger.info("ELB Name for Manticore: " + config.haproxy.elb.manticoreName); 
-                logger.info("ELB SSL Listener Port: " + config.haproxy.elb.sslPort);
-                logger.info("SSL Ceritificate ARN: " + config.haproxy.elb.sslCertificateArn);                 
+                logger.info("ELB Name for Manticore: " + config.aws.elb.manticoreName); 
+                logger.info("ELB SSL Listener Port: " + config.aws.elb.sslPort);
+                logger.info("SSL Ceritificate ARN: " + config.aws.elb.sslCertificateArn);                 
             }
         }
+
         //Nomad-configured environment variables. Useful for the developer to find where Manticore is
         logger.info("CONTAINER IP ADDRESS: " + process.env.NOMAD_IP_http + ":" + process.env.NOMAD_HOST_PORT_http); 
 

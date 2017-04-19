@@ -15,20 +15,22 @@ var config = {
     serviceName: e.TRACE_SERVICE_NAME,
     apiKey: e.TRACE_API_KEY
   },
-  cloudWatch: {
-    testing: e.ENABLE_CLOUD_WATCH
+  aws: {
+    awsRegion: e.AWS_REGION,
+    cloudWatch: {
+      enable: e.ENABLE_CLOUD_WATCH
+    },
+    elb: {
+      manticoreName: e.ELB_MANTICORE_NAME,
+      sslPort: e.ELB_SSL_PORT,
+      sslCertificateArn: e.SSL_CERTIFICATE_ARN
+    }
   },
   haproxy: {
     domainName: e.DOMAIN_NAME,
     tcpPortRangeStart: e.TCP_PORT_RANGE_START,
     tcpPortRangeEnd: e.TCP_PORT_RANGE_END,
-    httpListen: e.HAPROXY_HTTP_LISTEN,
-    elb: {
-      awsRegion: e.AWS_REGION,
-      manticoreName: e.ELB_MANTICORE_NAME,
-      sslPort: e.ELB_SSL_PORT,
-      sslCertificateArn: e.SSL_CERTIFICATE_ARN
-    }
+    httpListen: e.HAPROXY_HTTP_LISTEN
   }
 }
 
