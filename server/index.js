@@ -73,13 +73,13 @@ if (config.cors === "true") {
         if (config.aws) {
             logger.info("AWS Region Name: " + config.aws.awsRegion); 
             if (config.aws.cloudWatch) {
-                logger.info("Cloud watch testing: " + config.aws.cloudWatch.testing);              
+                logger.info("CloudWatch namespace: " + config.aws.cloudWatch.namespace);         
             }
             if (config.aws.elb) {
                 //AWS ELB stuff
                 logger.info("ELB Name for Manticore: " + config.aws.elb.manticoreName); 
                 logger.info("ELB SSL Listener Port: " + config.aws.elb.sslPort);
-                logger.info("SSL Ceritificate ARN: " + config.aws.elb.sslCertificateArn);                 
+                logger.info("SSL Certificate ARN: " + config.aws.elb.sslCertificateArn);                 
             }
         }
 

@@ -18,9 +18,9 @@ var config = {
   aws: {
     awsRegion: e.AWS_REGION,
     cloudWatch: {
-      enable: e.ENABLE_CLOUD_WATCH
+      namespace: e.CLOUD_WATCH_NAMESPACE
     },
-    elb: {
+    elb: { //haproxy needs to be enabled before using this!
       manticoreName: e.ELB_MANTICORE_NAME,
       sslPort: e.ELB_SSL_PORT,
       sslCertificateArn: e.SSL_CERTIFICATE_ARN

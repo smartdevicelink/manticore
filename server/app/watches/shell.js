@@ -64,7 +64,36 @@ module.exports = {
 				serviceWatches[serviceName] = watch;
 			}
 		});
+	},
+	removeUser: removeUser
+}
+
+/**
+* Removes a user from the KV store request list
+* @param {Context} context - Context instance
+* @param {string} userId - ID of a user
+*/
+function removeUser (context, userId) {
+	//if we have CloudWatch enabled, report the amount of time this user was using Manticore
+	//the start time is when the user enters the waiting list, basically
+	if (context.config.aws.cloudWatch) {
+		context.consuler.getKeyValue(context.keys.data.request + "/" + userId, function (result) {
+			if (result) {
+				var request = context.UserRequest().parse(result.Value);
+				//find the total amount of time being in the request list in seconds
+				var endTime = new Date();
+				var durationInSeconds = (request.startTime - endTime) / 1000;
+				//now remove the user from the request list and publish the metric
+				context.AwsHandler.publish("UserDuration", "Seconds", durationInSeconds);
+				context.consuler.delKey(context.keys.data.request + "/" + userId, function () {});
+			}
+		});
 	}
+	else {
+		//CloudWatch not enabled. simply delete the key
+		context.consuler.delKey(context.keys.data.request + "/" + userId, function () {});
+	}
+	
 }
 
 //wrap the context in these functions so we have necessary functionality
@@ -80,6 +109,10 @@ function requestsWatch (context) {
 		for (let i = 0; i < requestKeyArray.length; i++) {
 			requestKeyArray[i] = requestKeyArray[i].split(context.keys.data.request + "/")[1];
 		}
+		//the filler value will always be an element of this request list. therefore, the length
+		//of this array minus 1 is the current number of requests
+		context.AwsHandler.publish(context.strings.requestCount, "Count", requestKeyArray.length - 1);
+
 		//get waiting key and value
 		functionite()
 		.pass(context.consuler.getKeyValue, context.keys.data.waiting)
@@ -192,6 +225,7 @@ function allocationWatch (context) {
 			//each key has a value that is stringified JSON in the format of the AllocationData class
 			//go through each property found (key is the id of the user)
 			//we also need information from the requests KV in order to complete this information
+
 			var pairs = [];
 			for (var key in allocationKeys) {
 				var userId = key;
@@ -237,6 +271,8 @@ function allocationWatch (context) {
 				}
 			}
 			context.logger.debug(pairs);
+			context.AwsHandler.publish(context.strings.allocationCount, "Count", pairs.length);
+
 			if (context.config.haproxy) {
 				//update the proxy information using the proxy module (not manticore addresses!)
 				context.logger.debug("Updating KV Store with address and port data for proxy!");
@@ -288,7 +324,7 @@ function coreWatch (context, userId) {
 		}
 		else { //core for this user id has died. delete the job now
 			context.logger.debug("Core died. Delete job " + userId);
-			context.consuler.delKey(context.keys.data.request + "/" + userId, function (){});
+			removeUser(context, userId);
 		}
 	}
 }
@@ -360,7 +396,7 @@ function hmiWatch (context, userId) {
 				}
 				else { //in this case, the HMI is still running but core isn't. we have to stop the job now
 					context.logger.debug("Core died. Delete job " + userId);
-					context.consuler.delKey(context.keys.data.request + "/" + userId, function (){});
+					removeUser(context, userId);
 				}
 
 			}) //get the allocation info

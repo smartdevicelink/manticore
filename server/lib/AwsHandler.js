@@ -13,14 +13,6 @@ function AwsHandler () {
 	this.config; //config object
 }
 
-AwsHandler.prototype.describeAlarms = function () {
-	cloudWatch.describeAlarms({}, function (err, data) {
-		console.error(err);
-		console.error(JSON.stringify(data, null, 4));
-	});	
-};
-
-
 /**
 * Sets up AwsHandler with logging 
 * @param {string} region - The AWS region to be used (ex. us-east-1)
@@ -34,6 +26,8 @@ AwsHandler.prototype.init = function (config, log) {
 		AWS.config.update({region: this.config.aws.awsRegion});
 	}
 };
+
+//ELB CODE HERE
 
 /**
 * Given a template generated from HAProxyTemplate.js, update the ELB with the new port data
@@ -269,3 +263,36 @@ function Listener (body) {
 	this.InstancePort = body.InstancePort;
 	this.SSLCertificateId = body.SSLCertificateId;
 }
+
+
+//CLOUDWATCH CODE HERE
+/**
+* Publishes a metric to CloudWatch
+* @param {string} metricName - Name of the metric
+* @param {string} unitName - The unit the metric is measured in
+* @param {number} value - Value of the metric
+*/
+AwsHandler.prototype.publish = function (metricName, unitName, value) {
+	if (this.config.aws.cloudWatch) { //only do things if CloudWatch is enabled
+		var params = {
+			Namespace: this.config.aws.cloudWatch.namespace,
+			MetricData: [
+				{
+					MetricName: metricName,
+					Dimensions: [
+						{
+							Name: "IP",
+							Value: this.config.clientAgentIp
+						}
+					],
+					Timestamp: new Date(),
+					Unit: unitName,
+					Value: value
+				}
+			]
+			//use the dimensions property to show where each log came from by IP
+			//so we can filter the metrics based on reports of one Manticore web app
+		};
+		cloudWatch.putMetricData(params, function (err, data) {});	
+	}
+};

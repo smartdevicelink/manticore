@@ -2,7 +2,6 @@
 //the modules that come from the /lib folder are put here
 var SocketHandler = require('./SocketHandler.js');
 var AwsHandler = require('./AwsHandler.js');
-var Publisher = require('./Publisher.js');
 
 module.exports = Context;
 
@@ -20,7 +19,6 @@ function Context (app, socketio, logger, config) {
 	this.strings = require('./constants.js').strings; //stores locations of arbitrary string constants
 	this.socketHandler = new SocketHandler(socketio); //socket manager module
 	this.logger = logger; //logger module
-	this.publisher = Publisher(config); //publishing and logger module
 	this.consuler = require('consul-helper')(config.clientAgentIp); //connect to the consul agent before continuing
 	this.nomader = require('nomad-helper'); //creates nomad job files easily
 	this.agentAddress = config.clientAgentIp; //address of nomad and consul client agents
@@ -30,7 +28,6 @@ function Context (app, socketio, logger, config) {
 	//expecting the AWS_REGION env. if not provided, AwsHandler will simply not function
 	this.AwsHandler = new AwsHandler();
 	this.AwsHandler.init(config, logger);
-	this.AwsHandler.describeAlarms();
 	this.AllocationData = require('./AllocationData.js');
 	this.config = config; //config object which stores all environment variables
 

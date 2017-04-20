@@ -24,6 +24,8 @@ var utility = {
 			if (isUnique) { //new ID confirmed
 				//create a user request object for storing in the KV store
 				var requestJSON = context.UserRequest(body);
+				//store the date when this object is made
+				requestJSON.startTime = new Date();
 				//check if haproxy is enabled. if it is, we need to generate external URL prefixes
 				//that would be used for HAProxy and store them in the request object
 				if (context.config.haproxy) { 
@@ -96,9 +98,8 @@ var utility = {
 	*/
 	deleteCore: function (userId) {
 		//remove the request id of the same id from the KV store
-		context.consuler.delKey(context.keys.data.request + "/" + userId, function () {
-			//that's literally it.
-		});
+		watchesLogic.removeUser(context, userId);
+		//that's literally it.
 	}
 };
 
