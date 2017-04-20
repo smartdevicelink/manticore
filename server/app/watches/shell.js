@@ -84,7 +84,7 @@ function removeUser (context, userId) {
 				var endTime = new Date();
 				var durationInSeconds = (request.startTime - endTime) / 1000;
 				//now remove the user from the request list and publish the metric
-				context.AwsHandler.publish("UserDuration", "Seconds", durationInSeconds);
+				context.AwsHandler.publish(context.strings.userDuration, "Seconds", durationInSeconds);
 				context.consuler.delKey(context.keys.data.request + "/" + userId, function () {});
 			}
 		});

@@ -18,7 +18,8 @@ module.exports = {
 		imageTagManticore: ":manticore",
 		//string constants for AWS CloudWatch metrics
 		requestCount: "RequestCount",
-		allocationCount: "AllocationCount"
+		allocationCount: "AllocationCount",
+		userDuration: "UserDuration"
 	},
 	//keys in the KV store
 	keys: {
