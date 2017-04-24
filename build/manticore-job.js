@@ -19,7 +19,7 @@ function buildManticoreJobFile () {
 	var taskName = "manticore-task";
 	var serviceName = "manticore-service";
 	job.addGroup(groupName);
-	job.setType("service");
+	job.setType("system"); //one Manticore per client agent with the "manticore" meta attribute being true
 	//update one manticore at a time every 10 seconds
 	job.setUpdate(1, 10000000000);
 	job.setCount(groupName, 1);

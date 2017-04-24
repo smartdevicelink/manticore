@@ -3,6 +3,7 @@ var core = require('./core.js');
 //SUBFOLDER MODULES
 var jobLogic = require('./job/shell.js');
 var proxyLogic = require('./proxy/shell.js');
+var resourceLogic = require('./resource/shell.js');
 
 //watches that are handled by this module
 var serviceWatches = {};
@@ -81,8 +82,10 @@ function removeUser (context, userId) {
 			if (result) {
 				var request = context.UserRequest().parse(result.Value);
 				//find the total amount of time being in the request list in seconds
+				var startTime = new Date(request.startTime);
 				var endTime = new Date();
-				var durationInSeconds = (request.startTime - endTime) / 1000;
+				var durationInSeconds = (endTime - startTime) / 1000;
+				context.logger.debug("ID: " +userId + ", Duration: " + durationInSeconds);
 				//now remove the user from the request list and publish the metric
 				context.AwsHandler.publish(context.strings.userDuration, "Seconds", durationInSeconds);
 				context.consuler.delKey(context.keys.data.request + "/" + userId, function () {});
@@ -171,6 +174,10 @@ function waitingWatch (context) {
 						});
 					}
 					else {
+						//it's important to find out what happened if an allocation failed!
+						//publish resource statistics
+						resourceLogic.getStats(context);
+
 						context.logger.debug("allocation failed. set to waiting " + pendingKey);
 						//set the user's ID to waiting and update the waiting list
 						waitingHash.setWaiting(pendingKey);
@@ -272,7 +279,9 @@ function allocationWatch (context) {
 			}
 			context.logger.debug(pairs);
 			context.AwsHandler.publish(context.strings.allocationCount, "Count", pairs.length);
-
+			//publish resource statistics
+			//resourceLogic.getStats(context);
+			
 			if (context.config.haproxy) {
 				//update the proxy information using the proxy module (not manticore addresses!)
 				context.logger.debug("Updating KV Store with address and port data for proxy!");
