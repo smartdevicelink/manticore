@@ -19,7 +19,7 @@ module.exports = {
 		//set up watches for the KV store
 		//pass in the context to the watch functions
 		context.consuler.watchKVStore(context.keys.request, requestsWatch(context));
-		context.consuler.watchKVStore(context.keys.waiting, waitingWatch(context));
+		context.consuler.watchKVStore(context.keys.waiting, waitingWatch(context)); 
 		context.consuler.watchKVStore(context.keys.allocation, allocationWatch(context));
 	},
 	/**
@@ -77,7 +77,7 @@ module.exports = {
 function removeUser (context, userId) {
 	//if we have CloudWatch enabled, report the amount of time this user was using Manticore
 	//the start time is when the user enters the waiting list, basically
-	if (context.config.aws.cloudWatch) {
+	if (context.config.aws && context.config.aws.cloudWatch) {
 		context.consuler.getKeyValue(context.keys.data.request + "/" + userId, function (result) {
 			if (result) {
 				var request = context.UserRequest().parse(result.Value);
@@ -277,6 +277,7 @@ function allocationWatch (context) {
 					pairs.push(pair);
 				}
 			}
+			context.logger.debug("current pairs:");
 			context.logger.debug(pairs);
 			context.AwsHandler.publish(context.strings.allocationCount, "Count", pairs.length);
 			//publish resource statistics
@@ -331,9 +332,9 @@ function coreWatch (context, userId) {
 				}
 			});
 		}
-		else { //core for this user id has died. delete the job now
-			context.logger.debug("Core died. Delete job " + userId);
-			removeUser(context, userId);
+		else { //core for this user id has died?
+			//context.logger.debug("Core died. Delete job " + userId);
+			//removeUser(context, userId);
 		}
 	}
 }

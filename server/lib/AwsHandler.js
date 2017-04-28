@@ -273,7 +273,7 @@ function Listener (body) {
 * @param {number} value - Value of the metric
 */
 AwsHandler.prototype.publish = function (metricName, unitName, value) {
-	if (this.config.aws.cloudWatch) { //only do things if CloudWatch is enabled
+	if (this.config.aws && this.config.aws.cloudWatch) { //only do things if CloudWatch is enabled
 		var params = {
 			Namespace: this.config.aws.cloudWatch.namespace,
 			MetricData: [

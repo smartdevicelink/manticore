@@ -30,7 +30,6 @@ SocketHandler.prototype.requestConnection = function (id) {
     //all connection socket instances will have a connection string on instantiation
     //getConnectionString will force instantiation if needed
     var custom = this.websocket.of('/' + this.getConnectionString(id));
-
     custom.on('connection', function (socket) {
         //save this socket object
         self.addSocket(id, socket);
@@ -164,6 +163,12 @@ SocketHandler.prototype.updateAddresses = function (context, id, data) {
 SocketHandler.prototype.getConnectionString = function (id) {
     if (!this.checkId(id)) { //make a new connection socket if it doesn't exist
         this.newSocket(id);
+    }
+    //there could be a connection socket but no connection string. if it doesn't exist
+    //then the user started and stopped a core, which cleared out the connection string.
+    //generate a new one!
+    if (!this.sockets[id].connectionString) {
+        this.sockets[id].connectionString = generatorFunc();
     }
     return this.sockets[id].connectionString;
 }

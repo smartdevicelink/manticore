@@ -144,7 +144,7 @@ module.exports = {
 		if (context.config.haproxy) { //haproxy enabled
 			//use the external addresses so that haproxy routes users to the HMI correctly
 			fullAddressBroker = request.brokerAddressPrefix + "." + context.config.haproxy.domainName;
-			if (context.config.aws.elb) { //elb enabled. use secure websockets
+			if (context.config.aws && context.config.aws.elb) { //elb enabled. use secure websockets
 				//override the value of haproxy port with the port that the ELB will go through
 				//you should make sure the ELB exit port matches the port HAProxy is listening to
 				fullAddressBroker = "wss:\\/\\/" + fullAddressBroker + ":" + context.config.aws.elb.sslPort;

@@ -27,37 +27,45 @@ defaults
     timeout check 10s
     maxconn 3000
 
+{{ with $td := keyOrDefault "templateData" "{\"users\":[]}" | parseJSON }}
+    frontend main
+        bind *:{{key "haproxy/mainPort"}}
+        mode http
+        {{range $userIndex, $userObj := $td.users}}
+            {{range $httpIndex, $httpObj := $userObj.http}}
+                acl http-front-{{$userIndex}}-{{$httpIndex}} hdr_dom(host) {{$httpObj.subdomain}}
+                use_backend http-back-{{$userIndex}}-{{$httpIndex}} if http-front-{{$userIndex}}-{{$httpIndex}}
+            {{end}}
+        {{end}}
 
-frontend main
-    bind *:{{key "haproxy/mainPort"}}
-    mode http
-    {{range ls "haproxy/data/httpFront"}}
-    acl http-front-{{.Key}} hdr_dom(host) {{.Value}}{{end}}
-    {{range ls "haproxy/data/httpFront"}}
-    use_backend http-back-{{.Key}} if http-front-{{.Key}}{{end}}
+        monitor-uri /haproxy
+        acl web-app hdr_beg(host) {{key "haproxy/domainName"}}
+        use_backend app if web-app
 
-    monitor-uri /haproxy
-    acl web-app hdr_beg(host) {{key "haproxy/domainName"}}
-    use_backend app if web-app
+    backend app
+        balance source
+        mode http
+        option httpchk GET /
+        http-check expect status 200
+        {{range ls "haproxy/webAppAddresses"}}
+            server webapp-{{.Key}} {{.Value}} check 
+        {{end}}
 
-backend app
-    balance source
-    mode http
-    option httpchk GET /
-    http-check expect status 200
-    {{range ls "haproxy/webAppAddresses"}}
-    server webapp-{{.Key}} {{.Value}} check {{end}}
+        {{range $userIndex, $userObj := $td.users}}
+            {{range $httpIndex, $httpObj := $userObj.http}}
+                backend http-back-{{$userIndex}}-{{$httpIndex}}
+                    mode http
+                    server http-server-{{$userIndex}}-{{$httpIndex}} {{$httpObj.address}}
+            {{end}}
+        {{end}}
 
 
-{{range ls "haproxy/data/httpBack"}}
-backend http-back-{{.Key}}
-    mode http
-    server http-server-{{.Key}} {{.Value}} {{end}}
+    {{range $userIndex, $userObj := $td.users}}
+        listen tcp-{{$userIndex}}
+            bind *:{{$userObj.tcp.port}}
+            mode tcp
+            option tcplog
+            server tcp-server-{{$userIndex}} {{$userObj.tcp.address}}
+    {{end}}
 
-{{$length := ls "haproxy/data/tcpMaps"|len|add 0}}{{range $i := loop 0 $length}}{{with index (ls "haproxy/data/tcpMaps") $i}}
-listen tcp-{{$i}}
-    bind *:{{.Key}}
-    mode tcp
-    option tcplog
-    server tcp-server-{{$i}} {{.Value}} {{end}}{{end}}
-
+{{ end }}

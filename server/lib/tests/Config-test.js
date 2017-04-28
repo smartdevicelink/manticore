@@ -54,13 +54,14 @@ describe('#configuration file', function(){
     });
     process.env = e
   })
-  it('should throw Error when some HAProxy ELB properties are not set', function(){
+  it('should throw Error when some AWS ELB properties are not set', function(){
     let options = {
       NOMAD_IP_http: 8,
       DOMAIN_NAME: 'Clarice',
       TCP_PORT_RANGE_START: 0,
       TCP_PORT_RANGE_END: 57,
       HAPROXY_HTTP_LISTEN: true,
+      ELB_MANTICORE_NAME:"manticore-elb",
       AWS_REGION: 'south'
     },
     e = process.env

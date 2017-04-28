@@ -46,9 +46,7 @@ module.exports = {
 			mainPort: "haproxy/mainPort",
 			domainName: "haproxy/domainName",
 			webApp: "haproxy/webAppAddresses",
-			tcpMaps: "haproxy/data/tcpMaps",
-			httpFront: "haproxy/data/httpFront",
-			httpBack: "haproxy/data/httpBack"
+			templateData: "templateData" //contains all user address routing information
 		}
 	}
 }
