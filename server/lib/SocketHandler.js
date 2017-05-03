@@ -238,7 +238,7 @@ function waitForHmiCheck (context, userId, callback) {
             var requestObj = context.UserRequest().parse(result.Value);
             var url;
 
-            if (context.config.aws.elb && context.config.aws.elb) {
+            if (context.config.aws && context.config.aws.elb) {
                 url = `https://${requestObj.userToHmiPrefix}.${context.config.haproxy.domainName}`;
             }
             else {
