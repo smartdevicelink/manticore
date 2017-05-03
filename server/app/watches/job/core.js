@@ -56,7 +56,7 @@ module.exports = {
 		job.setType("service");
 		var taskName = strings.hmiTaskPrefix + request.id;
 		job.addTask(groupName, taskName);
-		job.setImage(groupName, taskName, strings.baseImageGenericHmi + strings.imageTagManticore);
+		job.setImage(groupName, taskName, strings.baseImageGenericHmi + strings.imageTagMaster);
 		job.addPort(groupName, taskName, true, "user", 8080);
 		job.addPort(groupName, taskName, true, "broker", 9000);
 		job.addConstraint({
