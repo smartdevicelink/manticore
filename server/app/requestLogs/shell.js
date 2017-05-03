@@ -11,7 +11,6 @@ module.exports = {
 	checkValidAllocation: function (context, id, callback) {
 		//make sure there is an allocation for core intended for this user before starting up a connection
 		context.nomader.getAllocations(context.strings.coreHmiJobPrefix + id, context.nomadAddress, function (res) {
-			context.logger.debug(JSON.stringify(res.allocations, null, 4));
 			callback(core.findAliveCoreAllocation(res.allocations, id, context.strings));
 		});
 	},

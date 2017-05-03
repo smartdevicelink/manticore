@@ -70,15 +70,6 @@ var utility = {
 				var taskName; //get the task name
 				//we know what the task name must be solely based on the id of the user!
 				taskName = context.strings.coreTaskPrefix + userId;
-				/*
-				context.logger.debug(JSON.stringify(validAllocation, null, 4));
-				for (var key in validAllocation.TaskStates) {
-					//TODO: PROBLEM CODE IS HERE. TASKNAME RARELY RETURNS undefined
-					//IT MUST BE THE CORE TASK NAME INSTEAD
-					taskName = key;
-					break;
-				}
-				*/
 				store.allocation = validAllocation;
 				store.taskName = taskName;
 				callback();
