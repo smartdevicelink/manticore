@@ -203,6 +203,7 @@ SocketHandler.prototype.send = function (id, keyword, logData) {
         } 
         //logs don't need to be stored since Nomad stores them for us
         if (keyword === "logs") {
+
             connection.socket.emit(keyword, logData);
         } 
     }
@@ -237,7 +238,7 @@ function waitForHmiCheck (context, userId, callback) {
             var requestObj = context.UserRequest().parse(result.Value);
             var url;
 
-            if (context.config.aws.elb) {
+            if (context.config.aws.elb && context.config.aws.elb) {
                 url = `https://${requestObj.userToHmiPrefix}.${context.config.haproxy.domainName}`;
             }
             else {
