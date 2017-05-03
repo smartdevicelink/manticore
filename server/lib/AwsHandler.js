@@ -274,17 +274,18 @@ function Listener (body) {
 */
 AwsHandler.prototype.publish = function (metricName, unitName, value) {
 	if (this.config.aws && this.config.aws.cloudWatch) { //only do things if CloudWatch is enabled
+		/*
+			{
+				Name: "IP",
+				Value: this.config.clientAgentIp
+			}
+		*/
 		var params = {
 			Namespace: this.config.aws.cloudWatch.namespace,
 			MetricData: [
 				{
 					MetricName: metricName,
-					Dimensions: [
-						{
-							Name: "IP",
-							Value: this.config.clientAgentIp
-						}
-					],
+					Dimensions: [],
 					Timestamp: new Date(),
 					Unit: unitName,
 					Value: value
