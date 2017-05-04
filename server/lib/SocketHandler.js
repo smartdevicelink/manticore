@@ -9,16 +9,23 @@ var options = {
 var generatorFunc = randomString.generate.bind(undefined, options);
 
 module.exports = SocketHandler;
-//a client connected to Manticore. holds extra information per socket
+
+//stores constants of how long a user can keep an instance of core/hmi while idle
+var usageDuration;
+var warningDuration;
+var timeoutEventListener;
 
 /**
 * Manages websocket connections across users and sends information about their core/hmi locations
 * @constructor
 * @param {object} io - A socket.io instance
 */
-function SocketHandler (io) {
+function SocketHandler (io, timeoutEvent, usageDur, warningDur) {
     this.websocket = io;
+    timeoutEventListener = timeoutEvent;
     this.sockets = {};
+    usageDuration = usageDur;
+    warningDuration = warningDur;
 }
 
 /**
@@ -41,6 +48,12 @@ SocketHandler.prototype.requestConnection = function (id) {
         //remove socket, but only the socket. keep the connection information/position
         self.removeSocket(id);
     });
+
+    //custom user event where the user did something
+    custom.on('activity', function () {
+        //user responded with an activity event! reset the timers!
+        self.resetTimers(id);
+    })
 }
 
 /**
@@ -56,6 +69,8 @@ SocketHandler.prototype.cleanSockets = function (requestKeyArray) {
             delete this.sockets[key].position;
             delete this.sockets[key].addresses;
             delete this.sockets[key].connectionString;
+            //clear timers
+            this.clearTimers(key);
         }
     }
 }
@@ -69,7 +84,7 @@ SocketHandler.prototype.newSocket = function (id, socket) {
     //a user should communicate with the same Manticore in a cluster, so store the random connection
     //string in memory via the ConnectionSocket. unlike other random strings generated, we will not
     //check for uniqueness here
-    this.sockets[id] = new ConnectionSocket(socket, generatorFunc());
+    this.sockets[id] = new ConnectionSocket(id, socket, generatorFunc());
 }
 
 /**
@@ -79,6 +94,7 @@ SocketHandler.prototype.newSocket = function (id, socket) {
 SocketHandler.prototype.removeConnection = function (id) {
     if (this.checkId(id)) {
         //remove all information. call this if the user is not in the waiting list anymore
+        this.clearTimers(id); //remove timers first so they dont just keep running
         delete this.sockets[id];
     }
 }
@@ -200,13 +216,76 @@ SocketHandler.prototype.send = function (id, keyword, logData) {
         }  
         if (keyword === "connectInfo" && connection.addresses) {
             connection.socket.emit(keyword, connection.addresses);
+            //once connection information is sent, the user is considered using Manticore.
+            //start the timers if they were enabled!
+            this.startTimers(id);
         } 
         //logs don't need to be stored since Nomad stores them for us
         if (keyword === "logs") {
-
             connection.socket.emit(keyword, logData);
         } 
+        if (keyword === "inactivity") { 
+            //they have usageDuration seconds left to respond!
+            connection.socket.emit(keyword, usageDuration);
+        }
     }
+}
+
+
+//timer-related methods
+
+SocketHandler.prototype.startTimers = function (id) {
+    //if usageDuration and warningDuration are defined, start some timers!
+    var self = this;
+    if (usageDuration && warningDuration) {
+        console.error("start timers for " + id);
+        //make sure timers don't exist already
+        if (!self.sockets[id].usageTimer) {
+            self.sockets[id].usageTimer = self.createUsageTimer(id);
+        }
+        if (!self.sockets[id].warningTimer) {
+            self.sockets[id].warningTimer = self.createWarningTimer(id);
+        }
+    }
+}
+
+SocketHandler.prototype.createUsageTimer = function (id) {
+    var self = this;
+    return setTimeout(function () {
+        //when this is invoked, send a message to the user that they have
+        //a limited time to respond before being removed from the request list
+        self.send(id, "inactivity");
+    }, usageDuration*1000);
+}
+
+SocketHandler.prototype.createWarningTimer = function (id) {
+    return setTimeout(function () {
+        //when this is invoked, remove the user from the request list
+        //as they timed out due to idling
+        //send an event to the shell to remove the user since we cannot execute that code
+        //from here normally
+        if (timeoutEventListener) {
+            timeoutEventListener.emit('removeUser', id);
+        }
+        //timers should be removed by parent modules once a cleanSockets() happens
+    }, usageDuration*1000 + warningDuration*1000);
+}
+
+SocketHandler.prototype.clearTimers = function (id) {
+    if (this.sockets[id].usageTimer) {
+        console.error("clear timers for " + id);
+        clearTimeout(this.sockets[id].usageTimer);
+        delete this.sockets[id].usageTimer;
+    }
+    if (this.sockets[id].warningTimer) {
+        clearTimeout(this.sockets[id].warningTimer);
+        delete this.sockets[id].warningTimer;
+    }
+}
+
+SocketHandler.prototype.resetTimers = function (id) {
+    this.clearTimers(id);
+    this.startTimers(id);
 }
 
 /**
@@ -217,11 +296,14 @@ SocketHandler.prototype.send = function (id, keyword, logData) {
 * @param {object} socket - The socket from a connection to the user
 * @param {string} randomString - A random string that is the suffix of the websocket connection for a user
 */
-function ConnectionSocket (socket, randomString) {
+function ConnectionSocket (id, socket, randomString) {
+    this.id = id;
     this.socket = socket;
     this.position;
     this.addresses;
     this.connectionString = randomString;
+    this.usageTimer;
+    this.warningTimer;
 }
 
 /**

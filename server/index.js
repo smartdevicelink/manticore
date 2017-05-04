@@ -62,6 +62,11 @@ if (config.cors === "true") {
         logger.info("CORS enabled: " + config.cors); 
         logger.info("Webpage disabled: " + config.disableWebpage); 
         //jwt secret and trace info purposely not logged
+        //timer stuff
+        if (config.inactivityTimer) {
+            logger.info("Usage Duration: " + config.inactivityTimer.usageDuration);
+            logger.info("Warning Duration: " + config.inactivityTimer.warningDuration);   
+        }
         //HAProxy stuff
         if (config.haproxy) {
             logger.info("Domain Name: " + config.haproxy.domainName);

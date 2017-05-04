@@ -21,6 +21,11 @@ module.exports = {
 		context.consuler.watchKVStore(context.keys.request, requestsWatch(context));
 		context.consuler.watchKVStore(context.keys.waiting, waitingWatch(context)); 
 		context.consuler.watchKVStore(context.keys.allocation, allocationWatch(context));
+		//also setup the listener for the timeout event to listen to events
+		//from the socket handler
+		context.timeoutEvent.on('removeUser', function (id) {
+			removeUser(context, id);
+		});
 	},
 	/**
 	* Sets up watches for Consul's services for core, hmi, and manticore services

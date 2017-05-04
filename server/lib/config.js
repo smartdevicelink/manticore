@@ -15,6 +15,10 @@ var config = {
     serviceName: e.TRACE_SERVICE_NAME,
     apiKey: e.TRACE_API_KEY
   },
+  inactivityTimer: {
+    usageDuration: e.USAGE_DURATION,
+    warningDuration: e.WARNING_DURATION
+  },
   aws: {
     awsRegion: e.AWS_REGION,
     cloudWatch: {

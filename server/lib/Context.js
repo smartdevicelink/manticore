@@ -2,6 +2,9 @@
 //the modules that come from the /lib folder are put here
 var SocketHandler = require('./SocketHandler.js');
 var AwsHandler = require('./AwsHandler.js');
+var events = require('events');
+//an event listener that allows communication between app/watches/shell.js and SocketHandler
+var timeoutEvent = new events.EventEmitter();
 
 module.exports = Context;
 
@@ -17,7 +20,14 @@ function Context (app, socketio, logger, config) {
 	this.app = app; //express app
 	this.keys = require('./constants.js').keys; //stores locations of data inside the consul KV store
 	this.strings = require('./constants.js').strings; //stores locations of arbitrary string constants
-	this.socketHandler = new SocketHandler(socketio); //socket manager module
+	//socket manager module
+	var usageDuration;
+	var warningDuration;
+	if (config.inactivityTimer) {
+		usageDuration = config.inactivityTimer.usageDuration;
+		warningDuration = config.inactivityTimer.warningDuration;
+	}
+	this.socketHandler = new SocketHandler(socketio, timeoutEvent, usageDuration, warningDuration);
 	this.logger = logger; //logger module
 	this.consuler = require('consul-helper')(config.clientAgentIp); //connect to the consul agent before continuing
 	this.nomader = require('nomad-helper'); //creates nomad job files easily
@@ -30,6 +40,7 @@ function Context (app, socketio, logger, config) {
 	this.AwsHandler.init(config, logger);
 	this.AllocationData = require('./AllocationData.js');
 	this.config = config; //config object which stores all environment variables
+	this.timeoutEvent = timeoutEvent;
 
 	//The following are utility functions that are commonly used throughout Manticore
 	//determines the correct url address to use to connect to the Manticore websocket server
