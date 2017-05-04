@@ -205,6 +205,12 @@ SocketHandler.prototype.checkId = function (id) {
 * @param {string} logData - Optional. The log stream data from the Nomad HTTP API
 */
 SocketHandler.prototype.send = function (id, keyword, logData) {
+    //if there is any connection info, regardless of whether a user is listening over a websocket,
+    //start the timers if they are enabled!
+    if (keyword === "connectInfo" && connection.addresses) {
+        this.startTimers(id);
+    } 
+
     //also check if the socket exists
     if (this.checkId(id) && this.sockets[id].socket) {
         var connection = this.sockets[id];
@@ -216,9 +222,6 @@ SocketHandler.prototype.send = function (id, keyword, logData) {
         }  
         if (keyword === "connectInfo" && connection.addresses) {
             connection.socket.emit(keyword, connection.addresses);
-            //once connection information is sent, the user is considered using Manticore.
-            //start the timers if they were enabled!
-            this.startTimers(id);
         } 
         //logs don't need to be stored since Nomad stores them for us
         if (keyword === "logs") {
