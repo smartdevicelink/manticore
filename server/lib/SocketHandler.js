@@ -43,17 +43,18 @@ SocketHandler.prototype.requestConnection = function (id) {
         //resend connection information if it exists!
         self.send(id, "connectInfo");
         self.send(id, "position");
+
+        //custom user event where the user did something
+        socket.on('activity', function () {
+            console.error("activityyyyyy");
+            //user responded with an activity event! reset the timers!
+            self.resetTimers(id);
+        });
     });
     custom.on('disconnect', function () {
         //remove socket, but only the socket. keep the connection information/position
         self.removeSocket(id);
     });
-
-    //custom user event where the user did something
-    custom.on('activity', function () {
-        //user responded with an activity event! reset the timers!
-        self.resetTimers(id);
-    })
 }
 
 /**
@@ -71,6 +72,12 @@ SocketHandler.prototype.cleanSockets = function (requestKeyArray) {
             delete this.sockets[key].connectionString;
             //clear timers
             this.clearTimers(key);
+            
+            if (this.checkId(key) && this.sockets[key].socket) {
+                //additionally, inform the user that their core is dead!
+                var connection = this.sockets[key];
+                connection.socket.emit("shutdown", "");
+            }
         }
     }
 }

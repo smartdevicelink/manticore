@@ -40,6 +40,10 @@ function requestInstance() {
 			socket.on('inactivity', function (secondsLeft) {
 				console.log("WARNING: " + secondsLeft + " seconds left before shutting down the instance!");
 			});
+			//inactivity timer
+			socket.on('shutdown', function () {
+				console.log("Core is dead!");
+			});
 		}
 	});
 }
