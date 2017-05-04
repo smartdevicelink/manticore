@@ -155,7 +155,7 @@ module.exports = {
 		}
 		else { //no haproxy
 			//then give the HMI the internal address of core and connect that way
-			//HAPROXY_OFF being true assumes everything is accessible on the same network and should only
+			//haproxy being off assumes everything is accessible on the same network and should only
 			//be used for the ease of local development
 
 			//we need to have backslashes because these urls will

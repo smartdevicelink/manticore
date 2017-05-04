@@ -38,7 +38,6 @@ function buildManticoreJobFile () {
 		"TCP_PORT_RANGE_START",
 		"TCP_PORT_RANGE_END",
 		"HAPROXY_HTTP_LISTEN",
-		"HAPROXY_OFF",
 		"CORS",
 		"DISABLE_WEBPAGE",
 		"CLOUD_WATCH_NAMESPACE",

@@ -207,7 +207,7 @@ SocketHandler.prototype.checkId = function (id) {
 SocketHandler.prototype.send = function (id, keyword, logData) {
     //if there is any connection info, regardless of whether a user is listening over a websocket,
     //start the timers if they are enabled!
-    if (keyword === "connectInfo" && connection.addresses) {
+    if (this.checkId(id) && keyword === "connectInfo" && this.sockets[id].addresses) {
         this.startTimers(id);
     } 
 
