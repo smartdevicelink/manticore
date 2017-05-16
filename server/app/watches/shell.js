@@ -181,7 +181,7 @@ function waitingWatch (context) {
 					else {
 						//it's important to find out what happened if an allocation failed!
 						//publish resource statistics
-						resourceLogic.getStats(context);
+						//resourceLogic.getStats(context);
 
 						context.logger.debug("allocation failed. set to waiting " + pendingKey);
 						//set the user's ID to waiting and update the waiting list
@@ -328,10 +328,25 @@ function coreWatch (context, userId) {
 					//get the request object stored for this user id
 					context.consuler.getKeyValue(context.keys.data.request + "/" + userId, function (result) {
 						if (result) {
-							var requestObj = context.UserRequest().parse(result.Value);
-							//add the hmi group and submit the job
-							jobLogic.addHmiGenericGroup(context, job, coreService, requestObj, context.strings);
-							jobLogic.submitJob(context, job, context.strings.hmiGroupPrefix + userId, function () {});							
+							//we need one more piece of info, and that's the location of sdl_core's file port.
+							//unfortunately, we will need to make an allocation call to Nomad to find this info
+							var coreAllocID = coreService.ID.match(/[a-f0-9]+-[a-f0-9]+-[a-f0-9]+-[a-f0-9]+-[a-f0-9]+/g)[0];
+							context.nomader.getAllocation(coreAllocID, context.nomadAddress, function (allocationResult) {
+								var filePort;
+								if (allocationResult.Resources.Networks[0].DynamicPorts[0].Label === "file") {
+									filePort = allocationResult.Resources.Networks[0].DynamicPorts[0].Value;
+								}
+								else if (allocationResult.Resources.Networks[0].DynamicPorts[1].Label === "file") {
+									filePort = allocationResult.Resources.Networks[0].DynamicPorts[1].Value;
+								}
+								else {
+									filePort = allocationResult.Resources.Networks[0].DynamicPorts[2].Value;
+								}
+								var requestObj = context.UserRequest().parse(result.Value);
+								//add the hmi group and submit the job
+								jobLogic.addHmiGenericGroup(context, job, coreService, requestObj, context.strings, filePort);
+								jobLogic.submitJob(context, job, context.strings.hmiGroupPrefix + userId, function () {});	
+							});						
 						}
 					});
 				}
@@ -420,9 +435,13 @@ function hmiWatch (context, userId) {
 				if (allocationResult.Resources.Networks[0].DynamicPorts[0].Label === "tcp") {
 					data.tcpPort = allocationResult.Resources.Networks[0].DynamicPorts[0].Value;
 				}
-				else {
+				else if (allocationResult.Resources.Networks[0].DynamicPorts[1].Label === "tcp") {
 					data.tcpPort = allocationResult.Resources.Networks[0].DynamicPorts[1].Value;
 				}
+				else {
+					data.tcpPort = allocationResult.Resources.Networks[0].DynamicPorts[2].Value;
+				}
+				console.error(data.tcpPort);
 				//take all the information we got and store it in the KV under allocations for the user
 				//do not pass in the data stringified in another functionite toss/pass as that
 				//result will get evaluated before the data object is populated

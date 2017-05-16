@@ -36,7 +36,7 @@ module.exports = {
 					self.addHmiGenericGroup(context, job, 
 						coreServiceExample,
 						context.UserRequest().parse(coreServiceExample.Tags[0]),
-						context.strings);
+						context.strings, 3001);
 					//test submission!
 					job.planJob(context.nomadAddress, context.strings.coreHmiJobPrefix + lowestKey, function (results) {
 						var canAllocate = core.checkHasResources(results);
@@ -134,8 +134,9 @@ module.exports = {
 	* @param {object} coreService - An object from Consul that describes a service
 	* @param {UserRequest} request - A single request from the request list
 	* @param {object} strings - An object of string constants that come from constants.js
+	* @param {Number} coreFilePort - The port of sdl_core's file port
 	*/
-	addHmiGenericGroup: function (context, job, coreService, request, strings) {
+	addHmiGenericGroup: function (context, job, coreService, request, strings, coreFilePort) {
 		//determine what the address of the broker is here, and then pass it through the
 		//addHmiGenericGroup function
 
@@ -162,7 +163,7 @@ module.exports = {
 			//be included in a regex and so we need to escape the forward slash
 			fullAddressBroker = "ws:\\/\\/${NOMAD_IP_broker}:${NOMAD_HOST_PORT_broker}";
 		}
-		core.addHmiGenericGroup(job, coreService, request, fullAddressBroker, strings);
+		core.addHmiGenericGroup(job, coreService, request, fullAddressBroker, strings, coreFilePort);
 	},
 	/**
 	* 

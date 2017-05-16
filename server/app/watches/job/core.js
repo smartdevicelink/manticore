@@ -23,6 +23,7 @@ module.exports = {
 		job.setImage(groupName, taskName, strings.baseImageSdlCore + strings.imageTagMaster);
 		job.addPort(groupName, taskName, true, "hmi", 8087);
 		job.addPort(groupName, taskName, true, "tcp", 12345);
+		job.addPort(groupName, taskName, true, "file", 3001);
 		job.addEnv(groupName, taskName, "DOCKER_IP", "${NOMAD_IP_hmi}");
 		job.addConstraint({
 			LTarget: "${meta.core}",
@@ -47,8 +48,9 @@ module.exports = {
 	* @param {UserRequest} request - Request list KV
 	* @param {string} fullAddressBroker - The address the HMI uses to connect to the broker
 	* @param {object} strings - An object of string constants that come from constants.js
+	* @param {Number} coreFilePort - The port of sdl_core's file port
 	*/
-	addHmiGenericGroup: function (job, core, request, fullAddressBroker, strings) {
+	addHmiGenericGroup: function (job, core, request, fullAddressBroker, strings, coreFilePort) {
 		//this adds a group for a user so that another hmi will be created
 		//since each group name must be different make the name based off of the user id
 		var groupName = strings.hmiGroupPrefix + request.id;
@@ -72,6 +74,7 @@ module.exports = {
 		job.setLogs(groupName, taskName, 1, 10);
 		job.addEnv(groupName, taskName, "HMI_TO_BROKER_ADDR", fullAddressBroker);
 		job.addEnv(groupName, taskName, "BROKER_TO_CORE_ADDR", core.Address + ":" + core.Port);
+		job.addEnv(groupName, taskName, "BROKER_TO_CORE_FILE_ADDR", core.Address + ":" + coreFilePort);
 
 		var serviceName = strings.hmiServicePrefix + request.id;
 		job.addService(groupName, taskName, serviceName);
