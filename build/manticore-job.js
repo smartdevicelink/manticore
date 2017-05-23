@@ -62,7 +62,7 @@ function buildManticoreJobFile () {
 	});
 	//set resource constraints
 	job.setCPU(groupName, taskName, 200);
-	job.setMemory(groupName, taskName, 200);
+	job.setMemory(groupName, taskName, 1000);
 	job.setMbits(groupName, taskName, 2);
 	job.setEphemeralDisk(groupName, 150, false, false);
 	job.setLogs(groupName, taskName, 10, 5);

@@ -31,11 +31,11 @@ module.exports = {
 			RTarget: "1"
 		}, groupName);
 		//set resource limitations
-		job.setCPU(groupName, taskName, 200);
-		job.setMemory(groupName, taskName, 50);
+		job.setCPU(groupName, taskName, 100);
+		job.setMemory(groupName, taskName, 120);
 		job.setMbits(groupName, taskName, 1);
-		job.setEphemeralDisk(groupName, 50, false, false);
-		job.setLogs(groupName, taskName, 2, 10);
+		job.setEphemeralDisk(groupName, 250, false, false);
+		job.setLogs(groupName, taskName, 2, 50);
 
 		var serviceName = strings.coreServicePrefix + id;
 		job.addService(groupName, taskName, serviceName);
