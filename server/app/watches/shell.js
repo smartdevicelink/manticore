@@ -315,7 +315,7 @@ function coreWatch (context, userId) {
 	return function (services) {
 		//should just be one core per job
 		var coreServices = core.filterServices(services, []);
-		//context.logger.debug("Core service: " + userId + " " + coreServices.length);
+		context.logger.debug("Core service: " + userId + " " + coreServices.length);
 		if (coreServices.length > 0) {
 			var coreService = coreServices[0];
 			var jobName = context.strings.coreHmiJobPrefix + userId;
@@ -368,7 +368,7 @@ function hmiWatch (context, userId) {
 	return function (services) {
 		//require an http alive check. should only be one hmi service
 		var hmiServices = core.filterServices(services, [context.strings.hmiAliveHealth]);
-		//context.logger.debug("Hmi service: " + userId + " " + hmiServices.length);
+		context.logger.debug("Hmi service: " + userId + " " + hmiServices.length);
 		//if this returns 0 services then its probably because the health check failed.
 		//don't do anything rash
 		if (hmiServices.length > 0) {
@@ -380,12 +380,24 @@ function hmiWatch (context, userId) {
 			//if it's a rogue service, ignore it, as it likely cannot be removed in any elegant way
 			context.nomader.findJob(jobName, context.nomadAddress, function (job) {
 				if (job) { //job exists for this service
-					getConnectionInformation(job, hmiService);
+					//make sure this connection information doesn't already exist in the allocation store!
+					//we want to reduce writes to the KV store to save networking and cpu resources
+					context.consuler.getKeyValue(context.keys.data.allocation + "/" + userId, function (result) {
+						if (result) {
+							//info has already been grabbed!
+						}
+						else {
+							getConnectionInformation(job, hmiService, function (data) {
+								//take all the information we got and store it in the KV under allocations for the user
+								context.consuler.setKeyValue(context.keys.data.allocation + "/" + userId, JSON.stringify(data), function () {});
+							});							
+						}
+					});
 				}
 			});
 		}
 
-		function getConnectionInformation (job, hmiService) {
+		function getConnectionInformation (job, hmiService, callback) {
 			//we need three things. the ID, the request data from the KV store,
 			//and the allocation details of this core task
 			//this regex will find the allocation ID within the ID of this service
@@ -441,11 +453,7 @@ function hmiWatch (context, userId) {
 				else {
 					data.tcpPort = allocationResult.Resources.Networks[0].DynamicPorts[2].Value;
 				}
-				console.error(data.tcpPort);
-				//take all the information we got and store it in the KV under allocations for the user
-				//do not pass in the data stringified in another functionite toss/pass as that
-				//result will get evaluated before the data object is populated
-				context.consuler.setKeyValue(context.keys.data.allocation + "/" + userId, JSON.stringify(data), function () {});
+				callback(data); //done
 			})
 			.go();
 		}

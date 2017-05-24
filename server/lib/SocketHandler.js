@@ -294,6 +294,7 @@ SocketHandler.prototype.clearTimers = function (id) {
 }
 
 SocketHandler.prototype.resetTimers = function (id) {
+    console.error("reset timers for " + id);
     this.clearTimers(id);
     this.startTimers(id);
 }
