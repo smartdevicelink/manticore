@@ -61,7 +61,7 @@ function buildManticoreJobFile () {
 		Protocol: "http"
 	});
 	//set resource constraints
-	job.setCPU(groupName, taskName, 400);
+	job.setCPU(groupName, taskName, 1000);
 	job.setMemory(groupName, taskName, 1000);
 	job.setMbits(groupName, taskName, 5);
 	job.setEphemeralDisk(groupName, 150, false, false);
