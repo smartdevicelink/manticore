@@ -64,7 +64,7 @@ AwsHandler.prototype.changeState = function (template) {
 			InstancePort: self.config.haproxy.httpListen, 
 			SSLCertificateId: self.config.aws.elb.sslCertificateArn
 		})];
-
+		
 		//get tcp mappings. we are only interested in an array of ports that should be opened
 		for (let i = 0; i < template.tcpMaps.length; i++) {
 			expectedListeners.push(new Listener({
