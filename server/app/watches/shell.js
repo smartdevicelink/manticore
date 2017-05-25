@@ -315,7 +315,7 @@ function coreWatch (context, userId) {
 	return function (services) {
 		//should just be one core per job
 		var coreServices = core.filterServices(services, []);
-		context.logger.debug("Core service: " + userId + " " + coreServices.length);
+		//context.logger.debug("Core service: " + userId + " " + coreServices.length);
 		if (coreServices.length > 0) {
 			var coreService = coreServices[0];
 			var jobName = context.strings.coreHmiJobPrefix + userId;
@@ -368,7 +368,7 @@ function hmiWatch (context, userId) {
 	return function (services) {
 		//require an http alive check. should only be one hmi service
 		var hmiServices = core.filterServices(services, [context.strings.hmiAliveHealth]);
-		context.logger.debug("Hmi service: " + userId + " " + hmiServices.length);
+		//context.logger.debug("Hmi service: " + userId + " " + hmiServices.length);
 		//if this returns 0 services then its probably because the health check failed.
 		//don't do anything rash
 		if (hmiServices.length > 0) {
