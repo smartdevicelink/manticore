@@ -20,8 +20,8 @@ module.exports = function (context) {
 	config = context.config;
 
 	//For loader.io only
-	app.get('/loaderio-e24b4bb0195a1b9ca4bbea3191a2dfdd', function (req, res) {
-		res.send("loaderio-e24b4bb0195a1b9ca4bbea3191a2dfdd");
+	app.get('/loaderio-a6fba5ab8b795ba69db2fbb91616b62e', function (req, res) {
+		res.send("loaderio-a6fba5ab8b795ba69db2fbb91616b62e");
 	});
 
 	//for status checks. will be used if the webpage for testing the API is disabled
