@@ -19,6 +19,9 @@ var timeoutEventListener;
 * Manages websocket connections across users and sends information about their core/hmi locations
 * @constructor
 * @param {object} io - A socket.io instance
+* @param {object} timeoutEvent - An event emitter that informs server/app/watches/shell.js when a user should be removed
+* @param {number} usageDur - The number of seconds a user is allowed to use this service without interruption
+* @param {number} warningDur - The number of seconds the user has after usageDur to respond before being removed 
 */
 function SocketHandler (io, timeoutEvent, usageDur, warningDur) {
     this.websocket = io;
@@ -152,6 +155,7 @@ SocketHandler.prototype.updatePosition = function (id, data) {
 
 /**
 * Send the user new information about their core/hmi address locations
+* @param {Context} context - Context instance
 * @param {string} id - Id of a user using Manticore
 * @param {object} data - The new position of the id of the user in the waiting list
 */
@@ -244,6 +248,11 @@ SocketHandler.prototype.send = function (id, keyword, logData) {
 
 //timer-related methods
 
+/**
+* Given environment variables are set for timers, starts a timer for a user able to use Manticore's service
+* without interruption, and a timer for warning the user when they're about to be removed due to inactivity
+* @param {string} id - Id of a user using Manticore
+*/
 SocketHandler.prototype.startTimers = function (id) {
     //if usageDuration and warningDuration are defined, start some timers!
     var self = this;
@@ -259,6 +268,10 @@ SocketHandler.prototype.startTimers = function (id) {
     }
 }
 
+/**
+* Starts a timer for a user able to use Manticore's service without interruption
+* @param {string} id - Id of a user using Manticore
+*/
 SocketHandler.prototype.createUsageTimer = function (id) {
     var self = this;
     return setTimeout(function () {
@@ -268,6 +281,12 @@ SocketHandler.prototype.createUsageTimer = function (id) {
     }, usageDuration*1000);
 }
 
+/**
+* Starts a timer for warning the user when they're about to be removed due to inactivity
+* The total amount of time before a user is removed from the waiting list due to inactivity is 
+* the usageDuration count plus the warningDuration count
+* @param {string} id - Id of a user using Manticore
+*/
 SocketHandler.prototype.createWarningTimer = function (id) {
     return setTimeout(function () {
         //when this is invoked, remove the user from the request list
@@ -281,6 +300,10 @@ SocketHandler.prototype.createWarningTimer = function (id) {
     }, usageDuration*1000 + warningDuration*1000);
 }
 
+/**
+* Removes all active timers for a particular user
+* @param {string} id - Id of a user using Manticore
+*/
 SocketHandler.prototype.clearTimers = function (id) {
     if (this.sockets[id].usageTimer) {
         console.error("clear timers for " + id);
@@ -293,6 +316,10 @@ SocketHandler.prototype.clearTimers = function (id) {
     }
 }
 
+/**
+* Removes all active timers for a particular user and then starts those timers again
+* @param {string} id - Id of a user using Manticore
+*/
 SocketHandler.prototype.resetTimers = function (id) {
     console.error("reset timers for " + id);
     this.clearTimers(id);
