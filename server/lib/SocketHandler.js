@@ -46,10 +46,8 @@ SocketHandler.prototype.requestConnection = function (id) {
         //resend connection information if it exists!
         self.send(id, "connectInfo");
         self.send(id, "position");
-
         //custom user event where the user did something
         socket.on('activity', function () {
-            console.error("activityyyyyy");
             //user responded with an activity event! reset the timers!
             self.resetTimers(id);
         });
@@ -257,7 +255,6 @@ SocketHandler.prototype.startTimers = function (id) {
     //if usageDuration and warningDuration are defined, start some timers!
     var self = this;
     if (usageDuration && warningDuration) {
-        console.error("start timers for " + id);
         //make sure timers don't exist already
         if (!self.sockets[id].usageTimer) {
             self.sockets[id].usageTimer = self.createUsageTimer(id);
@@ -306,7 +303,6 @@ SocketHandler.prototype.createWarningTimer = function (id) {
 */
 SocketHandler.prototype.clearTimers = function (id) {
     if (this.sockets[id].usageTimer) {
-        console.error("clear timers for " + id);
         clearTimeout(this.sockets[id].usageTimer);
         delete this.sockets[id].usageTimer;
     }
@@ -321,7 +317,6 @@ SocketHandler.prototype.clearTimers = function (id) {
 * @param {string} id - Id of a user using Manticore
 */
 SocketHandler.prototype.resetTimers = function (id) {
-    console.error("reset timers for " + id);
     this.clearTimers(id);
     this.startTimers(id);
 }
