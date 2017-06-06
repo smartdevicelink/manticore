@@ -125,7 +125,7 @@ function extractUserId (req, res, next) {
 */
 function validateRequestCore (req, res, next) {
 	//validate input. right now only the id is required
-	if (!req.body.id) {
+	if (req.body.id != null) {
 		res.status(400).send("Please provide user identification");
 	}
 	else {
@@ -146,7 +146,7 @@ function validateRequestCore (req, res, next) {
 */
 function validateRequestLogs (req, res, next) {
 	//validate input. right now only the id is required
-	if (!req.body.id) {
+	if (req.body.id != null) {
 		res.status(400).send("Please provide user identification");
 	}
 	else {
@@ -167,7 +167,7 @@ function validateRequestLogs (req, res, next) {
 */
 function validateDeleteCore (req, res, next) {
 	//validate input. right now only the id is required
-	if (!req.body.id) {
+	if (req.body.id != null) {
 		res.status(400).send("Please provide user identification");
 	}
 	else {
