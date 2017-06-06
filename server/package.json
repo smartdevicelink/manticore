@@ -1,7 +1,7 @@
 {
   "name": "manticore-app",
   "version": "1.0.0",
-  "description": "Takes and sends requests to other applications in Consul",
+  "description": "Manages sdl_core and HMI containers and serves them to the user",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
