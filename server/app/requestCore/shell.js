@@ -63,8 +63,11 @@ module.exports = {
 	* Stores the request body information in the KV store
 	* @param {object} requestJSON - User's request body
 	* @param {Context} context - Context instance
+	* @param {function} callback - empty callback
 	*/
-	storeRequestInKVStore: function (requestJSON, context) {
-		context.consuler.setKeyValue(context.keys.data.request + "/" + requestJSON.id, requestJSON.getString());
+	storeRequestInKVStore: function (requestJSON, context, callback) {
+		context.consuler.setKeyValue(context.keys.data.request + "/" + requestJSON.id, requestJSON.getString(), function () {
+			callback();
+		});
 	}
 }
