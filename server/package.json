@@ -1,6 +1,6 @@
 {
   "name": "manticore-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Manages sdl_core and HMI containers and serves them to the user",
   "main": "index.js",
   "scripts": {

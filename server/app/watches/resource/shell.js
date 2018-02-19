@@ -17,9 +17,9 @@ module.exports = {
 			var copyLength = nodeIDs.length;
 			for (let i = 0; i < nodeIDs.length; i++) {
 				context.nomader.getNodeStatus(nodeIDs[i], context.nomadAddress, function (data2) {
-					//console.error(JSON.stringify(data2, null, 4));
+					console.error(JSON.stringify(data2, null, 4));
 					context.nomader.getResourceUsage(data2.HTTPAddr, function (data3) {
-						//console.error(JSON.stringify(data3, null, 4));
+						console.error(JSON.stringify(data3, null, 4));
 					});					
 				});
 			}

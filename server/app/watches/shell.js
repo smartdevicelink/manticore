@@ -183,12 +183,9 @@ function waitingWatch (context) {
 						//publish resource statistics
 						//resourceLogic.getStats(context);
 
-						context.logger.debug("allocation failed. set to waiting " + pendingKey);
-						//set the user's ID to waiting and update the waiting list
-						waitingHash.setWaiting(pendingKey);
-						setter(waitingHash.get(), function (res) {
-							context.logger.debug(pendingKey + " set to waiting (failed job): " + res);
-						});						
+						//delete that user's ID because a problem that manticore cannot handle has happened
+						context.logger.debug("allocation failed. removing from waiting list: " + pendingKey);
+						removeUser(context, pendingKey);
 					}
 				});
 			}
@@ -468,10 +465,10 @@ function hmiWatch (context, userId) {
 function manticoreWatch (context) {
 	return function (services) {
 		var manticores = core.filterServices(services, [context.strings.manticoreAliveHealth]); //require an http alive check
-		context.logger.debug("Manticore services: " + manticores.length);
+		//context.logger.debug("Manticore services: " + manticores.length);
 		//ONLY update the manticore services in the KV store, and only if haproxy is enabled
 		if (context.config.haproxy) {
-			context.logger.debug("Updating KV Store with manticore data for proxy!");
+			//context.logger.debug("Updating KV Store with manticore data for proxy!");
 			var template = proxyLogic.generateProxyData(context, [], manticores);
 			proxyLogic.updateManticoreKvStore(context, template);
 		}
