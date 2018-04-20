@@ -28,6 +28,13 @@ var utility = {
 				var watch = context.nomader.watchAllocations(context.strings.coreHmiJobPrefix + body.id, context.nomadAddress, 5, function (allocations) {
 					//make sure both allocations for core and hmi tasks are complete
 					var completed = true;
+					context.logger.debug("Watching allocations for " + body.id);
+					if (allocations[0]) {
+						context.logger.debug("0: " + allocations[0].ClientStatus);
+					}
+					if (allocations[1]) {
+						context.logger.debug("1: " + allocations[1].ClientStatus);
+					}					
 					if (allocations[0] && allocations[0].ClientStatus !== "complete") {
 						completed = false;
 					} 
