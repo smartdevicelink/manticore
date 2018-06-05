@@ -29,20 +29,21 @@ const logger = new winston.Logger({
 });
 
 var sequenceToken;
-function sendToCloudWatchLogs(msg, streamName) {
+var logMessages = [];
+var sendToLogs = setInterval(sendToCloudWatchLogs, 10000);
+
+function sendToCloudWatchLogs() {
 	var params = {
-		logEvents: [
-			{
-				message: msg,
-				timestamp: Date.now()
-			}
-		],
+		logEvents: JSON.parse(JSON.stringify(logMessages)),
 		logGroupName: config.logGroupName,
 		logStreamName: streamName,
 		sequenceToken: sequenceToken
 	};
+	logMessages = [];
 	cloudwatchlogs.putLogEvents(params, function(err, data) {
-		sequenceToken = data.nextSequenceToken;
+		if (data) {
+			sequenceToken = data.nextSequenceToken;
+		}
 	});
 }
 
@@ -50,19 +51,19 @@ module.exports = {
 	debug: function(msg) {
 		logger.debug(msg);
 		if (config.enableCloudWatchLogs) {
-			sendToCloudWatchLogs(msg, 'debug');
+			logMessages.push({ message: msg, timestamp: Date.now() });
 		}
 	},
 	error: function(msg) {
 		logger.error(msg);
 		if (config.enableCloudWatchLogs) {
-			sendToCloudWatchLogs(msg, 'error');
+			logMessages.push({ message: msg, timestamp: Date.now() });
 		}
 	},
 	info: function(msg) {
 		logger.info(msg);
 		if (config.enableCloudWatchLogs) {
-			sendToCloudWatchLogs(msg, 'info');
+			logMessages.push({ message: msg, timestamp: Date.now() });
 		}
 	}
 }
