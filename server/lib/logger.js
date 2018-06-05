@@ -28,6 +28,7 @@ const logger = new winston.Logger({
 	exitOnError: false
 });
 
+var sequenceToken;
 function sendToCloudWatchLogs(msg, streamName) {
 	var params = {
 		logEvents: [
@@ -37,9 +38,12 @@ function sendToCloudWatchLogs(msg, streamName) {
 			}
 		],
 		logGroupName: config.logGroupName,
-		logStreamName: streamName
+		logStreamName: streamName,
+		sequenceToken: sequenceToken
 	};
-	cloudwatchlogs.putLogEvents(params, function(err, data) {});
+	cloudwatchlogs.putLogEvents(params, function(err, data) {
+		sequenceToken = data.nextSequenceToken;
+	});
 }
 
 module.exports = {
