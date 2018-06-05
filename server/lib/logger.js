@@ -36,7 +36,7 @@ function sendToCloudWatchLogs() {
 	var params = {
 		logEvents: JSON.parse(JSON.stringify(logMessages)),
 		logGroupName: config.logGroupName,
-		logStreamName: streamName,
+		logStreamName: 'logs',
 		sequenceToken: sequenceToken
 	};
 	logMessages = [];
