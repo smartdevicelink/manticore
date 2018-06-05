@@ -33,6 +33,7 @@ var logMessages = [];
 var sendToLogs = setInterval(sendToCloudWatchLogs, 10000);
 
 function sendToCloudWatchLogs() {
+	console.log("Sending logs to CloudWatch");
 	var params = {
 		logEvents: JSON.parse(JSON.stringify(logMessages)),
 		logGroupName: config.logGroupName,
@@ -41,6 +42,10 @@ function sendToCloudWatchLogs() {
 	};
 	logMessages = [];
 	cloudwatchlogs.putLogEvents(params, function(err, data) {
+		if (err) {
+			console.log(err);
+		}
+		console.log(data);
 		if (data) {
 			sequenceToken = data.nextSequenceToken;
 		}
