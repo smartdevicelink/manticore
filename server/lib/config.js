@@ -4,6 +4,8 @@ var e = process.env; //for less verbose typing
 //any env vars that should be numbers should be converted to numbers
 var config = {
   logLevel: e.NODE_LOGS || "DEBUG",
+  logGroupName: e.LOG_GROUP_NAME || "manticore",
+  enableCloudWatchLogs: e.ENABLE_CLOUD_WATCH_LOGS || true,
   clientAgentIp: process.env.NOMAD_IP_http, //get the environment variable from nomad
   httpPort: e.HTTP_PORT || 4000,
   cors: e.CORS || false,
