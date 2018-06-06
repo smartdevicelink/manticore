@@ -1,9 +1,24 @@
 //module meant for logging to stdout and stderr to the user of immediate information
 var winston = require('winston');
 var config = require('./config');
-var AWS = require('aws-sdk');
-AWS.config.update({region: config.aws.awsRegion});
-var cloudwatchlogs = new AWS.CloudWatchLogs();
+var cwl = require('./cwl');
+
+let cloudWatchLogsEnabled = true; //config.aws.cloudWatchLogs.logGroupName && config.aws.cloudWatchLogs.logStreamName;
+
+if (cloudWatchLogsEnabled) {
+	cwl.setupCloudWatchLogs(
+		config.aws.awsRegion,
+		'manticore', //config.aws.cloudWatchLogs.logGroupName,
+		'logs', //config.aws.cloudWathLogs.logStreamName,
+		function(err) {
+			if (err) {
+				cloudWatchLogsEnabled = false;
+				return;
+			}
+			cwl.startLogging(10000);
+		}
+	);
+}
 
 let logLevel = "debug";
 if (config.logLevel === "ERROR") {
@@ -28,47 +43,23 @@ const logger = new winston.Logger({
 	exitOnError: false
 });
 
-var sequenceToken;
-var logMessages = [];
-var sendToLogs = setInterval(sendToCloudWatchLogs, 10000);
-
-function sendToCloudWatchLogs() {
-	console.log("Sending logs to CloudWatch");
-	var params = {
-		logEvents: JSON.parse(JSON.stringify(logMessages)),
-		logGroupName: config.logGroupName,
-		logStreamName: 'logs',
-		sequenceToken: sequenceToken
-	};
-	logMessages = [];
-	cloudwatchlogs.putLogEvents(params, function(err, data) {
-		if (err) {
-			console.log(err);
-		}
-		console.log(data);
-		if (data) {
-			sequenceToken = data.nextSequenceToken;
-		}
-	});
-}
-
 module.exports = {
 	debug: function(msg) {
 		logger.debug(msg);
-		if (config.enableCloudWatchLogs) {
-			logMessages.push({ message: msg, timestamp: Date.now() });
+		if (cloudWatchLogsEnabled) {
+			cwl.queueLog(msg);
 		}
 	},
 	error: function(msg) {
 		logger.error(msg);
-		if (config.enableCloudWatchLogs) {
-			logMessages.push({ message: msg, timestamp: Date.now() });
+		if (cloudWatchLogsEnabled) {
+			cwl.queueLog(msg);
 		}
 	},
 	info: function(msg) {
 		logger.info(msg);
-		if (config.enableCloudWatchLogs) {
-			logMessages.push({ message: msg, timestamp: Date.now() });
+		if (cloudWatchLogsEnabled) {
+			cwl.queueLog(msg);
 		}
 	}
 }
