@@ -11,7 +11,7 @@ var io = require('socket.io')(http);
 var config = require('./lib/config.js');
 
 var controller = require('./app/controller.js');
-var logger = require('./lib/logger.js')(config.logLevel);
+var logger = require('./lib/logger.js');
 var rootLocation = __dirname + '/../client/public';
 var ip = require('ip');
 var cors = require('cors'); //easily allow cross-origin requests
@@ -59,40 +59,40 @@ if (config.cors === "true") {
         logger.info("Manticore's environment variables:");
         logger.info("Client Agent IP: " + config.clientAgentIp);
         logger.info("HTTP Server Port: " + config.httpPort);
-        logger.info("CORS enabled: " + config.cors); 
-        logger.info("Webpage disabled: " + config.disableWebpage); 
+        logger.info("CORS enabled: " + config.cors);
+        logger.info("Webpage disabled: " + config.disableWebpage);
         //jwt secret and trace info purposely not logged
         //timer stuff
         if (config.inactivityTimer) {
             logger.info("Usage Duration: " + config.inactivityTimer.usageDuration);
-            logger.info("Warning Duration: " + config.inactivityTimer.warningDuration);   
+            logger.info("Warning Duration: " + config.inactivityTimer.warningDuration);
         }
         //HAProxy stuff
         if (config.haproxy) {
             logger.info("Domain Name: " + config.haproxy.domainName);
-            logger.info("TCP Starting Port Range: " + config.haproxy.tcpPortRangeStart);   
-            logger.info("TCP Ending Port Range: " + config.haproxy.tcpPortRangeEnd);   
-            logger.info("HAProxy HTTP Listening Port: " + config.haproxy.httpListen);  
+            logger.info("TCP Starting Port Range: " + config.haproxy.tcpPortRangeStart);
+            logger.info("TCP Ending Port Range: " + config.haproxy.tcpPortRangeEnd);
+            logger.info("HAProxy HTTP Listening Port: " + config.haproxy.httpListen);
         }
         //AWS stuff
         if (config.aws) {
-            logger.info("AWS Region Name: " + config.aws.awsRegion); 
+            logger.info("AWS Region Name: " + config.aws.awsRegion);
             if (config.aws.cloudWatch) {
-                logger.info("CloudWatch namespace: " + config.aws.cloudWatch.namespace);         
+                logger.info("CloudWatch namespace: " + config.aws.cloudWatch.namespace);
             }
             if (config.aws.elb) {
                 //AWS ELB stuff
-                logger.info("ELB Name for Manticore: " + config.aws.elb.manticoreName); 
+                logger.info("ELB Name for Manticore: " + config.aws.elb.manticoreName);
                 logger.info("ELB SSL Listener Port: " + config.aws.elb.sslPort);
-                logger.info("SSL Certificate ARN: " + config.aws.elb.sslCertificateArn);                 
+                logger.info("SSL Certificate ARN: " + config.aws.elb.sslCertificateArn);
             }
         }
 
         //Nomad-configured environment variables. Useful for the developer to find where Manticore is
-        logger.info("CONTAINER IP ADDRESS: " + process.env.NOMAD_IP_http + ":" + process.env.NOMAD_HOST_PORT_http); 
+        logger.info("CONTAINER IP ADDRESS: " + process.env.NOMAD_IP_http + ":" + process.env.NOMAD_HOST_PORT_http);
 
         //instantiate the context
-        var context = new Context(app, io, logger, config); 
+        var context = new Context(app, io, logger, config);
         //pass the context to the controller
         controller(context);
     });
