@@ -4,7 +4,7 @@ var nomader = require('nomad-helper'); //for submitting manticore to nomad
 var needle = require('needle');
 var fs = require('fs');
 var ip = require('ip');
- 
+
 var nomadAddress = ip.address() + ":4646";
 buildManticoreJobFile();
 /*
@@ -24,7 +24,7 @@ function buildManticoreJobFile () {
 	job.setUpdate(1, 10000000000);
 	job.setCount(groupName, 1);
 	//restart manticore if it has failed up to 3 times within 30 seconds, with 5 seconds between restart attempts
-	job.setRestartPolicy(groupName, 30000000000, 3, 5000000000, "delay"); 
+	job.setRestartPolicy(groupName, 30000000000, 3, 5000000000, "delay");
 	job.addTask(groupName, taskName);
 	job.setImage(groupName, taskName, "smartdevicelink/manticore:master");
 	//http port that is internally 4000, but dynamically allocated on the host
@@ -48,7 +48,9 @@ function buildManticoreJobFile () {
 		"SSL_CERTIFICATE_ARN",
 		"JWT_SECRET",
 		"TRACE_SERVICE_NAME",
-		"TRACE_API_KEY"
+		"TRACE_API_KEY",
+        "CWL_LOG_GROUP_NAME",
+        "CWL_LOG_STREAM_NAME"
 	]);
 	job.addService(groupName, taskName, serviceName);
 	job.setPortLabel(groupName, taskName, serviceName, "http");

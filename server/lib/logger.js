@@ -3,13 +3,13 @@ var winston = require('winston');
 var config = require('./config');
 var cwl = require('./cwl');
 
-let cloudWatchLogsEnabled = true; //config.aws.cloudWatchLogs.logGroupName && config.aws.cloudWatchLogs.logStreamName;
+let cloudWatchLogsEnabled = config.aws.cloudWatchLogs.logGroupName && config.aws.cloudWatchLogs.logStreamName;
 
 if (cloudWatchLogsEnabled) {
 	cwl.setupCloudWatchLogs(
 		config.aws.awsRegion,
-		'manticore', //config.aws.cloudWatchLogs.logGroupName,
-		'logs', //config.aws.cloudWathLogs.logStreamName,
+		config.aws.cloudWatchLogs.logGroupName,
+		config.aws.cloudWathLogs.logStreamName,
 		function(err) {
 			if (err) {
 				cloudWatchLogsEnabled = false;
