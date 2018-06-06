@@ -3,7 +3,7 @@ var winston = require('winston');
 var config = require('./config');
 var cwl = require('./cwl');
 
-let cloudWatchLogsEnabled = config.aws.cloudWatchLogs.logGroupName && config.aws.cloudWatchLogs.logStreamName;
+let cloudWatchLogsEnabled = config.aws && config.aws.cloudWatchLogs;
 
 if (cloudWatchLogsEnabled) {
 	cwl.setupCloudWatchLogs(
