@@ -9,7 +9,7 @@ if (cloudWatchLogsEnabled) {
 	cwl.setupCloudWatchLogs(
 		config.aws.awsRegion,
 		config.aws.cloudWatchLogs.logGroupName,
-		config.aws.cloudWathLogs.logStreamName,
+		config.aws.cloudWatchLogs.logStreamName,
 		function(err) {
 			if (err) {
 				cloudWatchLogsEnabled = false;
