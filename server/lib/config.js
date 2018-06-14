@@ -24,6 +24,10 @@ var config = {
     cloudWatch: {
       namespace: e.CLOUD_WATCH_NAMESPACE
     },
+    cloudWatchLogs: {
+        logGroupName: e.CWL_LOG_GROUP_NAME,
+        logStreamName: e.CWL_LOG_STREAM_NAME
+    },
     elb: { //haproxy needs to be enabled before using this!
       manticoreName: e.ELB_MANTICORE_NAME,
       sslPort: e.ELB_SSL_PORT,
