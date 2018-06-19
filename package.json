@@ -1,0 +1,19 @@
+{
+  "name": "manticore",
+  "version": "2.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "consul": "^0.33.1",
+    "dotenv": "^6.0.0",
+    "koa": "^2.5.1",
+    "koa-bodyparser": "^4.2.1",
+    "nomad-helper": "^3.6.1",
+    "winston": "^3.0.0"
+  }
+}

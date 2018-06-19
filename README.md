@@ -14,7 +14,7 @@ Manticore is used to dynamically provision SDL Core and SDL HMI instances in the
 
 
 # Getting Started
-See the [Wiki](https://github.com/smartdevicelink/manticore/wiki) to get instructions on local Manticore development.
+See the [Wiki](https://github.com/smartdevicelink/manticore/wiki) to get instructions on Manticore development.
 
 ## Contribute
 If you have a suggestion or bug please submit an <a href="https://github.com/smartdevicelink/manticore/issues/new" target="_blank">issue</a>.  You can submit code using a pull request, but please follow the <a href="https://github.com/smartdevicelink/manticore/blob/master/CONTRIBUTING.md" target="_blank">contributing guidelines</a>.
