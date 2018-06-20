@@ -42,8 +42,10 @@ function publishToDashboard() {
 }
 
 module.exports = function (c) {
+    console.log('Inside CloudWatchDashboard');
     context = c;
-    if (context.config.aws && context.config.aws.cloudwatch) {
+    if (context.config.aws && context.config.aws.cloudWatch) {
+        console.log('Starting timer');
         publishTimer = setInterval(publishToDashboard, 50000);
     }
 }
