@@ -38,8 +38,8 @@ function publishToDashboard() {
 }
 
 module.exports = function (c) {
+    context = c;
     if (context.config.aws && context.config.aws.cloudwatch) {
-        context = c;
         publishTimer = setInterval(publishToDashboard, 50000);
     }
 }
