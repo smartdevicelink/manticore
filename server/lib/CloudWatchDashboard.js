@@ -23,14 +23,14 @@ function publishToDashboard() {
                     Dimensions: [],
                     Timestamp: timestamp,
                     Unit: "Count",
-                    Value: requests
+                    Value: requests.length - 1
                 },
                 {
                     MetricName: context.strings.allocationCount,
                     Dimensions: [],
                     Timestamp: timestamp,
                     Unit: "Count",
-                    Value: allocations
+                    Value: allocations.length - 1
                 }
             ]);
         }
@@ -38,6 +38,8 @@ function publishToDashboard() {
 }
 
 module.exports = function (c) {
-    context = c;
-    publishTimer = setInterval(publishToDashboard, 60000);
+    if (context.config.aws && context.config.aws.cloudwatch) {
+        context = c;
+        publishTimer = setInterval(publishToDashboard, 50000);
+    }
 }
