@@ -304,8 +304,6 @@ AwsHandler.prototype.publishMultiple = function(metricData) {
 			Namespace: this.config.aws.cloudWatch.namespace,
 			MetricData: metricData
 		}
-		cloudWatch.putMetricData(params, function (err, data) {
-			console.log(err);
-		});
+		cloudWatch.putMetricData(params, function (err, data) {});
 	}
 };
