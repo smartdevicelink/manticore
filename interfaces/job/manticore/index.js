@@ -60,17 +60,20 @@ function validate (body) {
     else if (!hmiBranchValid) {
         return createErrorResponse("Not a valid hmi branch: " + body.hmi.branch);
     }
-    
+
     //the response is valid at this point. clean the input
     return {
-        core: {
-            branch: body.core.branch,
-            build: body.core.build
+        body: { //response to store
+            core: {
+                branch: body.core.branch,
+                build: body.core.build
+            },
+            hmi: {
+                type: body.hmi.type,
+                branch: body.hmi.branch
+            }
         },
-        hmi: {
-            type: body.hmi.type,
-            branch: body.hmi.branch
-        }
+        isValid: true
     };
 }
 

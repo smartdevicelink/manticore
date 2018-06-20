@@ -6,9 +6,9 @@ const fs = require('fs');
 const config = require('./config');
 
 //setup all koa middleware under app/
-fs.readdir('app', (err, folders) => {
+fs.readdir('api', (err, folders) => {
     folders.forEach(folder => {
-        require(`./app/${folder}`)(app);
+        require(`./api/${folder}`)(app);
     });
 })
 
