@@ -4,6 +4,7 @@ var context;
 var publishTimer;
 
 function publishToDashboard() {
+    console.log('Publishing to CloudWatch');
     async.waterfall([
         function(callback) {
             context.consuler.getKeyValue(context.keys.request, function(result) {
@@ -16,6 +17,8 @@ function publishToDashboard() {
             });
         },
         function(requests, allocations, callback) {
+            console.log('Requests: ' + requests.length);
+            console.log('Allocations: ' + allocations.length);
             var timestamp = new Date();
             context.AwsHandler.publishMultiple([
                 {
@@ -33,6 +36,7 @@ function publishToDashboard() {
                     Value: allocations.length - 1
                 }
             ]);
+            callback(null);
         }
     ], function (err, results) {});
 }
