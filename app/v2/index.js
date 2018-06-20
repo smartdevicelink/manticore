@@ -3,20 +3,45 @@ const state = require('./interfaces/state/' + config.state);
 const services = require('./interfaces/services/' + config.services);
 const job = require('./interfaces/job/' + config.job);
 const logger = require('./interfaces/logger/' + config.logger);
+const check = require('check-types');
+const jwt = require('koa-jwt');
 
 //endpoints are defined here
 module.exports = app => {
+    //all routes under /v2 are eligible for indentification via JWT if enabled
+    if (config.jwtSecret) {
+        app.use(async (ctx, next) => {
+            if (!ctx.request.url.startsWith("/v2")) return await next();
+            await jwt({secret: config.jwtSecret});
+            await next();
+        });
+    }
+
+    //consolidate the identification types
+    app.use(async (ctx, next) => {
+        console.log(ctx.request);
+        console.log(ctx.request.body);
+    });
+
     //return all viable job types
     app.use(async (ctx, next) => {
-        if (ctx.request.url !== "/job" || ctx.method !== "GET") return await next();
+        if (ctx.request.url !== "/v2/job" || ctx.method !== "GET") return await next();
+        //call the job interface for getting the response body
         ctx.response.body = await job.get();
     });
-    //submit a job of a certain type, including some form of identification
+    //submit a job for a user
     app.use(async (ctx, next) => {
-        if (ctx.request.url !== "/job" || ctx.method !== "POST") return await next();
-        if (!job.validate(ctx.request.body)) return handle400(ctx, "Invalid job submission");
+        if (ctx.request.url !== "/v2/job" || ctx.method !== "POST") return await next();
+        //user id check
+        if (!check.string(ctx.request.body.id)) return handle400(ctx, "Invalid id");
+        //check if the user is already being managed (in waiting list, has an instance, etc.)
+        const isManaged = false;
+        //validate the input using the job interface
+        const result = await job.validate(ctx.request.body);
+        if (!result.isValid) return handle400(ctx, result.errorMessage);
         //success
         ctx.response.status = 200;
+        //const body = result.body;
     });
 }
 

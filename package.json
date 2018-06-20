@@ -9,10 +9,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "check-types": "^7.4.0",
     "consul": "^0.33.1",
     "dotenv": "^6.0.0",
     "koa": "^2.5.1",
     "koa-bodyparser": "^4.2.1",
+    "koa-jwt": "^3.3.2",
     "nomad-helper": "^3.6.1",
     "winston": "^3.0.0"
   }

@@ -1,23 +1,85 @@
 const builder = require('nomad-helper');
 
 const jobInfo = {
-    cores: {
+    core: {
         branches: ["master"],
-        builds: []
+        builds: ["none"]
     }, 
-    hmis: {
-        generic: {
-            branches: ["minimal"]
-        }
-    }, 
+    hmis: [{
+        type: "generic",
+        branches: ["minimal"]
+    }]
 };
 
 function get () {
     return jobInfo;
 }
 
+/*
+expected input:
+{
+    id: 1 (optional),
+    core: {
+        branch: "master",
+        build: "none"
+    },
+    hmi: {
+        type: "generic",
+        branch: "minimal"
+    }
+}
+
+expected output:
+{
+    body: {}, //if isValid is true, this body gets sent to manticore to be stored for future reference
+    isValid: false, //determines whether manticore should approve of the request
+    errorMessage: "" //if isValid is false, this message gets sent to the user with a 400 status code
+}
+*/
 function validate (body) {
-    return true;
+    if (!body || !body.core || !body.hmi) {
+        return createErrorResponse("Request body is invalid");
+    }
+
+    const coreBranchValid = jobInfo.core.branches.includes(body.core.branch);
+    const coreBuildValid = jobInfo.core.builds.includes(body.core.build);
+    const hmiTypeIndex = jobInfo.hmis.findIndex(elem => {
+        return elem.type === body.hmi.type; 
+    });
+    const hmiBranchValid = hmiTypeIndex !== -1 && jobInfo.hmis[hmiTypeIndex].branches.includes(body.hmi.branch);
+    
+    if (!coreBranchValid) {
+        return createErrorResponse("Not a valid core branch: " + body.core.branch);
+    }
+    if (!coreBuildValid) {
+        return createErrorResponse("Not a valid core build option: " + body.core.build);
+    }
+    if (hmiTypeIndex === -1) {
+        return createErrorResponse("Not a valid hmi type: " + body.hmi.type);
+    }
+    else if (!hmiBranchValid) {
+        return createErrorResponse("Not a valid hmi branch: " + body.hmi.branch);
+    }
+    
+    //the response is valid at this point. clean the input
+    return {
+        core: {
+            branch: body.core.branch,
+            build: body.core.build
+        },
+        hmi: {
+            type: body.hmi.type,
+            branch: body.hmi.branch
+        }
+    };
+}
+
+function createErrorResponse (message) {
+    return {
+        body: {},
+        isValid: false,
+        errorMessage: message
+    }
 }
 
 //TODO: return an array of job files. one will be executed and confirmed running before starting another?
