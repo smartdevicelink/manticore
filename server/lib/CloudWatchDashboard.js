@@ -39,5 +39,5 @@ function publishToDashboard() {
 
 module.exports = function (c) {
     context = c;
-    publishTimer = setInterval(publishToDashboard, 500);
+    publishTimer = setInterval(publishToDashboard, 60000);
 }
