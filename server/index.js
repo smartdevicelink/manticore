@@ -18,6 +18,7 @@ var cors = require('cors'); //easily allow cross-origin requests
 var expressJwt = require('express-jwt');
 var jwt = require('jsonwebtoken');
 var Context = require('./lib/Context.js'); //stores a set of modules and objects that are globally needed
+var CloudWatchDashboard = require('./lib/CloudWatchDashboard');
 
 //trace. only require it if the config for trace is valid
 if (config.trace) {
@@ -95,5 +96,7 @@ if (config.cors === "true") {
         var context = new Context(app, io, logger, config);
         //pass the context to the controller
         controller(context);
+        // start sending Manticore request and allocation metrics to CloudWatch
+        CloudWatchDashboard(context);
     });
 })();

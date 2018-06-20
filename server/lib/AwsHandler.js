@@ -14,7 +14,7 @@ function AwsHandler () {
 }
 
 /**
-* Sets up AwsHandler with logging 
+* Sets up AwsHandler with logging
 * @param {string} region - The AWS region to be used (ex. us-east-1)
 * @param {winston.Logger} log - An instance of the logger to use
 * @returns {AwsHandler} - An AwsHandler object
@@ -44,27 +44,27 @@ AwsHandler.prototype.changeState = function (template) {
 		var actualListeners = [];
 		for (let i = 0; i < lbStatus.ListenerDescriptions.length; i++) {
 			actualListeners.push(new Listener(lbStatus.ListenerDescriptions[i].Listener));
-		}	
+		}
 
 		//first, find and remove all ports that don't need to be listened on anymore
 		//then, find and add all ports that need to be listened on
 		//port 443 should always be open for HTTPS connections
-		//the websocket connections should always be open to whatever ELB_SSL_PORT is 		
+		//the websocket connections should always be open to whatever ELB_SSL_PORT is
 		var expectedListeners = [new Listener({
 			Protocol: "HTTPS",
 			LoadBalancerPort: 443,
 			InstanceProtocol: "HTTP",
-			InstancePort: self.config.haproxy.httpListen, 
+			InstancePort: self.config.haproxy.httpListen,
 			SSLCertificateId: self.config.aws.elb.sslCertificateArn
 		}),
 		new Listener({
 			Protocol: "SSL",
-			LoadBalancerPort: self.config.aws.elb.sslPort, 
+			LoadBalancerPort: self.config.aws.elb.sslPort,
 			InstanceProtocol: "TCP",
-			InstancePort: self.config.haproxy.httpListen, 
+			InstancePort: self.config.haproxy.httpListen,
 			SSLCertificateId: self.config.aws.elb.sslCertificateArn
 		})];
-		
+
 		//get tcp mappings. we are only interested in an array of ports that should be opened
 		for (let i = 0; i < template.tcpMaps.length; i++) {
 			expectedListeners.push(new Listener({
@@ -82,7 +82,7 @@ AwsHandler.prototype.changeState = function (template) {
 				//done!
 			});
 		});
-	}); 
+	});
 }
 
 /**
@@ -100,7 +100,7 @@ AwsHandler.calculateListenerChanges = function (expectedListeners, actualListene
 	}
 	//with some clever foresight, we won't need two sets of nested for loops to get
 	//all the information we need
-	//what is crucial about this algorithm is that the LoadBalancerPort number must be unique 
+	//what is crucial about this algorithm is that the LoadBalancerPort number must be unique
 	//across all other listeners in an array
 	//sort the arrays in ascending order using the LoadBalancerPort as the comparing element
 	expectedListeners.sort(function (a, b) {
@@ -116,11 +116,11 @@ AwsHandler.calculateListenerChanges = function (expectedListeners, actualListene
 		var expected = expectedListeners[0];
 		var actual = actualListeners[0];
 		var comparison = AwsHandler.comparelistenerStates(expected, actual);
-		if (comparison.diff < 0) { 
+		if (comparison.diff < 0) {
 			//an expected listener is missing. add expected listener into toBeAddedListeners
-			listenerChanges.toBeAddedListeners.push(expectedListeners.shift()); 
+			listenerChanges.toBeAddedListeners.push(expectedListeners.shift());
 		}
-		else if (comparison.diff > 0) { 
+		else if (comparison.diff > 0) {
 			//an actual listener needs to be removed. add listener's port to toBeDeletedListeners
 			listenerChanges.toBeDeletedListeners.push(actualListeners.shift().LoadBalancerPort);
 		}
@@ -130,10 +130,10 @@ AwsHandler.calculateListenerChanges = function (expectedListeners, actualListene
 				//matching listeners. do nothing to change the state
 				expectedListeners.shift();
 				actualListeners.shift();
-			} else { 
+			} else {
 				//listeners do not match. we must update the listener with this port
 				//remove actual listener and add expected listener
-				listenerChanges.toBeAddedListeners.push(expectedListeners.shift()); 
+				listenerChanges.toBeAddedListeners.push(expectedListeners.shift());
 				listenerChanges.toBeDeletedListeners.push(actualListeners.shift().LoadBalancerPort);
 			}
 		}
@@ -142,10 +142,10 @@ AwsHandler.calculateListenerChanges = function (expectedListeners, actualListene
 	//all remaining listeners in expected array need to be added
 	//all remaining listeners in actual array need to be removed
 	while (expectedListeners.length > 0) {
-		listenerChanges.toBeAddedListeners.push(expectedListeners.shift()); 
+		listenerChanges.toBeAddedListeners.push(expectedListeners.shift());
 	}
 	while (actualListeners.length > 0) {
-		listenerChanges.toBeDeletedListeners.push(actualListeners.shift().LoadBalancerPort); 
+		listenerChanges.toBeDeletedListeners.push(actualListeners.shift().LoadBalancerPort);
 	}
 	//finally complete!
 	return listenerChanges;
@@ -216,7 +216,7 @@ AwsHandler.prototype.addListeners = function (listeners, callback) {
 				logger.error(err);
 			}
 			callback();
-		});		
+		});
 	}
 	else {
 		callback();
@@ -239,7 +239,7 @@ AwsHandler.prototype.removeListeners = function (lbPorts, callback) {
 				logger.error(err);
 			}
 			callback();
-		});		
+		});
 	}
 	else {
 		callback();
@@ -294,6 +294,16 @@ AwsHandler.prototype.publish = function (metricName, unitName, value) {
 			//use the dimensions property to show where each log came from by IP
 			//so we can filter the metrics based on reports of one Manticore web app
 		};
-		cloudWatch.putMetricData(params, function (err, data) {});	
+		cloudWatch.putMetricData(params, function (err, data) {});
+	}
+};
+
+AwsHandler.prototype.publishMultiple = function(metricData) {
+	if (this.config.aws && this.config.aws.cloudwatch) {
+		var params = {
+			Namespace: this.config.aws.cloudWatch.namespace,
+			MetricData: metricData
+		}
+		cloudWatch.putMetricData(params, function (err, data) {});
 	}
 };
