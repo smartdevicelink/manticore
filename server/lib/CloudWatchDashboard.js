@@ -7,12 +7,12 @@ function publishToDashboard() {
     console.log('Publishing to CloudWatch');
     async.waterfall([
         function(callback) {
-            context.consuler.getKeyValue(context.keys.request, function(result) {
+            context.consuler.getKeyAll(context.keys.request, function(result) {
                 callback(null, result);
             });
         },
         function(requests, callback) {
-            context.consuler.getKeyValue(context.keys.allocation, function(result) {
+            context.consuler.getKeyAll(context.keys.allocation, function(result) {
                 callback(null, requests, result);
             });
         },
