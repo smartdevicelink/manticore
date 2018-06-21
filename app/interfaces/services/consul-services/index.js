@@ -18,6 +18,10 @@ async function watch (service, cb) {
             throw Error(err);
         }
     });
+    //expose a function to stop the watch
+    return {
+        end: watch.end.bind(watch) 
+    }
 }
 
 module.exports = {
