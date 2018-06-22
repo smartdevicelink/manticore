@@ -1,4 +1,6 @@
 const builder = require('nomad-helper');
+const http = require('async-request');
+const config = require('./config');
 
 const jobInfo = {
     core: {
@@ -11,7 +13,7 @@ const jobInfo = {
     }]
 };
 
-function get () {
+function jobOptions () {
     return jobInfo;
 }
 
@@ -154,8 +156,36 @@ function construct () {
     */
 }
 
+async function getRunningJobs () {
+    const result = await http(`http://${config.clientAgentIp}:${config.clientAgentPort}/v1/jobs?prefix=core-hmi-`);
+    const jobInfo = await parseJson(result.body);
+    
+}
+
+//helper function for converting strings to JSON
+async function parseJson (string) {
+    try {
+        return JSON.parse(string);
+    } catch (err) { //invalid JSON here. initialize to empty object
+        logger.error(new Error("Invalid JSON string: " + string).stack);
+        return {};
+    }
+}
+
+/*
+{ core: { branch: 'master', build: 'none' },
+  hmi: { type: 'generic', branch: 'minimal' } }
+*/
+//given valid job info, submit the job and return whether the submission was successful 
+async function submit (body) {
+    console.log(body);
+    return true;
+}
+
 module.exports = {
     construct: construct,
-    get: get,
-    validate: validate
+    jobOptions: jobOptions,
+    validate: validate,
+    getRunningJobs: getRunningJobs,
+    submit: submit
 }

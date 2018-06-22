@@ -2,14 +2,17 @@ const config = require('./config.js');
 const promisify = require('util').promisify;
 const consul = require('consul')({host: config.clientAgentIp});
 
-async function watch (id, cb) {
+async function watch (key, cb) {
     const watch = consul.watch({
         method: consul.kv.get,
-        options: {key: id},
+        options: {key: key},
     });
-    watch.on('change', function (data, res) {
-        const value = data ? data.Value : undefined
-        cb(value);
+    watch.on('change', function (data) {
+        //an attempt to watch a key that doesn't exist will cause the watch to be invoked rapidly
+        //only callback if data is defined
+        if (data) {
+            cb(createUpdateHandler(key, data));
+        }
     });
     watch.on('error', function (err) { //couldn't connect to the agent
         if (err.code === "ECONNREFUSED") {
@@ -36,10 +39,14 @@ async function set (opts) {
 
 async function cas (key) {
     const result = await get(key);
+    return createUpdateHandler(key, result);
+}
+
+function createUpdateHandler (key, data) {
     //if no result, casIndex should be 0 to signify a new entry where the key is
-    const casIndex = result ? result.ModifyIndex : 0;
+    const casIndex = data ? data.ModifyIndex : 0;
     return {
-        value: result ? result.Value : undefined,
+        value: data ? data.Value : undefined,
         //provide a function to set the new value in a concurrency-friendly manner
         set: async newValue => {
             //if the index has changed in the remote, this set will fail. this means
@@ -55,5 +62,6 @@ async function cas (key) {
 
 module.exports = {
     watch: watch,
-    cas: cas
+    cas: cas,
+    set: set
 }
