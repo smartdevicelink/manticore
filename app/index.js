@@ -2,9 +2,12 @@ const config = require('./config.js');
 const {store, services, job, logger} = config;
 const check = require('check-types');
 const watcher = require('./watcher.js');
+const loader = require('./loader.js');
 
 const REQUESTS_KEY = "manticore/requests";
 const WAITING_KEY = "manticore/waiting";
+
+let listeners = {}; //to be loaded later
 
 module.exports = {
     getJobInfo: async () => {
@@ -26,13 +29,14 @@ module.exports = {
 startWatches().catch(err => logger.error(err)); //all errors in the watches will stop propagating here
 
 async function startWatches () {
+    //load up the listeners to the listener store
+    listeners = await loader.init();
+    logger.debug("listeners loaded");
     const w1 = store.watch(REQUESTS_KEY, requestTrigger);
     const w2 = store.watch(WAITING_KEY, waitingTrigger);
     watcher.add(REQUESTS_KEY, w1);
     watcher.add(WAITING_KEY, w2);
 }
-
-//TODO: handle deleting jobs somewhere
 
 //request store update
 async function requestTrigger (requestSetter) {
@@ -40,29 +44,33 @@ async function requestTrigger (requestSetter) {
     //retrieve the waiting list state
     const waitingSetter = await store.cas(WAITING_KEY);
     const waitingState = await parseJson(waitingSetter.value);
-    //sync up the waiting state to have all and only the users in the request state
-    const newWaitingState = {};
-    let maxQueue = 0; //get the highest queue number in the waiting list
-    for (let id in waitingState) {
-        maxQueue = Math.max(maxQueue, waitingState[id].queue);
-    }
-    for (let id in requestState) {
-        if (waitingState[id]) { //managed user is already in waiting
-            newWaitingState[id] = waitingState[id];
-        }
-        else { //managed user is not in waiting
-            newWaitingState[id] = {
-                id: id,
-                queue: ++maxQueue, //set the queue of this user one above the highest number
-                state: "waiting",
-                request: requestState[id]
-            };
-        }
-    }
-    //logger.debug("Request update: " + JSON.stringify(newWaitingState, null, 4));
-    await waitingSetter.set(JSON.stringify(newWaitingState)); //submit the new entry to the store
+
+    const ctx = {
+        requestState: requestState,
+        waitingState: waitingState
+    };
+    await listeners['pre-request'](ctx);
+    await listeners['request'](ctx);
+    await listeners['post-request'](ctx);
+
+    await waitingSetter.set(JSON.stringify(ctx.waitingState)); //submit the new entry to the store
 }
 
+//waiting store update
+async function waitingTrigger (waitingSetter) {
+    let waitingState = await parseJson(waitingSetter.value);
+
+    const ctx = {
+        nextRequest: undefined,
+        waitingState: waitingState
+    };
+    await listeners['pre-waiting-find'](ctx);
+    await listeners['waiting-find'](ctx);
+    await listeners['post-waiting-find'](ctx);
+    console.log(ctx.nextRequest);
+}
+
+/*
 //waiting store update
 async function waitingTrigger (waitingSetter) {
     //possible states: "waiting", "pending", "claimed"
@@ -84,7 +92,11 @@ async function waitingTrigger (waitingSetter) {
     logger.debug("Handling request for: " + ID);
     //start up the job submission process
     //enforce a timeout for the job submission
-    const jobPromise = job.submit(waitingState[ID].request);
+
+    //TODO: make this a lifecycle hook for job submission, and propagate the info to listening modules automatically somehow
+    //maybe as long as they're in a "modules" folder?
+    
+    const jobPromise = job.submit(waitingState[ID]);
     createJobTimeoutPromise(ID, jobPromise)
         .then(async success => {
             if (success) { //set the user's state to claimed
@@ -108,7 +120,7 @@ async function waitingTrigger (waitingSetter) {
             await requestSetter.set(JSON.stringify(requestState)); //submit the changes
         });
 }
-
+*/
 async function createJobTimeoutPromise (id, promise) {
     const failTimer = new Promise(function (resolve, reject) {
         setTimeout(() => {

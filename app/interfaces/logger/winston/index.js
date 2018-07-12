@@ -10,8 +10,8 @@ const logger = winston.createLogger({
         new winston.transports.Console({
             level: config.level
         }),
-        new winston.transports.File({ //only write errors to file
-            level: 'error',
+        new winston.transports.File({ //only write warns and errors to file
+            level: 'warn',
             name: 'manticore_logs',
             filename: 'manticore_logs.log'
         })
@@ -22,5 +22,6 @@ const logger = winston.createLogger({
 module.exports = {
     debug: logger.debug,
     info: logger.info,
+    warn: logger.warn,
     error: logger.error
 }

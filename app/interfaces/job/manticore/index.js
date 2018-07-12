@@ -1,15 +1,16 @@
 const builder = require('nomad-helper');
 const http = require('async-request');
 const config = require('./config');
+const settings = require('./image-settings');
 
 const jobInfo = {
     core: {
-        branches: ["master"],
-        builds: ["none"]
+        versions: ["4.5.1"], //ex. 4.5.1, master, develop
+        builds: ["default"]
     }, 
     hmis: [{
         type: "generic",
-        branches: ["minimal"]
+        versions: ["minimal"] //ex. master, minimal
     }]
 };
 
@@ -22,12 +23,12 @@ expected input:
 {
     id: 1 (optional),
     core: {
-        branch: "master",
-        build: "none"
+        version: "master",
+        build: "default"
     },
     hmi: {
         type: "generic",
-        branch: "minimal"
+        version: "minimal"
     }
 }
 
@@ -43,15 +44,15 @@ function validate (body) {
         return createErrorResponse("Request body is invalid");
     }
 
-    const coreBranchValid = jobInfo.core.branches.includes(body.core.branch);
+    const coreVersionValid = jobInfo.core.versions.includes(body.core.version);
     const coreBuildValid = jobInfo.core.builds.includes(body.core.build);
     const hmiTypeIndex = jobInfo.hmis.findIndex(elem => {
         return elem.type === body.hmi.type; 
     });
-    const hmiBranchValid = hmiTypeIndex !== -1 && jobInfo.hmis[hmiTypeIndex].branches.includes(body.hmi.branch);
+    const hmiVersionValid = hmiTypeIndex !== -1 && jobInfo.hmis[hmiTypeIndex].versions.includes(body.hmi.version);
     
-    if (!coreBranchValid) {
-        return createErrorResponse("Not a valid core branch: " + body.core.branch);
+    if (!coreVersionValid) {
+        return createErrorResponse("Not a valid core version: " + body.core.version);
     }
     if (!coreBuildValid) {
         return createErrorResponse("Not a valid core build option: " + body.core.build);
@@ -59,20 +60,20 @@ function validate (body) {
     if (hmiTypeIndex === -1) {
         return createErrorResponse("Not a valid hmi type: " + body.hmi.type);
     }
-    else if (!hmiBranchValid) {
-        return createErrorResponse("Not a valid hmi branch: " + body.hmi.branch);
+    else if (!hmiVersionValid) {
+        return createErrorResponse("Not a valid hmi version: " + body.hmi.version);
     }
 
     //the response is valid at this point. clean the input
     return {
         body: { //response to store
             core: {
-                branch: body.core.branch,
+                version: body.core.version,
                 build: body.core.build
             },
             hmi: {
                 type: body.hmi.type,
-                branch: body.hmi.branch
+                version: body.hmi.version
             }
         },
         isValid: true
@@ -90,6 +91,7 @@ function createErrorResponse (message) {
 //TODO: return an array of job files. one will be executed and confirmed running before starting another?
 //or the results of a job are passed in and another job is returned as a result to run?
 function construct () {
+    const job = builder.createJob("core-" + id);
     const groupName = "core-group-" + id;
     const taskName = "core-task-" + id;
     const serviceName = "core-service-" + id;
@@ -173,19 +175,24 @@ async function parseJson (string) {
 }
 
 /*
-{ core: { branch: 'master', build: 'none' },
-  hmi: { type: 'generic', branch: 'minimal' } }
+{ id: '3',
+  queue: 1,
+  state: 'pending',
+  request: 
+   { core: { version: 'master', build: 'none' },
+     hmi: { type: 'generic', version: 'minimal' } } }
 */
 //given valid job info, submit the job and return whether the submission was successful 
 async function submit (body) {
-    console.log(body);
+    const {id, request} = body;
+    const jobFile = settings.generateCoreJobFile(body);
+    //submit the job
+    await http(`http://${config.clientAgentIp}:${config.clientAgentPort}/v1/jobs?prefix=core-hmi-`);
     return true;
 }
 
 module.exports = {
-    construct: construct,
     jobOptions: jobOptions,
     validate: validate,
-    getRunningJobs: getRunningJobs,
     submit: submit
 }
