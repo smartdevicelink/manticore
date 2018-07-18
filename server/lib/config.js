@@ -39,6 +39,9 @@ var config = {
     tcpPortRangeStart: e.TCP_PORT_RANGE_START,
     tcpPortRangeEnd: e.TCP_PORT_RANGE_END,
     httpListen: e.HAPROXY_HTTP_LISTEN
+  },
+  geckoboard: {
+    apiKey: e.GECKOBOARD_API_KEY
   }
 }
 

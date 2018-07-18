@@ -19,6 +19,7 @@ var expressJwt = require('express-jwt');
 var jwt = require('jsonwebtoken');
 var Context = require('./lib/Context.js'); //stores a set of modules and objects that are globally needed
 var CloudWatchDashboard = require('./lib/CloudWatchDashboard');
+var geckoboard = require('./lib/geckoboard');
 
 //trace. only require it if the config for trace is valid
 if (config.trace) {
@@ -98,5 +99,7 @@ if (config.cors === "true") {
         controller(context);
         // start sending Manticore request and allocation metrics to CloudWatch
         CloudWatchDashboard(context);
+        // start sending Manticore request and allocation metrics to Geckoboard
+        geckoboard(context);
     });
 })();
