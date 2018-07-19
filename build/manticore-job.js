@@ -50,7 +50,8 @@ function buildManticoreJobFile () {
 		"TRACE_SERVICE_NAME",
 		"TRACE_API_KEY",
         "CWL_LOG_GROUP_NAME",
-        "CWL_LOG_STREAM_NAME"
+        "CWL_LOG_STREAM_NAME",
+		"GECKOBOARD_API_KEY"
 	]);
 	job.addService(groupName, taskName, serviceName);
 	job.setPortLabel(groupName, taskName, serviceName, "http");
