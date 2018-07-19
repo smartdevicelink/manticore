@@ -43,10 +43,11 @@ function publishToDashboard() {
 }
 
 module.exports = function (c) {
+    context = c;
+
     console.log('Starting up Geckoboard');
     console.log(context.config.geckoboard);
 
-    context = c;
     if (context.config.geckoboard) {
         gb = require('geckoboard')(context.config.geckoboard.apiKey);
         gb.ping(function(err) {
