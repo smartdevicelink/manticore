@@ -30,6 +30,9 @@ function publishToDashboard() {
                 ],
                 {},
                 function(err) {
+                    if (err) {
+                        console.log('Could not push data to Geckboard');
+                    }
                     callback(err);
                 }
             );
@@ -40,10 +43,15 @@ function publishToDashboard() {
 }
 
 module.exports = function (c) {
+    console.log('Starting up Geckoboard');
+    console.log(context.config.geckoboard);
+
     context = c;
     if (context.config.geckoboard) {
         gb = require('geckoboard')(context.config.geckoboard.apiKey);
         gb.ping(function(err) {
+            console.log('Authenticating Geckoboard credentials');
+
             if (err) {
                 console.log('Geckoboard authentication failed');
                 return;
@@ -80,6 +88,7 @@ module.exports = function (c) {
                     }
 
                     DATASET = dataset;
+                    console.log('Starting to publish data');
                     publishTimer = setInterval(publishToDashboard, 60000);
                 }
             )
