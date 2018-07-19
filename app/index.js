@@ -1,7 +1,6 @@
 const config = require('./config.js');
-const {store, services, job, logger} = config;
+const {store, job, logger} = config;
 const check = require('check-types');
-const watcher = require('./watcher.js');
 const loader = require('./loader.js');
 
 const REQUESTS_KEY = "manticore/requests";
@@ -34,8 +33,6 @@ async function startWatches () {
     logger.debug("listeners loaded");
     const w1 = store.watch(REQUESTS_KEY, requestTrigger);
     const w2 = store.watch(WAITING_KEY, waitingTrigger);
-    watcher.add(REQUESTS_KEY, w1);
-    watcher.add(WAITING_KEY, w2);
 }
 
 //request store update
@@ -59,93 +56,41 @@ async function requestTrigger (requestSetter) {
 //waiting store update
 async function waitingTrigger (waitingSetter) {
     let waitingState = await parseJson(waitingSetter.value);
-
+    //TODO: change to request or currentRequest
     const ctx = {
-        nextRequest: undefined,
-        waitingState: waitingState
+        nextRequest: undefined, //expected to be a sub-object of the waiting state, or undefined, or null
+        waitingState: waitingState,
+        updateStore: false, //whether the remote state should be updated
+        removeUser: false //whether the request should be removed completely
     };
+
     await listeners['pre-waiting-find'](ctx);
     await listeners['waiting-find'](ctx);
     await listeners['post-waiting-find'](ctx);
-    console.log(ctx.nextRequest);
-}
+    //if nextRequest doesnt exist then there are no users to handle
+    if (ctx.nextRequest === null || ctx.nextRequest === undefined) return;
 
-/*
-//waiting store update
-async function waitingTrigger (waitingSetter) {
-    //possible states: "waiting", "pending", "claimed"
-    let waitingState = await parseJson(waitingSetter.value);
-    //find the next request to handle
-    const currentRequest = await findNextInQueue(waitingState);
-    //if the request is not waiting, do not handle. another server is handling the request
-    //if it is undefined, then there are no users to handle
-    if (currentRequest === undefined || currentRequest.state !== "waiting") return;
-    const ID = currentRequest.id;
-    //attempt the set the request's state to pending
-    waitingState[ID].state = "pending";
-    //submit the new entry to the store 
-    const updateSuccess = await waitingSetter.set(JSON.stringify(waitingState)); 
-    if (!updateSuccess) return; //another server took charge in handling the request first
-    //we need a new CAS since the previous CAS has been completed
-    waitingSetter = await store.cas(WAITING_KEY);
-    waitingState = await parseJson(waitingSetter.value);
-    logger.debug("Handling request for: " + ID);
-    //start up the job submission process
-    //enforce a timeout for the job submission
+    //determine whether a request's job status is at the point where further updates can happen.
+    await listeners['pre-waiting-job-advance'](ctx);
+    await listeners['waiting-job-advance'](ctx);
+    await listeners['post-waiting-job-advance'](ctx);
 
-    //TODO: make this a lifecycle hook for job submission, and propagate the info to listening modules automatically somehow
-    //maybe as long as they're in a "modules" folder?
-    
-    const jobPromise = job.submit(waitingState[ID]);
-    createJobTimeoutPromise(ID, jobPromise)
-        .then(async success => {
-            if (success) { //set the user's state to claimed
-                logger.debug("Allocation successful for: " + ID);
-                waitingState[ID].state = "claimed";
-                await waitingSetter.set(JSON.stringify(waitingState)); //submit the changes
-            }
-            else { //set the user's state back to waiting
-                logger.debug("Failed allocation. Set state back to waiting: " + ID);
-                waitingState[ID].state = "waiting";
-                await waitingSetter.set(JSON.stringify(waitingState)); //submit the changes
-            }
-        })
-        .catch(async err => {
-            //the job module's function crashed or timed out. remove the user from the request list 
-            logger.error(new Error(err).stack);
-            logger.error("Attempted allocation caused an error. Remove from requests: " + ID);
-            const requestSetter = await store.cas(REQUESTS_KEY);
-            const requestState = await parseJson(requestSetter.value);
-            delete requestState[ID];
-            await requestSetter.set(JSON.stringify(requestState)); //submit the changes
-        });
-}
-*/
-async function createJobTimeoutPromise (id, promise) {
-    const failTimer = new Promise(function (resolve, reject) {
-        setTimeout(() => {
-            reject("Job submission timed out for: " + id);
-        }, config.jobTimeoutSeconds * 1000);
-    });
-
-    return Promise.race([
-        failTimer,
-        promise
-    ]);
-}
-
-//find the next request that has not claimed a resource
-async function findNextInQueue (waitingState) {
-    let lowestIndex = Infinity;
-    let lowestKey = null;
-    for (let key in waitingState) {
-        let value = waitingState[key].queue;
-        if (waitingState[key].state !== "claimed" && value < lowestIndex) {
-            lowestIndex = value;
-            lowestKey = key;
-        }
+    //removeUser takes priority over updating the store
+    if (ctx.removeUser) {
+        //the request has to be removed in the requests, and not in the waiting list
+        const requestSetter = await store.cas(REQUESTS_KEY);
+        const requestState = await parseJson(requestSetter.value);
+        delete requestState[ctx.nextRequest.id];
+        await requestSetter.set(JSON.stringify(requestState)); //submit the changes
+        return;
     }
-    return waitingState[lowestKey];
+
+    if (!ctx.updateStore) return; //prevent an update to the store from happening
+
+    //TODO: this is after the health checks or whatever happen and this method can continue
+    //at this point this server can post an update to the store. success or failure of the job advance is actionable
+
+    await waitingSetter.set(JSON.stringify(ctx.waitingState)); //submit the new entry to the store
 }
 
 //helper function for converting strings to JSON
@@ -160,21 +105,3 @@ async function parseJson (string) {
         return {};
     }
 }
-
-/*
-const consulWatch = await services.watch('consul', function (data) {
-    console.log(data);
-});
-setTimeout(function () {
-    console.log(consulWatch);
-    consulWatch.end();
-}, 2000)
-
-
-services.watch('nomad', function (data) {
-    console.log(data);
-});
-services.watch('nomad-client', function (data) {
-    console.log(data);
-});
-*/

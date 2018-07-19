@@ -17,4 +17,29 @@ module.exports = {
         logger.debug("Current waiting list: " + JSON.stringify(clonedState));
         next();
     },
+    "post-waiting-find": async (ctx, next) => {
+        //cut off the 'request' property of each user for the sake of brevity
+        //modifying the context in a pre/post hook is forbidden. clone it
+        if (!ctx.nextRequest) {
+            logger.debug("No user selected in waiting");
+            return next();
+        }
+        const request = JSON.parse(JSON.stringify(ctx.nextRequest));
+        delete request.request;
+        logger.debug("Selected user in waiting: " + JSON.stringify(request));
+        next();
+    },
+    "post-waiting-job-advance": async (ctx, next) => {
+        //cut off the 'request' property of each user for the sake of brevity
+        //modifying the context in a pre/post hook is forbidden. clone it
+        if (!ctx.removeUser) {
+            let request = JSON.parse(JSON.stringify(ctx.nextRequest.id));
+            delete request.request;
+            logger.debug("Updated user in waiting: " + JSON.stringify(request));
+        }
+        else {
+            logger.warn(`User ${ctx.nextRequest.id} has been booted off the store!`);
+        }
+        next();
+    },
 }

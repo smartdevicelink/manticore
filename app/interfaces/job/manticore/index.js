@@ -2,6 +2,12 @@ const builder = require('nomad-helper');
 const http = require('async-request');
 const config = require('./config');
 const settings = require('./image-settings');
+const loggerModule = process.env.MODULE_LOGGER || 'winston';
+const logger = require(`../../logger/${loggerModule}`);
+const utils = require('../../../utils.js'); //contains useful functions for the job submission process
+
+//times to wait for healthy instances in milliseconds
+const CORE_HEALTH_TIME = 5000;
 
 const jobInfo = {
     core: {
@@ -87,9 +93,7 @@ function createErrorResponse (message) {
         errorMessage: message
     }
 }
-
-//TODO: return an array of job files. one will be executed and confirmed running before starting another?
-//or the results of a job are passed in and another job is returned as a result to run?
+/*
 function construct () {
     const job = builder.createJob("core-" + id);
     const groupName = "core-group-" + id;
@@ -120,7 +124,7 @@ function construct () {
     job.setLogs(groupName, taskName, 2, 25);
     job.addService(groupName, taskName, serviceName);
     job.setPortLabel(groupName, taskName, serviceName, "hmi");
-    /*
+    
         var groupName = strings.hmiGroupPrefix + request.id;
         job.addGroup(groupName);
         job.setType("service");
@@ -155,14 +159,56 @@ function construct () {
             Protocol: "http"
         }
         job.addCheck(groupName, taskName, serviceName, healthObj);
-    */
+    
 }
-
+*/
 async function getRunningJobs () {
-    const result = await http(`http://${config.clientAgentIp}:${config.clientAgentPort}/v1/jobs?prefix=core-hmi-`);
+    const result = await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/jobs?prefix=core-hmi-`);
     const jobInfo = await parseJson(result.body);
     
 }
+
+//responsible for advancing the state of the job for a request
+//can modify the context object passed in from manticore
+async function advance (ctx) {
+    //note: modify nextRequest as a shortcut to modifying waitingState
+    const {nextRequest, waitingState} = ctx;
+    const {id, request} = nextRequest;
+    const {version, build} = request.core;
+
+    const jobName = "core-hmi-" + id;
+    const serviceName = "core-service-" + id;
+
+    //perform a different action depending on the current state
+    if (nextRequest.state === "waiting") { //this stage causes a core job to run
+        const jobFile = settings.generateCoreJobFile(jobName, nextRequest);
+        const imageInfo = settings.configurationToImageInfo(version, build, id);
+
+        //submit the job and wait for results. ctx may be modified
+        const successJob = await utils.autoHandleJob(ctx, jobName, jobFile.Job);
+        if (!successJob) return; //failed job submission. bail out
+        logger.debug("Allocation successful for: " + id);
+
+        //the job is running at this point. check on all the services attached to the job. ctx may be modified
+        const serviceNames = imageInfo.services.map(service => {
+            return service.name;
+        });
+        const successServices = await utils.autoHandleServices(ctx, serviceNames, CORE_HEALTH_TIME);
+        if (!successServices) return; //failed service check. bail out
+        logger.debug("Services healthy for: " + id);
+
+        //services are healthy. update the store's remote state
+        ctx.updateStore = true;
+        return ctx.nextRequest.state = "pending-1";
+    }
+    if (nextRequest.state === "pending-1") { //this stage causes an hmi to run
+        //TODO: submit the HMI here! get the allocation info from core, too. store it using the previous state?
+        return ctx.nextRequest.state = "claimed";
+    }
+
+}
+
+//job-related helper functions
 
 //helper function for converting strings to JSON
 async function parseJson (string) {
@@ -174,25 +220,8 @@ async function parseJson (string) {
     }
 }
 
-/*
-{ id: '3',
-  queue: 1,
-  state: 'pending',
-  request: 
-   { core: { version: 'master', build: 'none' },
-     hmi: { type: 'generic', version: 'minimal' } } }
-*/
-//given valid job info, submit the job and return whether the submission was successful 
-async function submit (body) {
-    const {id, request} = body;
-    const jobFile = settings.generateCoreJobFile(body);
-    //submit the job
-    await http(`http://${config.clientAgentIp}:${config.clientAgentPort}/v1/jobs?prefix=core-hmi-`);
-    return true;
-}
-
 module.exports = {
     jobOptions: jobOptions,
     validate: validate,
-    submit: submit
+    advance: advance
 }

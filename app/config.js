@@ -1,19 +1,19 @@
 const storeModule = process.env.MODULE_STORE || 'consul-kv';
-const servicesModule = process.env.MODULE_SERVICES || 'consul-services';
 const jobModule = process.env.MODULE_JOB || 'manticore';
 const loggerModule = process.env.MODULE_LOGGER || 'winston';
 
 const config = {
     //interfaces
-    store: require(`./interfaces/store/${storeModule}`),
-    services: require(`./interfaces/services/${servicesModule}`),
-    job: require(`./interfaces/job/${jobModule}`),
     logger: require(`./interfaces/logger/${loggerModule}`),
+    store: require(`./interfaces/store/${storeModule}`),
+    job: require(`./interfaces/job/${jobModule}`),
     //manticore functionality settings
     //enables usage of json web tokens as the form of unique identification
     jwtSecret: process.env.JWT_SECRET,
-    //how much time to wait for the job module to complete a full submission before failing
-    jobTimeoutSeconds: process.env.JOB_TIMEOUT_SECONDS || 10
+    //the address of the nomad and consul client. assumes manticore is launched by nomad
+    clientAgentIp: process.env.NOMAD_IP_http || 'localhost', 
+    nomadAgentPort: process.env.NOMAD_AGENT_PORT || 4646, //the port the nomad agent listens on
+    consulAgentPort: process.env.CONSUL_AGENT_PORT || 8500, //the port the consul agent listens on
 };
 
 
