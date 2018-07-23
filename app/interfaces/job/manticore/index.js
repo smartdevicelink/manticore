@@ -1,12 +1,14 @@
 const builder = require('nomad-helper');
 const http = require('async-request');
 const config = require('./config');
-const settings = require('./image-settings');
+const coreSettings = require('./core-image-settings');
+const hmiSettings = require('./hmi-image-settings');
 const loggerModule = process.env.MODULE_LOGGER || 'winston';
 const logger = require(`../../logger/${loggerModule}`);
 const utils = require('../../../utils.js'); //contains useful functions for the job submission process
 
 //times to wait for healthy instances in milliseconds
+const CORE_ALLOCATION_TIME = 2000;
 const CORE_HEALTH_TIME = 5000;
 
 const jobInfo = {
@@ -93,75 +95,7 @@ function createErrorResponse (message) {
         errorMessage: message
     }
 }
-/*
-function construct () {
-    const job = builder.createJob("core-" + id);
-    const groupName = "core-group-" + id;
-    const taskName = "core-task-" + id;
-    const serviceName = "core-service-" + id;
-    job.addGroup(groupName);
-    job.setType("batch");
-    //set the restart policy of core so that if it dies once, it's gone for good
-    //attempts number should be 0. interval and delay don't matter since task is in fail mode
-    job.setRestartPolicy(groupName, 60000000000, 0, 60000000000, "fail");
-    job.addTask(groupName, taskName);
-    job.setImage(groupName, taskName, coreImageName);
-    job.addPort(groupName, taskName, true, "hmi", 9000);
-    job.addPort(groupName, taskName, true, "tcp", 12345);
-    job.addPort(groupName, taskName, true, "file", 3001);
-    job.addPort(groupName, taskName, true, "log", 8888);
-    job.addEnv(groupName, taskName, "DOCKER_IP", "${NOMAD_IP_hmi}");
-    job.addConstraint({
-        LTarget: "${meta.core}",
-        Operand: "=",
-        RTarget: "1"
-    }, groupName);
-    //set resource limitations
-    job.setCPU(groupName, taskName, 100);
-    job.setMemory(groupName, taskName, 200);
-    job.setMbits(groupName, taskName, 2);
-    job.setEphemeralDisk(groupName, 500, false, false);
-    job.setLogs(groupName, taskName, 2, 25);
-    job.addService(groupName, taskName, serviceName);
-    job.setPortLabel(groupName, taskName, serviceName, "hmi");
-    
-        var groupName = strings.hmiGroupPrefix + request.id;
-        job.addGroup(groupName);
-        job.setType("service");
-        var taskName = strings.hmiTaskPrefix + request.id;
-        job.addTask(groupName, taskName);
-        job.setImage(groupName, taskName, hmiImageName);
-        job.addPort(groupName, taskName, true, "user", 8080);
-        job.addConstraint({
-            LTarget: "${meta.core}",
-            Operand: "=",
-            RTarget: "1"
-        }, groupName);
-        //set resource limitations
-        job.setCPU(groupName, taskName, 40);
-        job.setMemory(groupName, taskName, 75);
-        job.setMbits(groupName, taskName, 1);
-        job.setEphemeralDisk(groupName, 30, false, false);
-        job.setLogs(groupName, taskName, 1, 10);
-        job.addEnv(groupName, taskName, "HMI_TO_BROKER_ADDR", fullAddressBroker);
-        job.addEnv(groupName, taskName, "BROKER_TO_CORE_FILE_ADDR", core.Address + ":" + coreFilePort);
 
-        var serviceName = strings.hmiServicePrefix + request.id;
-        job.addService(groupName, taskName, serviceName);
-        job.setPortLabel(groupName, taskName, serviceName, "user");
-        //add a health check
-        var healthObj = {
-            Type: "http",
-            Name: strings.hmiAliveHealth,
-            Interval: 3000000000, //in nanoseconds
-            Timeout: 2000000000, //in nanoseconds
-            Path: "/",
-            Protocol: "http"
-        }
-        job.addCheck(groupName, taskName, serviceName, healthObj);
-    
-}
-*/
 async function getRunningJobs () {
     const result = await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/jobs?prefix=core-hmi-`);
     const jobInfo = await parseJson(result.body);
@@ -177,22 +111,25 @@ async function advance (ctx) {
     const {version, build} = request.core;
 
     const jobName = "core-hmi-" + id;
-    const serviceName = "core-service-" + id;
 
     //perform a different action depending on the current state
     if (nextRequest.state === "waiting") { //this stage causes a core job to run
-        const jobFile = settings.generateCoreJobFile(jobName, nextRequest);
-        const imageInfo = settings.configurationToImageInfo(version, build, id);
+        const jobFile = coreSettings.generateJobFile(jobName, nextRequest);
+        const imageInfo = coreSettings.configurationToImageInfo(version, build, id);
 
         //submit the job and wait for results. ctx may be modified
-        const successJob = await utils.autoHandleJob(ctx, jobName, jobFile.Job);
+        const successJob = await utils.autoHandleJob(ctx, jobName, jobFile.Job, CORE_ALLOCATION_TIME);
         if (!successJob) return; //failed job submission. bail out
         logger.debug("Allocation successful for: " + id);
 
         //the job is running at this point. check on all the services attached to the job. ctx may be modified
-        const serviceNames = imageInfo.services.map(service => {
+        //ignore all services with no health checks
+        const serviceNames = imageInfo.services.filter(service => {
+            return service.checks && service.checks.length > 0;
+        }).map(service => {
             return service.name;
         });
+        
         const successServices = await utils.autoHandleServices(ctx, serviceNames, CORE_HEALTH_TIME);
         if (!successServices) return; //failed service check. bail out
         logger.debug("Services healthy for: " + id);
@@ -202,7 +139,18 @@ async function advance (ctx) {
         return ctx.nextRequest.state = "pending-1";
     }
     if (nextRequest.state === "pending-1") { //this stage causes an hmi to run
-        //TODO: submit the HMI here! get the allocation info from core, too. store it using the previous state?
+        //TODO: need to get address info from core first
+        //  you can get the address info from just Consul if you declare all services in nomad! no health checks required!
+
+        //TODO: also need to concatenate the core job with this job 
+
+        /*const jobFile = hmiSettings.generateJobFile(jobName, nextRequest);
+        const imageInfo = hmiSettings.configurationToImageInfo(version, build, id);
+        console.log("hmi job info");
+        console.log(JSON.stringify(jobFile, null, 4));
+        console.log(imageInfo);*/
+
+
         return ctx.nextRequest.state = "claimed";
     }
 

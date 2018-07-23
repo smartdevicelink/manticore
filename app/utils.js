@@ -13,27 +13,37 @@ const FAILURE_TYPE_PERMANENT = "PERMANENT";
 const FAILURE_TYPE_PENDING = "PENDING";
 const FAILURE_TYPE_RESTART = "RESTART";
 
-//TODO: how to handle the case where we're looking at a PREVIOUS job's status?
-//	ex. kill a job so that it's dead. It will show the dead state. that alloc is never returned because 
-//  the job stays dead forever? manually stop the job and try running Manticore again. 
-//TODO: how to handle the case where we're looking at a PREVIOUS consul services's status?
-//TODO: add a meta tag to nomad adding some timestamp and checking if it's the same? just do that here?
-//TODO: what about for each service? 
-//TODO: how to get around the circular dependency problems?
-//TODO: what happens if there are no health checks at all?
-//TODO: watchAllocationToResolution incomplete. check there for TODOs
-
+//TODO: how to get around the circular dependency problems? (see top of file)
+//TODO: add a long-running health check for jobs to check on their statuses after they are healthy
+/*
+    autoHandleJob and autoHandleServices only check until the job and services are healthy. 
+    This means that they don't check for the case where an already healthy job/service becomes unhealthy.
+    
+    watchAllocationToResolution and watchServiceToResolution both use a forced end date and will not stop early
+    unless a successful result is returned. watchAllocationToResolution could stop early when a dead/failed state
+    is found since its starting state is pending, unlike with watching a service where it starts in a failed state. 
+    However, there could be a case where an allocation is in a non-pending, non-running state when read and it is simply
+    in transition to a pending or running state. Waiting for a running state seems like the better option of the two.
+    The intent is to have a job in the running state so Manticore should be biased towards waiting for a running state
+    and face the possibility of the running state being an outdated value on read. The services check can confirm 
+    or deny whether the allocation is indeed healthy later
+*/
 
 //a well-rounded implementation of handling a job submission and dealing with possible errors
 //this modifies ctx so the caller function can see what the suggested action is
 //returns whether the job is submitted without errors
-async function autoHandleJob (ctx, jobName, jobFile) {
+async function autoHandleJob (ctx, jobName, jobFile, healthTime = 10000) {
 	//perform a job CAS
     const jobSetter = await casJob(jobName);
     await jobSetter.set(jobFile); //submit the job
-    //retrieve the allocation information of the job
-    const alloc = await watchAllocationToResolution(jobName);
-
+    //retrieve the allocation information of the job. force a result by healthTime milliseconds
+    const alloc = await watchAllocationToResolution(jobName, Date.now() + healthTime);
+    if (alloc === null) { //allocation doesn't exist
+        logger.error(`Allocation non-existent for user ${ctx.nextRequest.id}!`);
+        ctx.updateStore = true;
+        ctx.removeUser = true;
+        return false;
+    }
     //the job has to be running at this point, or else this should be considered a failure
     if (alloc.ClientStatus !== "running") { 
         logger.error(`Core allocation failed for user ${ctx.nextRequest.id}!`);
@@ -56,27 +66,46 @@ async function autoHandleJob (ctx, jobName, jobFile) {
     return true;
 }
 
-//continuously hit the allocations endpoint until a non-pending, non-complete status is found
-async function watchAllocationToResolution (jobName, wait, index) {
+//continuously hit the allocations endpoint until either the end date is passed or until the status is running
+async function watchAllocationToResolution (jobName, endDate, index) {
     let baseUrl = `http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${jobName}/allocations?`;
     if (index !== undefined) {
         baseUrl = `${baseUrl}index=${index}&`; //long poll for any updates
     }
-    if (wait !== undefined) {
-        baseUrl = `${baseUrl}wait=${wait}s`;
-    }
+    //generate a wait parameter based on the current date and endDate
+    let waitTimeLeft = endDate - Date.now();
+    waitTimeLeft = Math.max(0, waitTimeLeft); //cap the minimum time to zero
+    waitTimeLeft = Math.ceil(waitTimeLeft / 1000); //the time left between now and endDate into seconds, rounded up
+    
+    baseUrl = `${baseUrl}wait=${waitTimeLeft}s`;
+
     const response = await http(baseUrl); //get allocation info about the job
     const newIndex = response.headers["x-nomad-index"]; 
     const allocs = await parseJson(response.body);
-    //TODO: found a case where allocs[0] isn't the most recent status. figure that out!
+    //get the newest status of the allocation, if there is any. use the JobVersion property to find the highest one
+    let foundIndex = 0;
+    let highestVersion = -Infinity;
+    let foundAlloc = false;
+    for (let i = 0; i < allocs.length; i++) {
+        if (allocs[i].JobVersion > highestVersion) {
+            foundAlloc = true;
+            foundIndex = i;
+            highestVersion = allocs[i].JobVersion;
+        }
+    }
+    const status = allocs[foundIndex].ClientStatus;
 
-    //get the newest status of the allocation, if there is any. 
-    if (allocs.length === 0 || allocs[0].ClientStatus === "pending" || allocs[0].ClientStatus === "complete") { 
+    //check if the current date is larger than the specified end date
+    if (Date.now() > endDate) { //out of time. do not continue watching
+        return foundAlloc ? allocs[foundIndex] : null;
+    }
+
+    if (!foundAlloc || status !== "running") { 
         //start over and wait for more updates
-        return await watchAllocationToResolution(jobName, wait, newIndex);
+        return await watchAllocationToResolution(jobName, endDate, newIndex);
     }
     else { //a non-pending state is found. return the allocation info for further evaluation
-        return allocs[0];
+        return allocs[foundIndex];
     }
 }
 
@@ -116,6 +145,12 @@ async function setJob (key, opts) {
     });
 }
 
+async function stopJob (key, purge = false) {
+    return await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${key}?purge=${purge}`, {
+        method: 'DELETE'
+    });
+}
+
 //check and set implementation. return the value and a set function that allows safe updating of the value
 async function casJob (key) {
     const result = await getJob(key);
@@ -140,7 +175,7 @@ async function casJob (key) {
 //a well-rounded implementation of handling service health checks and dealing with possible errors
 //this modifies ctx so the caller function can see what the suggested action is
 //returns whether the services are running without errors
-async function autoHandleServices (ctx, serviceNames, healthTime = 5000) {
+async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
 	const serviceWatches = serviceNames.map(name => {
         //run synchronously to prevent blocking. force a result by healthTime milliseconds
         return watchServiceToResolution(name, Date.now() + healthTime); 
@@ -173,16 +208,6 @@ async function autoHandleServices (ctx, serviceNames, healthTime = 5000) {
     }
     return true;
 }
-
-/*
-    The service starts off on critical and stays there until the check passes
-    Since it can start off on a non-pending state automatically, a different tactic is needed to determine
-    resolution. Just wait for the service to enter a passing state. Force an end after a set amount of time.
-    The Status property will be useful, as it represents the state using ALL checks. 
-
-    This issue best reflects a concern to change this behavior:
-    https://github.com/hashicorp/consul/issues/2314
-*/
 
 //continuously hit the health checks endpoint until either the end date is passed or until the status is passing
 async function watchServiceToResolution (serviceName, endDate = 0, index) {
@@ -251,7 +276,8 @@ module.exports = {
 	//getting and setting job info
 	getJob: getJob,
 	setJob: setJob,
-	casJob: casJob,
+    casJob: casJob,
+	stopJob: stopJob,
 	//service check automation
 	autoHandleServices: autoHandleServices,
 	watchServiceToResolution: watchServiceToResolution,

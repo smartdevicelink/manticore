@@ -1,12 +1,12 @@
 const builder = require('nomad-helper');
 
 //a template for constructing core job files easily
-function generateCoreJobFile (jobName, body) {
+function generateJobFile (jobName, body) {
     const {id, request} = body;
     const {version, build} = request.core;
 
-    const coreInfo = configurationToImageInfo(version, build, id);
-    const resources = coreInfo.resources;
+    const info = configurationToImageInfo(version, build, id);
+    const resources = info.resources;
     //create a new core job file
     const job = builder.createJob(jobName);
     const groupName = "core-group-" + id;
@@ -22,12 +22,12 @@ function generateCoreJobFile (jobName, body) {
     job.setRestartPolicy(groupName, 60000000000, 0, 60000000000, "fail");
 
     job.addTask(groupName, taskName);
-    job.setImage(groupName, taskName, coreInfo.imageName);
-    for (let portName in coreInfo.portMaps) {
-        job.addPort(groupName, taskName, true, portName, coreInfo.portMaps[portName]);
+    job.setImage(groupName, taskName, info.imageName);
+    for (let portName in info.portMaps) {
+        job.addPort(groupName, taskName, true, portName, info.portMaps[portName]);
     }
-    for (let envName in coreInfo.envs) {
-        job.addEnv(groupName, taskName, envName, coreInfo.envs[envName]);
+    for (let envName in info.envs) {
+        job.addEnv(groupName, taskName, envName, info.envs[envName]);
     }
     job.addConstraint({
         LTarget: "${meta.core}",
@@ -43,13 +43,14 @@ function generateCoreJobFile (jobName, body) {
 
     //add services and health checks for those services
 
-    coreInfo.services.forEach(service => {
+    info.services.forEach(service => {
         job.addService(groupName, taskName, service.name);
         job.setPortLabel(groupName, taskName, service.name, service.port);
-
-        service.checks.forEach(check => {
-            job.addCheck(groupName, taskName, service.name, check);
-        });
+        if (service.checks) {
+            service.checks.forEach(check => {
+                job.addCheck(groupName, taskName, service.name, check);
+            }); 
+        }
     });
 
 
@@ -57,7 +58,7 @@ function generateCoreJobFile (jobName, body) {
 }
 
 //resource settings depending on the core build type
-const coreResourceSettings = {
+const resourceSettings = {
     default: { //default build resource requirements
         cpu: 100,
         memory: 200,
@@ -68,7 +69,7 @@ const coreResourceSettings = {
     }
 }
 
-//given a branch and build requirement, find an appropriate core image to use and return info for that configuration
+//given a version and build type, find an appropriate core image to use and return info for that configuration
 function configurationToImageInfo (coreVersion, coreBuild, id) {
     let imageName = `smartdevicelink/manticore-sdl-core:${coreBuild}-${coreVersion}`;
 
@@ -107,16 +108,7 @@ function configurationToImageInfo (coreVersion, coreBuild, id) {
             },
             {
                 name: `core-file-${id}`,
-                port: "file",
-                checks: [
-                    {
-                        Type: "http",
-                        Interval: 5000000000, //in nanoseconds
-                        Timeout: 1000000000, //in nanoseconds
-                        Path: "/usr/sdl/bin/storage",
-                        Protocol: "http"
-                    }
-                ]
+                port: "file"
             },
             {
                 name: `core-log-${id}`,
@@ -132,12 +124,11 @@ function configurationToImageInfo (coreVersion, coreBuild, id) {
             }
         ],
         envs: {},
-        resources: coreResourceSettings[coreBuild]
+        resources: resourceSettings[coreBuild]
     }
 }
 
-
 module.exports = {
-    generateCoreJobFile: generateCoreJobFile,
+    generateJobFile: generateJobFile,
     configurationToImageInfo: configurationToImageInfo
 }
