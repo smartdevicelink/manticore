@@ -14,6 +14,7 @@ const config = {
     clientAgentIp: process.env.NOMAD_IP_http || 'localhost', 
     nomadAgentPort: process.env.NOMAD_AGENT_PORT || 4646, //the port the nomad agent listens on
     consulAgentPort: process.env.CONSUL_AGENT_PORT || 8500, //the port the consul agent listens on
+    consulDnsPort: process.env.CONSUL_DNS_PORT || 8600, //the port the consul DNS server listens on
 };
 
 

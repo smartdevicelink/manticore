@@ -54,7 +54,7 @@ function generateJobFile (jobName, body) {
     });
 
 
-    return job.getJob();
+    return job;
 }
 
 //resource settings depending on the core build type

@@ -11,6 +11,7 @@ module.exports = {
         //modifying the context in a pre/post hook is forbidden. clone it
         const clonedState = JSON.parse(JSON.stringify(ctx.waitingState));
         for (let id in clonedState) {
+            delete clonedState[id].services;
             delete clonedState[id].request;
             delete clonedState[id].id;
         }
@@ -20,11 +21,12 @@ module.exports = {
     "post-waiting-find": async (ctx, next) => {
         //cut off the 'request' property of each user for the sake of brevity
         //modifying the context in a pre/post hook is forbidden. clone it
-        if (!ctx.nextRequest) {
+        if (!ctx.currentRequest) {
             logger.debug("No user selected in waiting");
             return next();
         }
-        const request = JSON.parse(JSON.stringify(ctx.nextRequest));
+        const request = JSON.parse(JSON.stringify(ctx.currentRequest));
+        delete request.services;
         delete request.request;
         logger.debug("Selected user in waiting: " + JSON.stringify(request));
         next();
@@ -33,12 +35,12 @@ module.exports = {
         //cut off the 'request' property of each user for the sake of brevity
         //modifying the context in a pre/post hook is forbidden. clone it
         if (!ctx.removeUser) {
-            let request = JSON.parse(JSON.stringify(ctx.nextRequest.id));
+            let request = JSON.parse(JSON.stringify(ctx.currentRequest.id));
             delete request.request;
             logger.debug("Updated user in waiting: " + JSON.stringify(request));
         }
         else {
-            logger.warn(`User ${ctx.nextRequest.id} has been booted off the store!`);
+            logger.warn(`User ${ctx.currentRequest.id} has been booted off the store!`);
         }
         next();
     },

@@ -3,20 +3,30 @@
 const loggerModule = process.env.MODULE_LOGGER || 'winston';
 const logger = require(`./interfaces/logger/${loggerModule}`);
 const config = {
-	clientAgentIp: process.env.NOMAD_IP_http || 'localhost',
-	nomadAgentPort: process.env.NOMAD_AGENT_PORT || 4646,
-	consulAgentPort: process.env.CONSUL_AGENT_PORT || 8500
+    clientAgentIp: process.env.NOMAD_IP_http || 'localhost',
+    nomadAgentPort: process.env.NOMAD_AGENT_PORT || 4646,
+    consulAgentPort: process.env.CONSUL_AGENT_PORT || 8500,
+    consulDnsPort: process.env.CONSUL_DNS_PORT || 8600,
 };
 const http = require('async-request');
+const dns = require('dns');
+//set the module to target consul's DNS server for querying service addresses
+dns.setServers([`${config.clientAgentIp}:${config.consulDnsPort}`]);
+const promisify = require('util').promisify;
+const dnsResolve = promisify(dns.resolve);
 //failure types
 const FAILURE_TYPE_PERMANENT = "PERMANENT";
 const FAILURE_TYPE_PENDING = "PENDING";
 const FAILURE_TYPE_RESTART = "RESTART";
 
 //TODO: how to get around the circular dependency problems? (see top of file)
+//  use two different config files? one static one dynamic?
 //TODO: add a long-running health check for jobs to check on their statuses after they are healthy
+//TODO: flesh out determineAllocationFailureType for cases such as out of resource errors
+//TODO: watchAllocationToResolution may not work for when there's multiple task groups! check it!
+
 /*
-    autoHandleJob and autoHandleServices only check until the job and services are healthy. 
+    watchAllocationToResolution and watchServiceToResolution only check until the job and services are healthy. 
     This means that they don't check for the case where an already healthy job/service becomes unhealthy.
     
     watchAllocationToResolution and watchServiceToResolution both use a forced end date and will not stop early
@@ -29,24 +39,74 @@ const FAILURE_TYPE_RESTART = "RESTART";
     or deny whether the allocation is indeed healthy later
 */
 
+//handles every part of a job submission and services check. returns whether the process was a success
+async function autoHandleAll (config) {
+    const {ctx, job, allocationTime, services, healthTime, stateChangeValue, servicesKey} = config;
+    const jobName = job.Job.Name;
+    const id = ctx.currentRequest.id;
+
+    //submit the job and wait for results. ctx may be modified
+    const successJob = await autoHandleJob(ctx, jobName, job, allocationTime);
+    if (!successJob) return false; //failed job submission. bail out
+    logger.debug("Allocation successful for: " + id);
+
+    //the job is running at this point. do a health check on all the services attached to the job. ctx may be modified
+    //ignore all services with no checks property for checkedServiceNames
+    const getNameFunc = elem => elem.name;
+    const allServiceNames = services.map(getNameFunc);
+    const checkedServiceNames = services.filter(service => {
+        return service.checks && service.checks.length > 0;
+    }).map(getNameFunc);
+
+    const successServices = await autoHandleServices(ctx, checkedServiceNames, healthTime);
+    if (!successServices) return false; //failed service check. bail out
+
+    //get a map of all service names to real addresses to the services. store them in the store
+
+    let serviceInfo;
+
+    try { //could get an error regarding the dns lookup failing
+        serviceInfo = await findServiceAddresses(allServiceNames);
+    }
+    catch (err) { //fail out
+        logger.error(new Error(err).stack);
+        ctx.updateStore = true;
+        ctx.removeUser = true;
+        return false;
+    }
+    logger.debug("Services healthy for: " + id);
+
+    if (!ctx.currentRequest.services) {
+        ctx.currentRequest.services = {};
+    }
+    //use servicesKey to attach address info in a property of the request's services object
+    ctx.currentRequest.services[servicesKey] = serviceInfo;
+
+    //services are healthy. update the store's remote state
+    ctx.updateStore = true;
+    ctx.currentRequest.state = stateChangeValue;
+    return true;
+}
+
+
 //a well-rounded implementation of handling a job submission and dealing with possible errors
 //this modifies ctx so the caller function can see what the suggested action is
 //returns whether the job is submitted without errors
 async function autoHandleJob (ctx, jobName, jobFile, healthTime = 10000) {
-	//perform a job CAS
+    //perform a job CAS
     const jobSetter = await casJob(jobName);
     await jobSetter.set(jobFile); //submit the job
     //retrieve the allocation information of the job. force a result by healthTime milliseconds
     const alloc = await watchAllocationToResolution(jobName, Date.now() + healthTime);
     if (alloc === null) { //allocation doesn't exist
-        logger.error(`Allocation non-existent for user ${ctx.nextRequest.id}!`);
+        logger.error(`Allocation non-existent for user ${ctx.currentRequest.id}!`);
         ctx.updateStore = true;
         ctx.removeUser = true;
         return false;
     }
     //the job has to be running at this point, or else this should be considered a failure
     if (alloc.ClientStatus !== "running") { 
-        logger.error(`Core allocation failed for user ${ctx.nextRequest.id}!`);
+        logger.error(`Allocation failed for user ${ctx.currentRequest.id}!`);
         await logAllocationError(alloc); //log the error information
 
         const failureType = determineAllocationFailureType(alloc);
@@ -59,7 +119,7 @@ async function autoHandleJob (ctx, jobName, jobFile, healthTime = 10000) {
         }
         if (failureType === FAILURE_TYPE_RESTART) { //put the user's state back in waiting
             ctx.updateStore = true;
-            ctx.nextRequest.state = "waiting";
+            ctx.currentRequest.state = "waiting";
         }
         return false;
     }
@@ -93,14 +153,13 @@ async function watchAllocationToResolution (jobName, endDate, index) {
             highestVersion = allocs[i].JobVersion;
         }
     }
-    const status = allocs[foundIndex].ClientStatus;
 
     //check if the current date is larger than the specified end date
     if (Date.now() > endDate) { //out of time. do not continue watching
         return foundAlloc ? allocs[foundIndex] : null;
     }
 
-    if (!foundAlloc || status !== "running") { 
+    if (!foundAlloc || allocs[foundIndex].ClientStatus !== "running") { 
         //start over and wait for more updates
         return await watchAllocationToResolution(jobName, endDate, newIndex);
     }
@@ -121,14 +180,14 @@ async function logAllocationError (allocation) {
 }
 
 /*
-	given an erroneous allocation, figure out what type of error it is and return a suggested action 
-	different errors necessitate different actions
-	Errors like driver errors are not recoverable, so boot the user off the waiting list. (Permanent Failure)
-	Errors like lack of resources on the machines just need time, so don't update the user's state. (Pending Failure)
-	Errors like the allocation being lost requires a restart in the process, so reset to waiting. (Restart Failure)
-	When unsure, use Permanent Failure. It's too risky for the other two options to happen if unsure
-	(ex. possible infinite loop for a Restart Failure, possible deadlock for a Pending Failure)
-	returns one of the following strings: "PERMANENT", "PENDING", "RESTART"
+    given an erroneous allocation, figure out what type of error it is and return a suggested action 
+    different errors necessitate different actions
+    Errors like driver errors are not recoverable, so boot the user off the waiting list. (Permanent Failure)
+    Errors like lack of resources on the machines just need time, so don't update the user's state. (Pending Failure)
+    Errors like the allocation being lost requires a restart in the process, so reset to waiting. (Restart Failure)
+    When unsure, use Permanent Failure. It's too risky for the other two options to happen if unsure
+    (ex. possible infinite loop for a Restart Failure, possible deadlock for a Pending Failure)
+    returns one of the following strings: "PERMANENT", "PENDING", "RESTART"
 */
 function determineAllocationFailureType (allocation) {
     return FAILURE_TYPE_PERMANENT;
@@ -176,7 +235,7 @@ async function casJob (key) {
 //this modifies ctx so the caller function can see what the suggested action is
 //returns whether the services are running without errors
 async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
-	const serviceWatches = serviceNames.map(name => {
+    const serviceWatches = serviceNames.map(name => {
         //run synchronously to prevent blocking. force a result by healthTime milliseconds
         return watchServiceToResolution(name, Date.now() + healthTime); 
     });
@@ -189,8 +248,8 @@ async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
             servicesPassing = false;
     });
     if (!servicesPassing) { 
-        logger.error(`Core health checks failed for user ${ctx.nextRequest.id}!`);
-        await logServicesError(services); //log the error information
+        logger.error(`Health checks failed for user ${ctx.currentRequest.id}!`);
+        await logServicesError(serviceNames, services); //log the error information
 
         const failureType = determineServiceFailureType(services);
         if (failureType === FAILURE_TYPE_PERMANENT) { //boot the user off the store
@@ -202,7 +261,7 @@ async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
         }
         if (failureType === FAILURE_TYPE_RESTART) { //put the user's state back in waiting
             ctx.updateStore = true;
-            return ctx.nextRequest.state = "waiting";
+            return ctx.currentRequest.state = "waiting";
         }
         return false;
     }
@@ -240,17 +299,18 @@ async function watchServiceToResolution (serviceName, endDate = 0, index) {
     }
 }
 
-//see determineAllocationFailureType for details
+//for failed services always assume that it's irrecoverable
 function determineServiceFailureType (services) {
     return FAILURE_TYPE_PERMANENT;
 }
 
-async function logServicesError (services) {
+async function logServicesError (serviceNames, services) {
     logger.error(`Services report:`);
+    logger.error(`Services watched: ${serviceNames}`);
     services.forEach(service => {
         logger.error(`-----`);
         if (!service) {
-			return logger.error("unknown service");
+            return logger.error("unknown service");
         }
         logger.error(`Name: ${service.ServiceName}`);
         logger.error(`Status: ${service.Status}`);
@@ -267,25 +327,50 @@ async function parseJson (string) {
     }
 }
 
+//given an array of service names, looks them up using consul's DNS server and retrieves the address and port info
+//creates a map with the service names as keys and the addresses as values
+//returns null if even one of the services are unreachable
+async function findServiceAddresses (serviceNames) {
+    const addressPromises = serviceNames.map(async serviceName => {
+        return Promise.all([
+            dnsResolve(`${serviceName}.service.consul`, "A"), //get the IP address
+            dnsResolve(`${serviceName}.service.consul`, "SRV") //get the port number
+        ]);
+    });
+    const addressInfo = await Promise.all(addressPromises);
+
+    const serviceToAddressMap = {};
+    for (let i = 0; i < serviceNames.length; i++) {
+        const serviceName = serviceNames[i];
+        const info = addressInfo[i];
+        serviceToAddressMap[serviceName] = `${info[0][0]}:${info[1][0].port}`; //grab the address info
+    }
+
+    return serviceToAddressMap;
+}
+
 module.exports = {
-	//job automation
-	autoHandleJob: autoHandleJob,
-	watchAllocationToResolution: watchAllocationToResolution,
-	logAllocationError: logAllocationError,
-	determineAllocationFailureType: determineAllocationFailureType,
-	//getting and setting job info
-	getJob: getJob,
-	setJob: setJob,
+    //master function
+    autoHandleAll: autoHandleAll,
+    //job/allocation automation
+    autoHandleJob: autoHandleJob,
+    watchAllocationToResolution: watchAllocationToResolution,
+    logAllocationError: logAllocationError,
+    determineAllocationFailureType: determineAllocationFailureType,
+    //getting and setting job info
+    getJob: getJob,
+    setJob: setJob,
     casJob: casJob,
-	stopJob: stopJob,
-	//service check automation
-	autoHandleServices: autoHandleServices,
-	watchServiceToResolution: watchServiceToResolution,
-	logServicesError: logServicesError,
-	determineServiceFailureType: determineServiceFailureType,
-	//miscellaneous
-	parseJson: parseJson,
-	FAILURE_TYPE_PERMANENT: FAILURE_TYPE_PERMANENT,
-	FAILURE_TYPE_PENDING: FAILURE_TYPE_PENDING,
-	FAILURE_TYPE_RESTART: FAILURE_TYPE_RESTART,
+    stopJob: stopJob,
+    //service check automation
+    autoHandleServices: autoHandleServices,
+    watchServiceToResolution: watchServiceToResolution,
+    logServicesError: logServicesError,
+    determineServiceFailureType: determineServiceFailureType,
+    //miscellaneous
+    parseJson: parseJson,
+    FAILURE_TYPE_PERMANENT: FAILURE_TYPE_PERMANENT,
+    FAILURE_TYPE_PENDING: FAILURE_TYPE_PENDING,
+    FAILURE_TYPE_RESTART: FAILURE_TYPE_RESTART,
+    findServiceAddresses: findServiceAddresses
 }

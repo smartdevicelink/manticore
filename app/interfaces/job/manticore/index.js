@@ -10,6 +10,9 @@ const utils = require('../../../utils.js'); //contains useful functions for the 
 //times to wait for healthy instances in milliseconds
 const CORE_ALLOCATION_TIME = 2000;
 const CORE_HEALTH_TIME = 5000;
+const HMI_ALLOCATION_TIME = 2000;
+const HMI_HEALTH_TIME = 5000;
+
 
 const jobInfo = {
     core: {
@@ -96,67 +99,12 @@ function createErrorResponse (message) {
     }
 }
 
+//TODO: remove these two?
 async function getRunningJobs () {
     const result = await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/jobs?prefix=core-hmi-`);
     const jobInfo = await parseJson(result.body);
     
 }
-
-//responsible for advancing the state of the job for a request
-//can modify the context object passed in from manticore
-async function advance (ctx) {
-    //note: modify nextRequest as a shortcut to modifying waitingState
-    const {nextRequest, waitingState} = ctx;
-    const {id, request} = nextRequest;
-    const {version, build} = request.core;
-
-    const jobName = "core-hmi-" + id;
-
-    //perform a different action depending on the current state
-    if (nextRequest.state === "waiting") { //this stage causes a core job to run
-        const jobFile = coreSettings.generateJobFile(jobName, nextRequest);
-        const imageInfo = coreSettings.configurationToImageInfo(version, build, id);
-
-        //submit the job and wait for results. ctx may be modified
-        const successJob = await utils.autoHandleJob(ctx, jobName, jobFile.Job, CORE_ALLOCATION_TIME);
-        if (!successJob) return; //failed job submission. bail out
-        logger.debug("Allocation successful for: " + id);
-
-        //the job is running at this point. check on all the services attached to the job. ctx may be modified
-        //ignore all services with no health checks
-        const serviceNames = imageInfo.services.filter(service => {
-            return service.checks && service.checks.length > 0;
-        }).map(service => {
-            return service.name;
-        });
-        
-        const successServices = await utils.autoHandleServices(ctx, serviceNames, CORE_HEALTH_TIME);
-        if (!successServices) return; //failed service check. bail out
-        logger.debug("Services healthy for: " + id);
-
-        //services are healthy. update the store's remote state
-        ctx.updateStore = true;
-        return ctx.nextRequest.state = "pending-1";
-    }
-    if (nextRequest.state === "pending-1") { //this stage causes an hmi to run
-        //TODO: need to get address info from core first
-        //  you can get the address info from just Consul if you declare all services in nomad! no health checks required!
-
-        //TODO: also need to concatenate the core job with this job 
-
-        /*const jobFile = hmiSettings.generateJobFile(jobName, nextRequest);
-        const imageInfo = hmiSettings.configurationToImageInfo(version, build, id);
-        console.log("hmi job info");
-        console.log(JSON.stringify(jobFile, null, 4));
-        console.log(imageInfo);*/
-
-
-        return ctx.nextRequest.state = "claimed";
-    }
-
-}
-
-//job-related helper functions
 
 //helper function for converting strings to JSON
 async function parseJson (string) {
@@ -166,6 +114,65 @@ async function parseJson (string) {
         logger.error(new Error("Invalid JSON string: " + string).stack);
         return {};
     }
+}
+
+//for caching jobs for future reference, using the id as the key
+let cachedJobs = {};
+
+//responsible for advancing the state of the job for a request
+//can modify the context object passed in from manticore
+async function advance (ctx) {
+    //note: modify currentRequest as a shortcut to modifying waitingState
+    const {currentRequest, waitingState} = ctx;
+    const {id, request} = currentRequest;
+    const {version: coreVersion, build} = request.core;
+    const {version: hmiVersion, type} = request.hmi;
+
+    const jobName = "core-hmi-" + id;
+
+    //perform a different action depending on the current state
+    if (currentRequest.state === "waiting") { //this stage causes a core job to run
+        const job = coreSettings.generateJobFile(jobName, currentRequest);
+        const jobFile = job.getJob();
+        const imageInfo = coreSettings.configurationToImageInfo(coreVersion, build, id);
+
+        await utils.autoHandleAll({
+            ctx: ctx,
+            job: jobFile,
+            allocationTime: CORE_ALLOCATION_TIME,
+            services: imageInfo.services,
+            healthTime: CORE_HEALTH_TIME,
+            stateChangeValue: "pending-1",
+            servicesKey: "core"
+        });
+
+        //cache the core job so it doesn't need to be generated again in future stages
+        cachedJobs[id] = job;
+        return; //done
+    }
+    if (currentRequest.state === "pending-1") { //this stage causes an hmi job to run
+        const envs = { //extract service addresses found from the previous stage
+            brokerAddress: currentRequest.services.core[`core-broker-${id}`],
+            coreFileAddress: currentRequest.services.core[`core-file-${id}`],
+        };
+        //build off the cached core job
+        const job = hmiSettings.generateJobFile(cachedJobs[id], currentRequest, envs);
+        const jobFile = job.getJob();
+        const imageInfo = hmiSettings.configurationToImageInfo(hmiVersion, type, id, envs);
+
+        await utils.autoHandleAll({
+            ctx: ctx,
+            job: jobFile,
+            allocationTime: HMI_ALLOCATION_TIME,
+            services: imageInfo.services,
+            healthTime: HMI_HEALTH_TIME,
+            stateChangeValue: "claimed",
+            servicesKey: "hmi"
+        });
+
+        return; //done
+    }
+
 }
 
 module.exports = {

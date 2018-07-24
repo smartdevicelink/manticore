@@ -13,7 +13,7 @@ module.exports = {
             const value = waitingState[key].queue;
             const state = waitingState[key].state;
             if (state !== "claimed" && state !== "waiting") {
-                ctx.nextRequest = waitingState[key];
+                ctx.currentRequest = waitingState[key];
                 return next(); //found a request to handle
             }
             if (state === "waiting" && value < lowestIndex) {
@@ -21,7 +21,7 @@ module.exports = {
                 lowestKey = key;
             }
         }
-        ctx.nextRequest = waitingState[lowestKey];
+        ctx.currentRequest = waitingState[lowestKey];
         return next();
     },
 }

@@ -1,14 +1,13 @@
 const builder = require('nomad-helper');
 
 //a template for constructing hmi job files easily
-function generateJobFile (jobName, body, envs) {
+function generateJobFile (job, body, envs) {
     const {id, request} = body;
     const {version, type} = request.hmi;
 
     const info = configurationToImageInfo(version, type, id, envs);
     const resources = info.resources;
-    //create a new hmi job file
-    const job = builder.createJob(jobName);
+    //used the passed in job to build on
     const groupName = "hmi-group-" + id;
     const taskName = "hmi-task-" + id;
 
@@ -51,7 +50,7 @@ function generateJobFile (jobName, body, envs) {
         });
     });
 
-    return job.getJob();
+    return job;
 }
 
 //resource settings depending on the hmi type
@@ -68,7 +67,7 @@ const resourceSettings = {
 
 //given a version and hmi type, find an appropriate hmi image to use and return info for that configuration
 function configurationToImageInfo (version, type, id, envs) {
-    let imageName = `smartdevicelink/manticore-${type}-hmi:${version}`;
+    let imageName = `smartdevicelink/manticore-hmi-${type}:${version}`;
 
     return {
         imageName: imageName,

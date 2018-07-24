@@ -56,9 +56,8 @@ async function requestTrigger (requestSetter) {
 //waiting store update
 async function waitingTrigger (waitingSetter) {
     let waitingState = await parseJson(waitingSetter.value);
-    //TODO: change to request or currentRequest
     const ctx = {
-        nextRequest: undefined, //expected to be a sub-object of the waiting state, or undefined, or null
+        currentRequest: undefined, //expected to be a sub-object of the waiting state, or undefined, or null
         waitingState: waitingState,
         updateStore: false, //whether the remote state should be updated
         removeUser: false //whether the request should be removed completely
@@ -67,8 +66,8 @@ async function waitingTrigger (waitingSetter) {
     await listeners['pre-waiting-find'](ctx);
     await listeners['waiting-find'](ctx);
     await listeners['post-waiting-find'](ctx);
-    //if nextRequest doesnt exist then there are no users to handle
-    if (ctx.nextRequest === null || ctx.nextRequest === undefined) return;
+    //if currentRequest doesnt exist then there are no users to handle
+    if (ctx.currentRequest === null || ctx.currentRequest === undefined) return;
 
     //determine whether a request's job status is at the point where further updates can happen.
     await listeners['pre-waiting-job-advance'](ctx);
@@ -80,16 +79,14 @@ async function waitingTrigger (waitingSetter) {
         //the request has to be removed in the requests, and not in the waiting list
         const requestSetter = await store.cas(REQUESTS_KEY);
         const requestState = await parseJson(requestSetter.value);
-        delete requestState[ctx.nextRequest.id];
+        delete requestState[ctx.currentRequest.id];
         await requestSetter.set(JSON.stringify(requestState)); //submit the changes
         return;
     }
 
     if (!ctx.updateStore) return; //prevent an update to the store from happening
 
-    //TODO: this is after the health checks or whatever happen and this method can continue
-    //at this point this server can post an update to the store. success or failure of the job advance is actionable
-
+    //at this point this server can post an update to the store
     await waitingSetter.set(JSON.stringify(ctx.waitingState)); //submit the new entry to the store
 }
 
