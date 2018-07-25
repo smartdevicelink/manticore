@@ -81,8 +81,8 @@ function configurationToImageInfo (version, type, id, envs) {
                 checks: [
                     {
                         Type: "http",
-                        Interval: 5000000000, //in nanoseconds
-                        Timeout: 1000000000, //in nanoseconds
+                        Interval: 3000000000, //3 seconds
+                        Timeout: 1000000000, //1 second
                         Path: "/",
                         Protocol: "http"
                     }

@@ -22,15 +22,14 @@ const FAILURE_TYPE_RESTART = "RESTART";
 //TODO: how to get around the circular dependency problems? (see top of file)
 //  use two different config files? one static one dynamic?
 //TODO: add a long-running health check for jobs to check on their statuses after they are healthy
-//TODO: flesh out determineAllocationFailureType for cases such as out of resource errors
-//TODO: watchAllocationToResolution may not work for when there's multiple task groups! check it!
+//TODO: expand upon determineAllocationsFailureType for cases such as out of resource errors
 
 /*
-    watchAllocationToResolution and watchServiceToResolution only check until the job and services are healthy. 
+    watchAllocationsToResolution and watchServiceToResolution only check until the job and services are healthy. 
     This means that they don't check for the case where an already healthy job/service becomes unhealthy.
     
-    watchAllocationToResolution and watchServiceToResolution both use a forced end date and will not stop early
-    unless a successful result is returned. watchAllocationToResolution could stop early when a dead/failed state
+    watchAllocationsToResolution and watchServiceToResolution both use a forced end date and will not stop early
+    unless a successful result is returned. watchAllocationsToResolution could stop early when a dead/failed state
     is found since its starting state is pending, unlike with watching a service where it starts in a failed state. 
     However, there could be a case where an allocation is in a non-pending, non-running state when read and it is simply
     in transition to a pending or running state. Waiting for a running state seems like the better option of the two.
@@ -41,12 +40,12 @@ const FAILURE_TYPE_RESTART = "RESTART";
 
 //handles every part of a job submission and services check. returns whether the process was a success
 async function autoHandleAll (config) {
-    const {ctx, job, allocationTime, services, healthTime, stateChangeValue, servicesKey} = config;
-    const jobName = job.Job.Name;
+    const {ctx, job, taskNames, allocationTime, services, healthTime, stateChangeValue, servicesKey} = config;
+    const jobName = job.Name;
     const id = ctx.currentRequest.id;
 
     //submit the job and wait for results. ctx may be modified
-    const successJob = await autoHandleJob(ctx, jobName, job, allocationTime);
+    const successJob = await autoHandleJob(ctx, jobName, job, taskNames, allocationTime);
     if (!successJob) return false; //failed job submission. bail out
     logger.debug("Allocation successful for: " + id);
 
@@ -92,24 +91,25 @@ async function autoHandleAll (config) {
 //a well-rounded implementation of handling a job submission and dealing with possible errors
 //this modifies ctx so the caller function can see what the suggested action is
 //returns whether the job is submitted without errors
-async function autoHandleJob (ctx, jobName, jobFile, healthTime = 10000) {
+async function autoHandleJob (ctx, jobName, jobFile, taskNames, healthTime = 10000) {
     //perform a job CAS
     const jobSetter = await casJob(jobName);
-    await jobSetter.set(jobFile); //submit the job
-    //retrieve the allocation information of the job. force a result by healthTime milliseconds
-    const alloc = await watchAllocationToResolution(jobName, Date.now() + healthTime);
-    if (alloc === null) { //allocation doesn't exist
-        logger.error(`Allocation non-existent for user ${ctx.currentRequest.id}!`);
-        ctx.updateStore = true;
-        ctx.removeUser = true;
-        return false;
-    }
-    //the job has to be running at this point, or else this should be considered a failure
-    if (alloc.ClientStatus !== "running") { 
-        logger.error(`Allocation failed for user ${ctx.currentRequest.id}!`);
-        await logAllocationError(alloc); //log the error information
+    const jobResult = await jobSetter.set(jobFile); //submit the job
+    const parsedResult = await parseJson(jobResult.body);
 
-        const failureType = determineAllocationFailureType(alloc);
+    if (parsedResult == '{}') { //jobResult.body is an error message
+        logger.error(new Error(jobResult.body).stack);
+    }
+
+    //retrieve the allocation information of the job. force a result by healthTime milliseconds
+    const allocs = await watchAllocationsToResolution(jobName, taskNames, Date.now() + healthTime);
+
+    //the job has to be running at this point, or else this should be considered a failure
+    if (await !allocationsHealthCheck(allocs, taskNames)) { 
+        logger.error(`Allocation failed for user ${ctx.currentRequest.id}!`);
+        await logAllocationsError(allocs); //log the error information
+
+        const failureType = determineAllocationsFailureType(allocs);
         if (failureType === FAILURE_TYPE_PERMANENT) { //boot the user off the store
             ctx.updateStore = true;
             ctx.removeUser = true;
@@ -127,7 +127,7 @@ async function autoHandleJob (ctx, jobName, jobFile, healthTime = 10000) {
 }
 
 //continuously hit the allocations endpoint until either the end date is passed or until the status is running
-async function watchAllocationToResolution (jobName, endDate, index) {
+async function watchAllocationsToResolution (jobName, taskNames, endDate, index) {
     let baseUrl = `http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${jobName}/allocations?`;
     if (index !== undefined) {
         baseUrl = `${baseUrl}index=${index}&`; //long poll for any updates
@@ -142,40 +142,79 @@ async function watchAllocationToResolution (jobName, endDate, index) {
     const response = await http(baseUrl); //get allocation info about the job
     const newIndex = response.headers["x-nomad-index"]; 
     const allocs = await parseJson(response.body);
-    //get the newest status of the allocation, if there is any. use the JobVersion property to find the highest one
-    let foundIndex = 0;
-    let highestVersion = -Infinity;
-    let foundAlloc = false;
-    for (let i = 0; i < allocs.length; i++) {
-        if (allocs[i].JobVersion > highestVersion) {
-            foundAlloc = true;
-            foundIndex = i;
-            highestVersion = allocs[i].JobVersion;
-        }
-    }
+
+    const filteredAllocs = await getLatestAllocations(allocs);
 
     //check if the current date is larger than the specified end date
     if (Date.now() > endDate) { //out of time. do not continue watching
-        return foundAlloc ? allocs[foundIndex] : null;
+        return filteredAllocs;
     }
 
-    if (!foundAlloc || allocs[foundIndex].ClientStatus !== "running") { 
+    if (await !allocationsHealthCheck(filteredAllocs, taskNames)) {
         //start over and wait for more updates
-        return await watchAllocationToResolution(jobName, endDate, newIndex);
+        return await watchAllocationsToResolution(jobName, taskNames, endDate, newIndex);
     }
-    else { //a non-pending state is found. return the allocation info for further evaluation
-        return allocs[foundIndex];
+    else { //a non-pending state is found. return the allocations for further evaluation
+        return filteredAllocs;
     }
 }
 
-async function logAllocationError (allocation) {
-    logger.error(`Allocation error details for job ${allocation.JobID}, task group ${allocation.TaskGroup}:`);
-    logger.error(`Final status: ${allocation.ClientStatus}`);
-    for (let taskName in allocation.TaskStates) {
-        logger.error(`Task history for ${taskName}:`);
-        allocation.TaskStates[taskName].Events.forEach(event => {
-            logger.error(event.DisplayMessage);
-        });
+//retrieve all allocations with unique task groups with the highest job version number
+async function getLatestAllocations (allocs) {
+    let uniqueGroupIndeces = {};
+    for (let i = 0; i < allocs.length; i++) {
+        const {TaskGroup, JobVersion} = allocs[i];
+        if (!uniqueGroupIndeces[TaskGroup] || uniqueGroupIndeces[TaskGroup].version < JobVersion) {
+            //found a more recent allocation for this task group
+            uniqueGroupIndeces[TaskGroup] = {
+                version: JobVersion,
+                index: i
+            }
+        }
+    }
+    //get the filtered allocations using the found indeces
+    let filteredAllocs = [];
+    for (let groupName in uniqueGroupIndeces) {
+        const allocIndex = uniqueGroupIndeces[groupName].index;
+        filteredAllocs.push(allocs[allocIndex]);
+    }
+    return filteredAllocs;
+}
+
+//determine if the job is healthy by inspecting the allocations and running tasks
+//use getLatestAllocations before passing allocations here
+async function allocationsHealthCheck (allocs, taskNames) {
+    let foundTaskNames = {};
+    //check that all filtered allocations are running
+    for (let i = 0; i < allocs.length; i++) {
+        if (allocs[i].ClientStatus !== "running") return false;
+        //find all tasks and add to foundTaskNames
+        for (let taskName in allocs[i].TaskStates)  {
+            foundTaskNames[taskName] = true;
+        }
+    }
+    //every element in taskName must exist in foundTaskNames for a pass
+    for (let i = 0; i < taskNames.length; i++) {
+        if (!foundTaskNames[taskNames[i]]) return false;
+    }
+    //pass
+    return true;
+}
+
+
+//diagnostics function. use getLatestAllocations before passing allocations here
+async function logAllocationsError (allocations) {
+    logger.error(`Allocation error report. Number of allocations: ${allocations.length}`);
+    for (let i = 0; i < allocations.length; i++) {
+        const allocation = allocations[i];
+        logger.error(`Details for job ${allocation.JobID}, task group ${allocation.TaskGroup}:`);
+        logger.error(`Final status: ${allocation.ClientStatus}`);
+        for (let taskName in allocation.TaskStates) {
+            logger.error(`Task history for ${taskName}:`);
+            allocation.TaskStates[taskName].Events.forEach(event => {
+                logger.error(event.DisplayMessage);
+            });
+        }
     }
 }
 
@@ -189,7 +228,7 @@ async function logAllocationError (allocation) {
     (ex. possible infinite loop for a Restart Failure, possible deadlock for a Pending Failure)
     returns one of the following strings: "PERMANENT", "PENDING", "RESTART"
 */
-function determineAllocationFailureType (allocation) {
+function determineAllocationsFailureType (allocations) {
     return FAILURE_TYPE_PERMANENT;
 }
 
@@ -354,9 +393,11 @@ module.exports = {
     autoHandleAll: autoHandleAll,
     //job/allocation automation
     autoHandleJob: autoHandleJob,
-    watchAllocationToResolution: watchAllocationToResolution,
-    logAllocationError: logAllocationError,
-    determineAllocationFailureType: determineAllocationFailureType,
+    watchAllocationsToResolution: watchAllocationsToResolution,
+    getLatestAllocations: getLatestAllocations,
+    allocationsHealthCheck: allocationsHealthCheck,
+    logAllocationsError: logAllocationsError,
+    determineAllocationsFailureType: determineAllocationsFailureType,
     //getting and setting job info
     getJob: getJob,
     setJob: setJob,

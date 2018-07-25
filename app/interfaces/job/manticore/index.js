@@ -9,9 +9,9 @@ const utils = require('../../../utils.js'); //contains useful functions for the 
 
 //times to wait for healthy instances in milliseconds
 const CORE_ALLOCATION_TIME = 2000;
-const CORE_HEALTH_TIME = 5000;
+const CORE_HEALTH_TIME = 8000;
 const HMI_ALLOCATION_TIME = 2000;
-const HMI_HEALTH_TIME = 5000;
+const HMI_HEALTH_TIME = 8000;
 
 
 const jobInfo = {
@@ -128,17 +128,20 @@ async function advance (ctx) {
     const {version: coreVersion, build} = request.core;
     const {version: hmiVersion, type} = request.hmi;
 
-    const jobName = "core-hmi-" + id;
+    const jobName = `core-hmi-${id}`;
+    const coreTaskName = `core-task-${id}`;
+    const hmiTaskName = `hmi-task-${id}`;
 
     //perform a different action depending on the current state
     if (currentRequest.state === "waiting") { //this stage causes a core job to run
         const job = coreSettings.generateJobFile(jobName, currentRequest);
-        const jobFile = job.getJob();
+        const jobFile = job.getJob().Job;
         const imageInfo = coreSettings.configurationToImageInfo(coreVersion, build, id);
 
         await utils.autoHandleAll({
             ctx: ctx,
             job: jobFile,
+            taskNames: [coreTaskName],
             allocationTime: CORE_ALLOCATION_TIME,
             services: imageInfo.services,
             healthTime: CORE_HEALTH_TIME,
@@ -151,24 +154,30 @@ async function advance (ctx) {
         return; //done
     }
     if (currentRequest.state === "pending-1") { //this stage causes an hmi job to run
+        const brokerAddress = currentRequest.services.core[`core-broker-${id}`];
+        const coreFileAddress = currentRequest.services.core[`core-file-${id}`];
         const envs = { //extract service addresses found from the previous stage
-            brokerAddress: currentRequest.services.core[`core-broker-${id}`],
-            coreFileAddress: currentRequest.services.core[`core-file-${id}`],
+            brokerAddress: `ws:\\/\\/${brokerAddress}`,
+            coreFileAddress: `${coreFileAddress}`,
         };
         //build off the cached core job
         const job = hmiSettings.generateJobFile(cachedJobs[id], currentRequest, envs);
-        const jobFile = job.getJob();
+        const jobFile = job.getJob().Job;
         const imageInfo = hmiSettings.configurationToImageInfo(hmiVersion, type, id, envs);
 
         await utils.autoHandleAll({
             ctx: ctx,
             job: jobFile,
+            taskNames: [coreTaskName, hmiTaskName],
             allocationTime: HMI_ALLOCATION_TIME,
             services: imageInfo.services,
             healthTime: HMI_HEALTH_TIME,
-            stateChangeValue: "claimed",
+            stateChangeValue: "claimed", //final transition
             servicesKey: "hmi"
         });
+
+        console.log("job done!");
+        console.log(JSON.stringify(ctx.currentRequest.services));
 
         return; //done
     }

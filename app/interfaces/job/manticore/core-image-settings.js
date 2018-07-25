@@ -88,8 +88,8 @@ function configurationToImageInfo (coreVersion, coreBuild, id) {
                 checks: [
                     {
                         Type: "tcp",
-                        Interval: 5000000000, //in nanoseconds
-                        Timeout: 1000000000, //in nanoseconds
+                        Interval: 3000000000, //3 seconds
+                        Timeout: 1000000000, //1 second
                         Protocol: "ws"
                     }
                 ]
@@ -100,8 +100,8 @@ function configurationToImageInfo (coreVersion, coreBuild, id) {
                 checks: [
                     {
                         Type: "tcp",
-                        Interval: 5000000000, //in nanoseconds
-                        Timeout: 1000000000, //in nanoseconds
+                        Interval: 3000000000, //3 seconds
+                        Timeout: 1000000000, //1 second
                         Protocol: "tcp"
                     }
                 ]
@@ -116,8 +116,8 @@ function configurationToImageInfo (coreVersion, coreBuild, id) {
                 checks: [
                     {
                         Type: "tcp",
-                        Interval: 5000000000, //in nanoseconds
-                        Timeout: 1000000000, //in nanoseconds
+                        Interval: 3000000000, //3 seconds
+                        Timeout: 1000000000, //1 second
                         Protocol: "ws"
                     }
                 ]
