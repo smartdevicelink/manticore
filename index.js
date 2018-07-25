@@ -2,15 +2,7 @@ require('dotenv').config(); //load environment
 const Koa = require('koa');
 const bodyParser = require('koa-bodyparser');
 const app = new Koa();
-const fs = require('fs');
 const config = require('./config');
-
-//setup all koa middleware under app/
-fs.readdir('api', (err, folders) => {
-    folders.forEach(folder => {
-        require(`./api/${folder}`)(app);
-    });
-})
 
 //add ability to parse JSON from posts
 app.use(bodyParser());
@@ -20,6 +12,9 @@ app.use(async (ctx, next) => {
     if (ctx.request.url !== "/health") return await next();
     ctx.response.status = 200;
 });
+
+//setup all koa middleware under the selected version in /api
+require(`./api/${config.apiVersion}`)(app);
 
 //uncaught error handler
 app.use(async (ctx, next) => {

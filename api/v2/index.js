@@ -1,8 +1,8 @@
 const check = require('check-types');
 const jwt = require('koa-jwt');
 const API_PREFIX = "/api/v2";
-const logic = require('../../app');
-const config = require('../../app/config.js');
+const logic = require('./app');
+const config = require('./app/config.js');
 const {logger} = config;
 
 module.exports = app => {
