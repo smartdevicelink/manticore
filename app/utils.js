@@ -1,13 +1,6 @@
 //utility module for easy interfacing with Nomad and Consul and for other functions
-//warning: dont require config. config requires the job module, which requires this module
-const loggerModule = process.env.MODULE_LOGGER || 'winston';
-const logger = require(`./interfaces/logger/${loggerModule}`);
-const config = {
-    clientAgentIp: process.env.NOMAD_IP_http || 'localhost',
-    nomadAgentPort: process.env.NOMAD_AGENT_PORT || 4646,
-    consulAgentPort: process.env.CONSUL_AGENT_PORT || 8500,
-    consulDnsPort: process.env.CONSUL_DNS_PORT || 8600,
-};
+const config = require('./config.js');
+const logger = config.logger;
 const http = require('async-request');
 const dns = require('dns');
 //set the module to target consul's DNS server for querying service addresses
@@ -19,8 +12,6 @@ const FAILURE_TYPE_PERMANENT = "PERMANENT";
 const FAILURE_TYPE_PENDING = "PENDING";
 const FAILURE_TYPE_RESTART = "RESTART";
 
-//TODO: how to get around the circular dependency problems? (see top of file)
-//  use two different config files? one static one dynamic?
 //TODO: add a long-running health check for jobs to check on their statuses after they are healthy
 //TODO: expand upon determineAllocationsFailureType for cases such as out of resource errors
 

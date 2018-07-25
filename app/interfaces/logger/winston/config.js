@@ -1,3 +1,5 @@
+const config = require('../../../config.js');
+
 module.exports = {
-    level: process.env.LOG_LEVEL || 'debug'
+    logLevel: config.logLevel,
 }

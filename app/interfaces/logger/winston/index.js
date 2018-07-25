@@ -8,7 +8,7 @@ const logger = winston.createLogger({
     ),
     transports: [
         new winston.transports.Console({
-            level: config.level
+            level: config.logLevel
         }),
         new winston.transports.File({ //only write warns and errors to file
             level: 'warn',

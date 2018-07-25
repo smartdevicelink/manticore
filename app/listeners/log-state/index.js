@@ -1,4 +1,5 @@
-const logger = require('../../config.js').logger;
+const config = require('../../config.js');
+const {store, job, logger} = config;
 
 //module that handles logging of different state changes
 module.exports = {

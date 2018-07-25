@@ -3,8 +3,7 @@ const http = require('async-request');
 const config = require('./config');
 const coreSettings = require('./core-image-settings');
 const hmiSettings = require('./hmi-image-settings');
-const loggerModule = process.env.MODULE_LOGGER || 'winston';
-const logger = require(`../../logger/${loggerModule}`);
+const logger = config.logger;
 const utils = require('../../../utils.js'); //contains useful functions for the job submission process
 
 //times to wait for healthy instances in milliseconds

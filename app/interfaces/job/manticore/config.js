@@ -1,6 +1,8 @@
+const config = require('../../../config.js');
+
 module.exports = {
-    //module settings
-    clientAgentIp: process.env.NOMAD_IP_http || 'localhost', //assumes manticore is launched by nomad
-    nomadAgentPort: process.env.NOMAD_AGENT_PORT || 4646, //the port the nomad agent listens on
-    consulAgentPort: process.env.CONSUL_AGENT_PORT || 8500, //the port the consul agent listens on
+    clientAgentIp: config.clientAgentIp,
+    nomadAgentPort: config.nomadAgentPort,
+    consulAgentPort: config.consulAgentPort,
+    logger: config.logger,
 }
