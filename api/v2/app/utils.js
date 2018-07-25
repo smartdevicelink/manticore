@@ -401,5 +401,6 @@ module.exports = {
     FAILURE_TYPE_PERMANENT: FAILURE_TYPE_PERMANENT,
     FAILURE_TYPE_PENDING: FAILURE_TYPE_PENDING,
     FAILURE_TYPE_RESTART: FAILURE_TYPE_RESTART,
-    findServiceAddresses: findServiceAddresses
+    findServiceAddresses: findServiceAddresses,
+    handleFailureType: handleFailureType
 }
