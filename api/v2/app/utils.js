@@ -90,6 +90,8 @@ async function autoHandleJob (ctx, jobName, jobFile, taskNames, healthTime = 100
 
     if (parsedResult == '{}') { //jobResult.body is an error message
         logger.error(new Error(jobResult.body).stack);
+        handleFailureType(ctx, FAILURE_TYPE_PERMANENT); //invalid job submission. boot the user off the store
+        return false;
     }
 
     //retrieve the allocation information of the job. force a result by healthTime milliseconds
@@ -101,17 +103,7 @@ async function autoHandleJob (ctx, jobName, jobFile, taskNames, healthTime = 100
         await logAllocationsError(allocs); //log the error information
 
         const failureType = determineAllocationsFailureType(allocs);
-        if (failureType === FAILURE_TYPE_PERMANENT) { //boot the user off the store
-            ctx.updateStore = true;
-            ctx.removeUser = true;
-        }
-        if (failureType === FAILURE_TYPE_PENDING) { //do not modify the state
-            ctx.updateStore = false;
-        }
-        if (failureType === FAILURE_TYPE_RESTART) { //put the user's state back in waiting
-            ctx.updateStore = true;
-            ctx.currentRequest.state = "waiting";
-        }
+        handleFailureType(ctx, failureType); //manage the failure here
         return false;
     }
     return true;
@@ -282,17 +274,7 @@ async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
         await logServicesError(serviceNames, services); //log the error information
 
         const failureType = determineServiceFailureType(services);
-        if (failureType === FAILURE_TYPE_PERMANENT) { //boot the user off the store
-            ctx.updateStore = true;
-            ctx.removeUser = true;
-        }
-        if (failureType === FAILURE_TYPE_PENDING) { //do not modify the state
-            return ctx.updateStore = false;
-        }
-        if (failureType === FAILURE_TYPE_RESTART) { //put the user's state back in waiting
-            ctx.updateStore = true;
-            return ctx.currentRequest.state = "waiting";
-        }
+        handleFailureType(ctx, failureType); //manage the failure here
         return false;
     }
     return true;
@@ -377,6 +359,21 @@ async function findServiceAddresses (serviceNames) {
     }
 
     return serviceToAddressMap;
+}
+
+//modifies ctx depending on what error string gets passed in
+function handleFailureType (ctx, type) {
+    if (type === FAILURE_TYPE_PERMANENT) { //boot the user off the store
+        ctx.updateStore = true;
+        ctx.removeUser = true;
+    }
+    if (type === FAILURE_TYPE_PENDING) { //do not modify the state
+        ctx.updateStore = false;
+    }
+    if (type === FAILURE_TYPE_RESTART) { //put the user's state back in waiting
+        ctx.updateStore = true;
+        ctx.currentRequest.state = "waiting";
+    }
 }
 
 module.exports = {

@@ -11,7 +11,7 @@ const config = {
     consulDnsPort: process.env.CONSUL_DNS_PORT || 8600, //the port the consul DNS server listens on
     logLevel: process.env.LOG_LEVEL || 'debug', //the logging level of manticore to stdout
     //the folder under /api to load from. only one version is allowed to run at a time
-    apiVersion: process.env.API_VERSION || 'v2', 
+    apiVersion: process.env.API_VERSION || 'v2',
     //reserved properties for manticore's use 
     logger: null,
 	store: null,
