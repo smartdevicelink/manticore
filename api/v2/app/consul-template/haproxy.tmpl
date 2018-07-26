@@ -1,0 +1,71 @@
+global
+    log 127.0.0.1 local2
+    chroot /var/lib/haproxy
+    pidfile /var/run/haproxy.pid
+    maxconn 4000
+    user haproxy
+    group haproxy
+    daemon
+    stats socket /var/lib/haproxy/stats
+
+
+defaults
+    mode http
+    log global
+    option httplog
+    option dontlognull
+    option http-server-close
+    option forwardfor except 127.0.0.0/8
+    option redispatch
+    retries 3
+    timeout http-request 20s
+    timeout queue 60m
+    timeout connect 20s
+    timeout client 60m
+    timeout server 60m
+    timeout http-keep-alive 20s
+    timeout check 20s
+    maxconn 3000
+
+{{ with $td := keyOrDefault "templateData" "{\"users\":[]}" | parseJSON }}
+    frontend main
+        bind *:{{key "haproxy/mainPort"}}
+        mode http
+        {{range $userIndex, $userObj := $td.users}}
+            {{range $httpIndex, $httpObj := $userObj.http}}
+                acl http-front-{{$userIndex}}-{{$httpIndex}} hdr_dom(host) {{$httpObj.subdomain}}
+                use_backend http-back-{{$userIndex}}-{{$httpIndex}} if http-front-{{$userIndex}}-{{$httpIndex}}
+            {{end}}
+        {{end}}
+
+        monitor-uri /haproxy
+        acl web-app hdr_beg(host) {{key "haproxy/domainName"}}
+        use_backend app if web-app
+
+    backend app
+        balance source
+        mode http
+        option httpchk GET /
+        http-check expect status 200
+        {{range ls "haproxy/webAppAddresses"}}
+            server webapp-{{.Key}} {{.Value}} check 
+        {{end}}
+
+        {{range $userIndex, $userObj := $td.users}}
+            {{range $httpIndex, $httpObj := $userObj.http}}
+                backend http-back-{{$userIndex}}-{{$httpIndex}}
+                    mode http
+                    server http-server-{{$userIndex}}-{{$httpIndex}} {{$httpObj.address}}
+            {{end}}
+        {{end}}
+
+
+    {{range $userIndex, $userObj := $td.users}}
+        listen tcp-{{$userIndex}}
+            bind *:{{$userObj.tcp.port}}
+            mode tcp
+            option tcplog
+            server tcp-server-{{$userIndex}} {{$userObj.tcp.address}}
+    {{end}}
+
+{{ end }}

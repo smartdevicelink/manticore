@@ -31,7 +31,7 @@ module.exports = {
 }
 
 //initialize watches to the KV store
-startWatches().catch(err => logger.error(err)); //all errors in the watches will stop propagating here
+startWatches().catch(err => logger.error(err));
 
 async function startWatches () {
     //load up the listeners to the listener store
