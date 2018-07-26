@@ -5,6 +5,7 @@ const promisify = require('util').promisify;
 
 //all the types of hooks that modules under the listeners folder can subscribe to
 const listenerOptions = [
+    { name: "startup", isMainHook: false},
     { name: "pre-request", isMainHook: false},
     { name: "request", isMainHook: true},
     { name: "post-request", isMainHook: false},

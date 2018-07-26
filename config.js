@@ -12,6 +12,7 @@ const config = {
     logLevel: process.env.LOG_LEVEL || 'debug', //the logging level of manticore to stdout
     //the folder under /api to load from. only one version is allowed to run at a time
     apiVersion: process.env.API_VERSION || 'v2',
+    haproxyPort: process.env.HAPROXY_HTTP_PORT, //the port haproxy listens on for http traffic
     //reserved properties for manticore's use 
     logger: null,
 	store: null,
