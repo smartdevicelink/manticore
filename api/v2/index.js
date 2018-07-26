@@ -45,10 +45,23 @@ module.exports = app => {
         //validate the input
         const result = await logic.validateJob(ctx.request.body);
         if (!result.isValid) return handle400(ctx, result.errorMessage);
-        //success. attempt to store the user request
-        ctx.response.status = 200;
-        logic.storeRequest(ID, result.body)
+        //attempt to store the user request
+        await logic.storeRequest(ID, result.body)
             .catch(err => logger.error(err));
+        ctx.response.status = 200;
+    });
+
+    //stops a job for a user
+    app.use(async (ctx, next) => {
+        if (ctx.request.url !== `${API_PREFIX}/job` || ctx.method !== "DELETE") return await next();
+        logger.debug(`DELETE ${API_PREFIX}/job`);
+        //user id check
+        const ID = ctx.request.body.id;
+        if (!check.string(ID)) return handle400(ctx, "Invalid or missing id");
+        //attempt to delete the user request
+        await logic.deleteRequest(ID)
+            .catch(err => logger.error(err));
+        ctx.response.status = 200;
     });
 }
 

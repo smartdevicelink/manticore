@@ -24,7 +24,7 @@ const jobInfo = {
     }]
 };
 
-function jobOptions () {
+async function jobOptions () {
     return jobInfo;
 }
 
@@ -49,7 +49,7 @@ expected output:
     errorMessage: "" //if isValid is false, this message gets sent to the user with a 400 status code
 }
 */
-function validate (body) {
+async function validate (body) {
     if (!body || !body.core || !body.hmi) {
         return createErrorResponse("Request body is invalid");
     }
@@ -183,8 +183,14 @@ async function advance (ctx) {
 
 }
 
+//given an id, return the full name of the job
+async function idToJobName (id) {
+    return `core-hmi-${id}`;
+}
+
 module.exports = {
     jobOptions: jobOptions,
     validate: validate,
-    advance: advance
+    advance: advance,
+    idToJobName: idToJobName
 }

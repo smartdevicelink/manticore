@@ -20,7 +20,13 @@ module.exports = {
         const requestState = await parseJson(setter.value);
         if (requestState[id]) return; //request already exists. do not update the store
         requestState[id] = body; //store the result of the job validation
-        setter.set(JSON.stringify(requestState)) //submit the new entry to the store
+        await setter.set(JSON.stringify(requestState)) //submit the new entry to the store
+    },
+    deleteRequest: async id => {
+        const setter = await store.cas(REQUESTS_KEY)
+        const requestState = await parseJson(setter.value);
+        delete requestState[id]; //bye
+        await setter.set(JSON.stringify(requestState)) //submit the new entry to the store 
     }
 }
 
