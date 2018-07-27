@@ -188,9 +188,17 @@ async function idToJobName (id) {
     return `core-hmi-${id}`;
 }
 
+//given an id, return all the task names possible for the job
+async function idToTaskNames (id) {
+    const coreTaskName = `core-task-${id}`;
+    const hmiTaskName = `hmi-task-${id}`;
+    return [coreTaskName, hmiTaskName];
+}
+
 module.exports = {
     jobOptions: jobOptions,
     validate: validate,
     advance: advance,
-    idToJobName: idToJobName
+    idToJobName: idToJobName,
+    idToTaskNames: idToTaskNames
 }

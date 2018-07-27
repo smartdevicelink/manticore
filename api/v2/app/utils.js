@@ -12,9 +12,6 @@ const FAILURE_TYPE_PERMANENT = "PERMANENT";
 const FAILURE_TYPE_PENDING = "PENDING";
 const FAILURE_TYPE_RESTART = "RESTART";
 
-//TODO: add a long-running health check for jobs to check on their statuses after they are healthy
-//TODO: expand upon determineAllocationsFailureType for cases such as out of resource errors
-
 /*
     watchAllocationsToResolution and watchServiceToResolution only check until the job and services are healthy. 
     This means that they don't check for the case where an already healthy job/service becomes unhealthy.
@@ -97,12 +94,17 @@ async function autoHandleJob (ctx, jobName, jobFile, taskNames, healthTime = 100
     //retrieve the allocation information of the job. force a result by healthTime milliseconds
     const allocs = await watchAllocationsToResolution(jobName, taskNames, Date.now() + healthTime);
 
-    //the job has to be running at this point, or else this should be considered a failure
-    if (await !allocationsHealthCheck(allocs, taskNames)) { 
-        logger.error(`Allocation failed for user ${ctx.currentRequest.id}!`);
-        await logAllocationsError(allocs); //log the error information
+    //get the evaluation after the allocation has come to a resolution, or else the data will be outdated
+    const evalId = parsedResult.EvalID;
+    const eval = await getEval(evalId);
+    const parsedEval = await parseJson(eval.body);
 
-        const failureType = determineAllocationsFailureType(allocs);
+    //the job has to be running at this point, or else this should be considered a failure
+    if (!await allocationsHealthCheck(allocs, taskNames)) { 
+        logger.error(`Allocation failed for user ${ctx.currentRequest.id}!`);
+        await logAllocationsError(allocs, parsedEval); //log the error information
+
+        const failureType = await determineAllocationsFailureType(allocs, parsedEval);
         handleFailureType(ctx, failureType); //manage the failure here
         return false;
     }
@@ -133,12 +135,33 @@ async function watchAllocationsToResolution (jobName, taskNames, endDate, index)
         return filteredAllocs;
     }
 
-    if (await !allocationsHealthCheck(filteredAllocs, taskNames)) {
+    if (!await allocationsHealthCheck(filteredAllocs, taskNames)) {
         //start over and wait for more updates
         return await watchAllocationsToResolution(jobName, taskNames, endDate, newIndex);
     }
-    else { //a non-pending state is found. return the allocations for further evaluation
+    else { //a running state is found. return the allocations for further evaluation
         return filteredAllocs;
+    }
+}
+
+//continuously hit the allocations endpoint until the job is out of the running state
+async function watchAllocationsToEnd (jobName, taskNames, index) {
+    let baseUrl = `http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${jobName}/allocations?`;
+    if (index !== undefined) {
+        baseUrl = `${baseUrl}index=${index}&`; //long poll for any updates
+    }
+
+    const response = await http(baseUrl); //get allocation info about the job
+    const newIndex = response.headers["x-nomad-index"];
+    const allocs = await parseJson(response.body);
+
+    const filteredAllocs = await getLatestAllocations(allocs);
+
+    if (!await allocationsHealthCheck(filteredAllocs, taskNames)) { //health check failed
+        return filteredAllocs;
+    }
+    else { //start over and wait for more updates
+        return await watchAllocationsToEnd(jobName, taskNames, newIndex);
     }
 }
 
@@ -184,9 +207,8 @@ async function allocationsHealthCheck (allocs, taskNames) {
     return true;
 }
 
-
 //diagnostics function. use getLatestAllocations before passing allocations here
-async function logAllocationsError (allocations) {
+async function logAllocationsError (allocations, eval) {
     logger.error(`Allocation error report. Number of allocations: ${allocations.length}`);
     for (let i = 0; i < allocations.length; i++) {
         const allocation = allocations[i];
@@ -197,6 +219,15 @@ async function logAllocationsError (allocations) {
             allocation.TaskStates[taskName].Events.forEach(event => {
                 logger.error(event.DisplayMessage);
             });
+        }
+    }
+    if (eval.FailedTGAllocs) {
+        for (let groupName in eval.FailedTGAllocs) {
+            logger.error(`Evaluation error report for task group ${groupName}:`);
+            const groupInfo = eval.FailedTGAllocs[groupName];
+            for (let dimension in groupInfo.DimensionExhausted) {
+                logger.error(`${dimension} has been exhausted!`);
+            }
         }
     }
 }
@@ -211,12 +242,22 @@ async function logAllocationsError (allocations) {
     (ex. possible infinite loop for a Restart Failure, possible deadlock for a Pending Failure)
     returns one of the following strings: "PERMANENT", "PENDING", "RESTART"
 */
-function determineAllocationsFailureType (allocations) {
+async function determineAllocationsFailureType (allocations, eval) {
+    if (allocations.length === 0) { 
+        //no allocations were placed. check the evaluation details instead for information
+        if (eval.FailedTGAllocs !== null && eval.FailedTGAllocs !== undefined ) { 
+            return FAILURE_TYPE_PENDING; //some lack of resource has caused the allocation to be unplacable
+        }
+    }
     return FAILURE_TYPE_PERMANENT;
 }
 
 async function getJob (key) {
     return await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${key}`);
+}
+
+async function getEval (id) {
+    return await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/evaluation/${id}`);
 }
 
 async function setJob (key, opts) {
@@ -264,20 +305,25 @@ async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
     const services = await Promise.all(serviceWatches); //wait for resolution on all watches
 
     //all statuses must be passing at this point, or else this should be considered a failure
-    let servicesPassing = true;
-    services.forEach(service => {
-        if (service === null || service.Status !== "passing") 
-            servicesPassing = false;
-    });
+    const servicesPassing = await servicesHealthCheck(services);
     if (!servicesPassing) { 
         logger.error(`Health checks failed for user ${ctx.currentRequest.id}!`);
         await logServicesError(serviceNames, services); //log the error information
 
-        const failureType = determineServiceFailureType(services);
+        const failureType = await determineServicesFailureType(services);
         handleFailureType(ctx, failureType); //manage the failure here
         return false;
     }
     return true;
+}
+
+//determine if the services are healthy
+async function servicesHealthCheck (services) {
+    services.forEach(service => {
+        if (service === null || service.Status !== "passing") 
+            return false; //fail
+    });
+    return true; //pass
 }
 
 //continuously hit the health checks endpoint until either the end date is passed or until the status is passing
@@ -311,8 +357,30 @@ async function watchServiceToResolution (serviceName, endDate = 0, index) {
     }
 }
 
+//continuously hit the health checks endpoint until the service no longer passes or isn't checkable
+async function watchServiceToEnd (serviceName, index) {
+    let baseUrl = `http://${config.clientAgentIp}:${config.consulAgentPort}/v1/health/checks/${serviceName}?`;
+    if (index !== undefined) {
+        baseUrl = `${baseUrl}index=${index}&`;
+    }
+
+    const response = await http(baseUrl); //get info about all the health checks from this service
+    const newIndex = response.headers["x-consul-index"];
+    const services = await parseJson(response.body);
+
+    //a max of one service should ever be returned
+    const service = services.length !== 0 ? services[0] : null;
+
+    if (!service || service.Status !== "passing") { //health check failed
+        return service;
+    }
+    else { //passing state. start over and wait for more updates
+        return await watchServiceToEnd(serviceName, newIndex);
+    }
+}
+
 //for failed services always assume that it's irrecoverable
-function determineServiceFailureType (services) {
+async function determineServicesFailureType (services) {
     return FAILURE_TYPE_PERMANENT;
 }
 
@@ -382,20 +450,24 @@ module.exports = {
     //job/allocation automation
     autoHandleJob: autoHandleJob,
     watchAllocationsToResolution: watchAllocationsToResolution,
+    watchAllocationsToEnd: watchAllocationsToEnd,
     getLatestAllocations: getLatestAllocations,
     allocationsHealthCheck: allocationsHealthCheck,
     logAllocationsError: logAllocationsError,
     determineAllocationsFailureType: determineAllocationsFailureType,
     //getting and setting job info
     getJob: getJob,
+    getEval: getEval,
     setJob: setJob,
     casJob: casJob,
     stopJob: stopJob,
     //service check automation
     autoHandleServices: autoHandleServices,
+    servicesHealthCheck: servicesHealthCheck,
     watchServiceToResolution: watchServiceToResolution,
+    watchServiceToEnd: watchServiceToEnd,
     logServicesError: logServicesError,
-    determineServiceFailureType: determineServiceFailureType,
+    determineServicesFailureType: determineServicesFailureType,
     //miscellaneous
     parseJson: parseJson,
     FAILURE_TYPE_PERMANENT: FAILURE_TYPE_PERMANENT,

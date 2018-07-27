@@ -25,6 +25,7 @@ module.exports = {
     deleteRequest: async id => {
         const setter = await store.cas(REQUESTS_KEY)
         const requestState = await parseJson(setter.value);
+        if (!requestState[id]) return; //the id doesn't exist in the first place. prevent redundant update
         delete requestState[id]; //bye
         await setter.set(JSON.stringify(requestState)) //submit the new entry to the store 
     }
