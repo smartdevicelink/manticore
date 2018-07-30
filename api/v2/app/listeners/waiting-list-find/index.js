@@ -5,6 +5,7 @@ module.exports = {
     //if the waiting list has all waiting or claimed, return a non-claimed request whose queue is the lowest number
     //if there is a non-claimed, non-waiting request, return that request
     //assume that there can only be one request that is non-claimed, non-waiting
+    //TODO: modify this so that it can handle if more than one request is the above case. get by lowest queue number
     "waiting-find": async (ctx, next) => {
         const waitingState = ctx.waitingState;
         let lowestIndex = Infinity;

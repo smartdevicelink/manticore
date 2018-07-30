@@ -1,5 +1,5 @@
 const config = require('./config.js');
-const {store, job, logger} = config;
+const {store, job, logger, websocket} = config;
 const check = require('check-types');
 const loader = require('./loader.js');
 
@@ -15,12 +15,14 @@ module.exports = {
     validateJob: async body => {
         return await job.validate(body);
     },
-    storeRequest: async (id, body) => {
+    //store a request and return a websocket address for the client to listen on
+    storeRequest: async (id, body) => { 
         const setter = await store.cas(REQUESTS_KEY)
         const requestState = await parseJson(setter.value);
         if (requestState[id]) return; //request already exists. do not update the store
         requestState[id] = body; //store the result of the job validation
         await setter.set(JSON.stringify(requestState)) //submit the new entry to the store
+        return await websocket.getPasscode(id); //passcode for the user to use when connecting via websockets
     },
     deleteRequest: async id => {
         const setter = await store.cas(REQUESTS_KEY)

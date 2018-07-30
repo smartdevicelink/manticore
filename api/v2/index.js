@@ -1,9 +1,11 @@
 const check = require('check-types');
 const jwt = require('koa-jwt');
+const websockify = require('koa-websocket');
 const API_PREFIX = "/api/v2";
 const logic = require('./app');
 const config = require('./app/config.js');
-const {logger} = config;
+const utils = require('./app/utils.js');
+const {logger, websocket} = config;
 
 module.exports = app => {
     /* MIDDLEWARE */
@@ -46,10 +48,13 @@ module.exports = app => {
         const result = await logic.validateJob(ctx.request.body);
         if (!result.isValid) return handle400(ctx, result.errorMessage);
         //attempt to store the user request
-        await logic.storeRequest(ID, result.body)
+        const wsAddress = await logic.storeRequest(ID, result.body)
             .catch(err => logger.error(err));
         ctx.response.status = 200;
-    });
+        ctx.response.body = {
+            address: wsAddress
+        };
+    }); 
 
     //stops a job for a user
     app.use(async (ctx, next) => {
@@ -63,6 +68,35 @@ module.exports = app => {
             .catch(err => logger.error(err));
         ctx.response.status = 200;
     });
+
+    //hook up websockets to koa
+    websockify(app);
+
+    //websocket route for sending job information
+    app.ws.use(async (ctx, next) => {
+        if (ctx.request.url !== `${API_PREFIX}/job`) return await next();
+
+        let foundId = null;
+        //listen for messages. expecting a message with a "code" property containing the passcode
+        //received from the HTTP POST job route
+        ctx.websocket.on('message', async msgString => {
+            const msg = await utils.parseJson(msgString);
+            if (!msg.code) return;
+            //pass the websocket to the interface so that it may handle the connection
+            const id = await websocket.validate(msg.code, ctx.websocket);
+            if (id === null) return;
+            foundId = id;
+            logger.debug(`New connection from request ${id}`);
+        });
+
+        ctx.websocket.on('close', async message => {
+            logger.debug(`Connect dropped from request ${foundId}`);
+            //reset the passcode for this user
+            await websocket.validate(foundId);
+        });
+
+    });
+
 }
 
 //400 helper function

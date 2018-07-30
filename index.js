@@ -1,6 +1,6 @@
 require('dotenv').config(); //load environment
 const Koa = require('koa');
-const bodyParser = require('koa-bodyparser');
+const bodyParser = require('koa-bodyparser'); //for parsing JSON
 const app = new Koa();
 const config = require('./config');
 

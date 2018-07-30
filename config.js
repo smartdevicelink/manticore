@@ -16,7 +16,8 @@ const config = {
     //reserved properties for manticore's use 
     logger: null,
 	store: null,
-	job: null,
+    job: null,
+	websocket: null,
 };
 
 

@@ -31,7 +31,7 @@ async function jobOptions () {
 /*
 expected input:
 {
-    id: 1 (optional),
+    id: 1,
     core: {
         version: "master",
         build: "default"
