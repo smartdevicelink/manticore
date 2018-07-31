@@ -72,31 +72,42 @@ module.exports = app => {
     //hook up websockets to koa
     websockify(app);
 
-    //websocket route for sending job information
+    //websocket route for sending job information. manage the connections here
+    //the middleware is similar to listening to the 'open' event for a ws connection
     app.ws.use(async (ctx, next) => {
-        if (ctx.request.url !== `${API_PREFIX}/job`) return await next();
+        //use the route that the client connects with as a validation measure
+        //expected route: /api/v2/job/<PASSCODE>
+        const route = '/api/v2/job/';
+        const url = ctx.request.url;
+        if (!url.startsWith(route)) { //wrong path. refuse connection
+            ctx.websocket.close();
+            return await next();
+        }
 
-        let foundId = null;
-        //listen for messages. expecting a message with a "code" property containing the passcode
-        //received from the HTTP POST job route
-        ctx.websocket.on('message', async msgString => {
-            const msg = await utils.parseJson(msgString);
-            if (!msg.code) return;
-            //pass the websocket to the interface so that it may handle the connection
-            const id = await websocket.validate(msg.code, ctx.websocket);
-            if (id === null) return;
-            foundId = id;
-            logger.debug(`New connection from request ${id}`);
+        //the final part of the path
+        const passcode = url.substring(route.length);
+        //for passcode validation. bring back the id associated with the passcode
+        const id = await websocket.validate(passcode, ctx.websocket);
+        if (id === null) { //wrong passcode. refuse connection
+            ctx.websocket.close();
+            return await next();
+        }
+
+        //validated and found the id! listen to future events
+        logic.onConnection(id, ctx.websocket); 
+
+        ctx.websocket.on('message', async message => {
+            logic.onMessage(id, message, ctx.websocket); 
         });
 
-        ctx.websocket.on('close', async message => {
-            logger.debug(`Connect dropped from request ${foundId}`);
+        ctx.websocket.on('close', async () => {
             //reset the passcode for this user
-            await websocket.validate(foundId);
-        });
+            await websocket.deletePasscode(id);
+            logic.onDisconnection(id, ctx.websocket);
+        });         
 
+        next();
     });
-
 }
 
 //400 helper function

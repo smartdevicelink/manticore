@@ -1,3 +1,5 @@
+const config = require('./config');
+const logger = config.logger;
 const random = require('randomstring');
 
 let idHash = {};
@@ -41,7 +43,12 @@ async function validate (code, websocket) {
 //use the attached websocket to send messages to the client
 async function send (id, message) {
     if (!idHash[id] || !idHash[id].websocket) return; //no websocket found
-    idHash[id].websocket.send(JSON.stringify(message));
+    try {
+        idHash[id].websocket.send(JSON.stringify(message));
+    }
+    catch (err) { //websocket likely closed while attempting to send the message
+        logger.debug(`Cannot send websocket message to user ${id}`);
+    }
 }
 
 module.exports = {
