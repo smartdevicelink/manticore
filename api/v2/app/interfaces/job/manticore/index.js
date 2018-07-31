@@ -5,6 +5,7 @@ const coreSettings = require('./core-image-settings');
 const hmiSettings = require('./hmi-image-settings');
 const logger = config.logger;
 const utils = require('../../../utils.js'); //contains useful functions for the job submission process
+const proxy = require('../../proxy/haproxy/index.js');
 
 //times to wait for healthy instances in milliseconds
 const CORE_ALLOCATION_TIME = 2000;
@@ -178,6 +179,8 @@ async function advance (ctx) {
         console.log("job done!");
         console.log(JSON.stringify(ctx.currentRequest.services));
 
+        const template = await proxy.generateProxyData(id, ctx.currentRequest.services);
+        proxy.updateCoreHmiKvStore(ctx, template);
         return; //done
     }
 
