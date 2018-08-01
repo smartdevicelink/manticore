@@ -55,6 +55,12 @@ module.exports = {
     }
 }
 
+//log out all configurable modes of manticore and whether they are enabled
+for (let name in config.modes) {
+    const enabledString = config.modes[name] ? "enabled" : "disabled";
+    logger.info(`Mode ${name} is ${enabledString}`);
+}
+
 //initialize watches to the KV store
 startWatches().catch(err => logger.error(err));
 

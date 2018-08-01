@@ -44,7 +44,7 @@ async function validate (code, websocket) {
 async function send (id, message) {
     if (!idHash[id] || !idHash[id].websocket) return; //no websocket found
     try {
-        idHash[id].websocket.send(JSON.stringify(message));
+        idHash[id].websocket.send(message);
     }
     catch (err) { //websocket likely closed while attempting to send the message
         logger.debug(`Cannot send websocket message to user ${id}`);

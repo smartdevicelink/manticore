@@ -423,7 +423,9 @@ async function findServiceAddresses (serviceNames) {
     for (let i = 0; i < serviceNames.length; i++) {
         const serviceName = serviceNames[i];
         const info = addressInfo[i];
-        serviceToAddressMap[serviceName] = `${info[0][0]}:${info[1][0].port}`; //grab the address info
+        serviceToAddressMap[serviceName] = {
+            internal: `${info[0][0]}:${info[1][0].port}`, //grab the address info
+        }
     }
 
     return serviceToAddressMap;

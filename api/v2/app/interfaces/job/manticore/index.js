@@ -136,8 +136,8 @@ async function advance (ctx) {
         return; //done
     }
     if (currentRequest.state === "pending-1") { //this stage causes an hmi job to run
-        const brokerAddress = currentRequest.services.core[`core-broker-${id}`];
-        const coreFileAddress = currentRequest.services.core[`core-file-${id}`];
+        const brokerAddress = currentRequest.services.core[`core-broker-${id}`].internal;
+        const coreFileAddress = currentRequest.services.core[`core-file-${id}`].internal;
         const envs = { //extract service addresses found from the previous stage
             brokerAddress: `ws:\\/\\/${brokerAddress}`,
             coreFileAddress: `${coreFileAddress}`,
