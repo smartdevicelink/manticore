@@ -42,7 +42,7 @@ module.exports = {
             });
             await consul.set({
                 key: 'haproxy/domainName',
-                value: config.domainName
+                value: config.haproxy_domain
             });
             await consul.set({
                 key: 'templateData',
