@@ -1,9 +1,11 @@
 const check = require('check-types');
 const jwt = require('koa-jwt');
+const websockify = require('koa-websocket');
 const API_PREFIX = "/api/v2";
 const logic = require('./app');
 const config = require('./app/config.js');
-const {logger} = config;
+const utils = require('./app/utils.js');
+const {logger, websocket} = config;
 
 module.exports = app => {
     /* MIDDLEWARE */
@@ -46,10 +48,13 @@ module.exports = app => {
         const result = await logic.validateJob(ctx.request.body);
         if (!result.isValid) return handle400(ctx, result.errorMessage);
         //attempt to store the user request
-        await logic.storeRequest(ID, result.body)
+        const wsAddress = await logic.storeRequest(ID, result.body)
             .catch(err => logger.error(err));
         ctx.response.status = 200;
-    });
+        ctx.response.body = {
+            address: wsAddress
+        };
+    }); 
 
     //stops a job for a user
     app.use(async (ctx, next) => {
@@ -62,6 +67,46 @@ module.exports = app => {
         await logic.deleteRequest(ID)
             .catch(err => logger.error(err));
         ctx.response.status = 200;
+    });
+
+    //hook up websockets to koa
+    websockify(app);
+
+    //websocket route for sending job information. manage the connections here
+    //the middleware is similar to listening to the 'open' event for a ws connection
+    app.ws.use(async (ctx, next) => {
+        //use the route that the client connects with as a validation measure
+        //expected route: /api/v2/job/<PASSCODE>
+        const route = '/api/v2/job/';
+        const url = ctx.request.url;
+        if (!url.startsWith(route)) { //wrong path. refuse connection
+            ctx.websocket.close();
+            return await next();
+        }
+
+        //the final part of the path
+        const passcode = url.substring(route.length);
+        //for passcode validation. bring back the id associated with the passcode
+        const id = await websocket.validate(passcode, ctx.websocket);
+        if (id === null) { //wrong passcode. refuse connection
+            ctx.websocket.close();
+            return await next();
+        }
+
+        //validated and found the id! listen to future events
+        logic.onConnection(id, ctx.websocket); 
+
+        ctx.websocket.on('message', async message => {
+            logic.onMessage(id, message, ctx.websocket); 
+        });
+
+        ctx.websocket.on('close', async () => {
+            //reset the passcode for this user
+            await websocket.deletePasscode(id);
+            logic.onDisconnection(id, ctx.websocket);
+        });         
+
+        next();
     });
 }
 

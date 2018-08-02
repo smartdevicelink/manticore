@@ -34,7 +34,7 @@ async function jobOptions () {
 /*
 expected input:
 {
-    id: 1 (optional),
+    id: 1,
     core: {
         version: "master",
         build: "default"
@@ -98,23 +98,6 @@ function createErrorResponse (message) {
         body: {},
         isValid: false,
         errorMessage: message
-    }
-}
-
-//TODO: remove these two?
-async function getRunningJobs () {
-    const result = await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/jobs?prefix=core-hmi-`);
-    const jobInfo = await parseJson(result.body);
-    
-}
-
-//helper function for converting strings to JSON
-async function parseJson (string) {
-    try {
-        return JSON.parse(string);
-    } catch (err) { //invalid JSON here. initialize to empty object
-        logger.error(new Error("Invalid JSON string: " + string).stack);
-        return {};
     }
 }
 

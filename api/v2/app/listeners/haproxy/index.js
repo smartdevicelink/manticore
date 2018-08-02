@@ -3,7 +3,7 @@ const {job, logger, store} = config;
 
 module.exports = {
     "post-waiting-job-advance": async (ctx, next) => {
-        if(ctx.currentRequest.state == 'claimed' && config.haproxyPort){
+        if(ctx.currentRequest.state == 'claimed' && config.modes.haproxy){
             let jsonObj = {
                 users: []
             }
