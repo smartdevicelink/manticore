@@ -5,4 +5,5 @@ module.exports = {
     nomadAgentPort: config.nomadAgentPort,
     consulAgentPort: config.consulAgentPort,
     logger: config.logger,
+    haproxyPort: config.haproxyPort
 }

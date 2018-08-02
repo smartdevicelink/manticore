@@ -6,6 +6,9 @@ const hmiSettings = require('./hmi-image-settings');
 const logger = config.logger;
 const utils = require('../../../utils.js'); //contains useful functions for the job submission process
 
+const randomString = require('randomatic');
+const pattern = 'af09'
+
 //times to wait for healthy instances in milliseconds
 const CORE_ALLOCATION_TIME = 2000;
 const CORE_HEALTH_TIME = 8000;
@@ -177,6 +180,24 @@ async function advance (ctx) {
 
         console.log("job done!");
         console.log(JSON.stringify(ctx.currentRequest.services));
+
+        //if haproxy is configured, generate the external addresses
+        if(config.haproxyPort){
+            ctx.currentRequest.services.core[`core-broker-${id}`].external = randomString(pattern, 16);
+            ctx.currentRequest.services.core[`core-broker-${id}`].isHttp = true;
+
+            ctx.currentRequest.services.core[`core-file-${id}`].external = randomString(pattern, 16);
+            ctx.currentRequest.services.core[`core-file-${id}`].isHttp = true;
+
+            ctx.currentRequest.services.core[`core-log-${id}`].external = randomString(pattern, 16);
+            ctx.currentRequest.services.core[`core-log-${id}`].isHttp = true;
+
+            ctx.currentRequest.services.core[`core-tcp-${id}`].external = Math.floor(Math.random() * 10000);
+            ctx.currentRequest.services.core[`core-tcp-${id}`].isHttp = false;
+            
+            ctx.currentRequest.services.hmi[`hmi-user-${id}`].external = randomString(pattern, 16);
+            ctx.currentRequest.services.hmi[`hmi-user-${id}`].isHttp = true;
+        }
 
         return; //done
     }
