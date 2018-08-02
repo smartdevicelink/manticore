@@ -5,7 +5,10 @@ const coreSettings = require('./core-image-settings');
 const hmiSettings = require('./hmi-image-settings');
 const logger = config.logger;
 const utils = require('../../../utils.js'); //contains useful functions for the job submission process
-const proxy = require('../../proxy/haproxy/index.js');
+
+const randomString = require('randomatic');
+const pattern = 'af09'
+const consul = require('../../store/consul-kv/index.js');
 
 //times to wait for healthy instances in milliseconds
 const CORE_ALLOCATION_TIME = 2000;
@@ -179,8 +182,15 @@ async function advance (ctx) {
         console.log("job done!");
         console.log(JSON.stringify(ctx.currentRequest.services));
 
-        const template = await proxy.generateProxyData(id, ctx.currentRequest.services);
-        proxy.updateCoreHmiKvStore(ctx, template);
+        //if haproxy is configured, generate the external addresses
+        if(config.haproxyPort){
+            ctx.currentRequest.services.core[`core-broker-${id}`].external = checkExternalAddress(`core-broker-${id}`);
+            ctx.currentRequest.services.core[`core-file-${id}`].external = checkExternalAddress(`core-broker-${id}`);
+            ctx.currentRequest.services.core[`core-log-${id}`].external = checkExternalAddress(`core-broker-${id}`);
+            ctx.currentRequest.services.core[`core-tcp-${id}`].external = Math.floor(Math.random() * 10000);
+            ctx.currentRequest.services.hmi[`hmi-user-${id}`].external = checkExternalAddress(`core-broker-${id}`);
+        }
+
         return; //done
     }
 
@@ -196,6 +206,31 @@ async function idToTaskNames (id) {
     const coreTaskName = `core-task-${id}`;
     const hmiTaskName = `hmi-task-${id}`;
     return [coreTaskName, hmiTaskName];
+}
+
+//given a service name, return its external address from the kv store
+function getExternalAddress(addressName){
+    return consul.cas(`haproxy/${addressName}`);
+}
+
+//given a service name, generate and store an external address
+function setExternalAddress(addressName){
+    let name = randomString(pattern, 16);
+    consul.set({
+        key: `haproxy/${addressName}`,
+        value: name
+    });
+    return name;
+}
+
+//given a service name, check if the external address exists and return
+//else generate an appropriate address
+function checkExternalAddress(addressName){
+    let name = getExternalAddress(addressName).data;
+    if(name){
+        return name;
+    }
+    return setExternalAddress(addressName);
 }
 
 module.exports = {
