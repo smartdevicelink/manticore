@@ -184,10 +184,19 @@ async function advance (ctx) {
         //if haproxy is configured, generate the external addresses
         if(config.haproxyPort){
             ctx.currentRequest.services.core[`core-broker-${id}`].external = randomString(pattern, 16);
+            ctx.currentRequest.services.core[`core-broker-${id}`].isHttp = true;
+
             ctx.currentRequest.services.core[`core-file-${id}`].external = randomString(pattern, 16);
+            ctx.currentRequest.services.core[`core-file-${id}`].isHttp = true;
+
             ctx.currentRequest.services.core[`core-log-${id}`].external = randomString(pattern, 16);
+            ctx.currentRequest.services.core[`core-log-${id}`].isHttp = true;
+
             ctx.currentRequest.services.core[`core-tcp-${id}`].external = Math.floor(Math.random() * 10000);
+            ctx.currentRequest.services.core[`core-tcp-${id}`].isHttp = false;
+            
             ctx.currentRequest.services.hmi[`hmi-user-${id}`].external = randomString(pattern, 16);
+            ctx.currentRequest.services.hmi[`hmi-user-${id}`].isHttp = true;
         }
 
         return; //done
