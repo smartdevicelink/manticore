@@ -45,4 +45,12 @@ module.exports = {
         }
         next();
     },
+    "ws-connect": async (ctx, next) => {
+        logger.debug(`New connection from request ${ctx.id}`);
+        next();
+    },
+    "ws-disconnect": async (ctx, next) => {
+        logger.debug(`Connection dropped from request ${ctx.id}`);
+        next();
+    }
 }

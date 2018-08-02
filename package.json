@@ -17,8 +17,11 @@
     "koa-bodyparser": "^4.2.1",
     "koa-compose": "^4.1.0",
     "koa-jwt": "^3.3.2",
+    "koa-router": "^7.4.0",
+    "koa-websocket": "^5.0.1",
     "nomad-helper": "^3.6.1",
     "randomatic": "^3.0.0",
-    "winston": "^3.0.0"
+    "winston": "^3.0.0",
+    "ws": "^6.0.0"
   }
 }
