@@ -58,10 +58,10 @@ module.exports = {
         const positionInfo = getInfo(ctx.id, "position");
         const serviceInfo = getInfo(ctx.id, "services");
         if (positionInfo) {
-            websocket.send(ctx.id, JSON.stringify(positionInfo));
+            await websocket.send(ctx.id, JSON.stringify(positionInfo));
         }
         if (serviceInfo) {
-            websocket.send(ctx.id, JSON.stringify(serviceInfo));
+            await websocket.send(ctx.id, JSON.stringify(serviceInfo));
         }
         next();
     }
@@ -86,7 +86,7 @@ function manageNonClaimedRequests (requests) {
             }
         };
         storeInfo(id, "position", positionInfo); //cache position info
-        websocket.send(id, JSON.stringify(positionInfo));
+        await websocket.send(id, JSON.stringify(positionInfo));
     });
 }
 
@@ -99,7 +99,7 @@ function manageClaimedRequests (requests) {
             data: request.services
         };
         storeInfo(id, "services", serviceInfo); //cache service info
-        websocket.send(id, JSON.stringify(serviceInfo));
+        await websocket.send(id, JSON.stringify(serviceInfo));
     });
 }
 
