@@ -7,30 +7,26 @@ module.exports = {
             let jsonObj = {
                 users: []
             }
-            let user = {};
-            const id = ctx.currentRequest.id;
-            const hmi = ctx.currentRequest.services.hmi;
-            const core = ctx.currentRequest.services.core;
-            user.tcp = {};
-            user.http = [];
-            user.tcp.address = core[`core-tcp-${id}`].internal;
-            user.tcp.port = core[`core-tcp-${id}`].external;
-            user.http.push({
-                subdomain: core[`core-file-${id}`].external,
-                address: core[`core-file-${id}`].internal
-            });
-            user.http.push({
-                subdomain: core[`core-broker-${id}`].external,
-                address: core[`core-broker-${id}`].internal
-            });
-            user.http.push({
-                subdomain: core[`core-log-${id}`].external,
-                address: core[`core-log-${id}`].internal
-            });
-            user.http.push({
-                subdomain: hmi[`hmi-user-${id}`].external,
-                address: hmi[`hmi-user-${id}`].internal
-            });
+            let user = {
+                tcp: {},
+                http: []
+            };
+            for(var service in ctx.currentRequest.services){
+                for(var addressObj in ctx.currentRequest.services[service]){
+                    if(ctx.currentRequest.services[service][addressObj].isHttp){
+                        console.log(addressObj)
+                        user.http.push({
+                            subdomain: ctx.currentRequest.services[service][addressObj].external,
+                            address: ctx.currentRequest.services[service][addressObj].internal
+                        });
+                    } else {
+                        user.tcp = {
+                            port: ctx.currentRequest.services[service][addressObj].external,
+                            address: ctx.currentRequest.services[service][addressObj].internal
+                        };
+                    }
+                }
+            }
             jsonObj.users.push(user);
             await store.set({
                 key: 'haproxy/mainPort',
