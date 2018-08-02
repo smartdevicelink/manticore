@@ -13,7 +13,7 @@ const config = {
     //the folder under /api to load from. only one version is allowed to run at a time
     apiVersion: process.env.API_VERSION || 'v2',
     haproxyPort: process.env.HAPROXY_HTTP_PORT, //the port haproxy listens on for http traffic
-    haproxy_domain: process.env.DOMAIN_NAME,
+    haproxyDomain: process.env.DOMAIN_NAME,
     //reserved properties for manticore's use 
     logger: null,
 	store: null,

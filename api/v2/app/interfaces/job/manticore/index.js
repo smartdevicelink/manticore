@@ -8,7 +8,6 @@ const utils = require('../../../utils.js'); //contains useful functions for the 
 
 const randomString = require('randomatic');
 const pattern = 'af09'
-const consul = require('../../store/consul-kv/index.js');
 
 //times to wait for healthy instances in milliseconds
 const CORE_ALLOCATION_TIME = 2000;
@@ -184,11 +183,11 @@ async function advance (ctx) {
 
         //if haproxy is configured, generate the external addresses
         if(config.haproxyPort){
-            ctx.currentRequest.services.core[`core-broker-${id}`].external = setExternalAddress(`core-broker-${id}`);
-            ctx.currentRequest.services.core[`core-file-${id}`].external = setExternalAddress(`core-file-${id}`);
-            ctx.currentRequest.services.core[`core-log-${id}`].external = setExternalAddress(`core-log-${id}`);
+            ctx.currentRequest.services.core[`core-broker-${id}`].external = randomString(pattern, 16);
+            ctx.currentRequest.services.core[`core-file-${id}`].external = randomString(pattern, 16);
+            ctx.currentRequest.services.core[`core-log-${id}`].external = randomString(pattern, 16);
             ctx.currentRequest.services.core[`core-tcp-${id}`].external = Math.floor(Math.random() * 10000);
-            ctx.currentRequest.services.hmi[`hmi-user-${id}`].external = setExternalAddress(`hmi-user-${id}`);
+            ctx.currentRequest.services.hmi[`hmi-user-${id}`].external = randomString(pattern, 16);
         }
 
         return; //done
@@ -206,16 +205,6 @@ async function idToTaskNames (id) {
     const coreTaskName = `core-task-${id}`;
     const hmiTaskName = `hmi-task-${id}`;
     return [coreTaskName, hmiTaskName];
-}
-
-//given a service name, generate and store an external address
-function setExternalAddress(addressName){
-    let name = randomString(pattern, 16);
-    consul.set({
-        key: `haproxy/${addressName}`,
-        value: name
-    });
-    return name;
 }
 
 module.exports = {

@@ -1,5 +1,5 @@
 const config = require('../../config.js');
-const consul = require('../../interfaces/store/consul-kv/index.js');
+const {job, logger, store} = config;
 
 module.exports = {
     "post-waiting-job-advance": async (ctx, next) => {
@@ -32,19 +32,19 @@ module.exports = {
                 address: hmi[`hmi-user-${id}`].internal
             });
             jsonObj.users.push(user);
-            await consul.set({
+            await store.set({
                 key: 'haproxy/mainPort',
                 value: config.haproxyPort
             });
-            await consul.set({
+            await store.set({
                 key: 'haproxy/webAppAddresses',
                 value: ctx.currentRequest.services.webAppAddresses
             });
-            await consul.set({
+            await store.set({
                 key: 'haproxy/domainName',
-                value: config.haproxy_domain
+                value: config.haproxyDomain
             });
-            await consul.set({
+            await store.set({
                 key: 'templateData',
                 value: JSON.stringify(jsonObj)
             });
