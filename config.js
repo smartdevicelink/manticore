@@ -23,6 +23,9 @@ const config = {
     //off the instance (in seconds). The total time a user has to use Manticore while idling is therefore 
     //usageDuration + warningDuration 
     warningDuration: process.env.WARNING_DURATION,
+    //whether a client can send a websocket message to reset the amount of time before a user is removed 
+    //from Manticore. Enable this if you want to enforce a max limit of how long a user can use their jobs
+    resetTimerAllowed: process.env.RESET_TIMER_ALLOWED,
 
     //RESERVED PROPERTIES FOR MANTICORE'S USE
 
@@ -36,20 +39,31 @@ const config = {
     modes: {
         haproxy: false,
         inactivityTimer: false,
-        jwtEnabled: false
+        jwt: false
     }
 };
 
 //provide properties to easily determine whether certain modes of manticore are enabled
 
-if (config.haproxyPort !== undefined && config.haproxyDomain !== undefined) {
+if (config.haproxyPort !== undefined 
+    && config.haproxyDomain !== undefined) {
     config.modes.haproxy = true;
 }
-if (config.usageDuration !== undefined && config.warningDuration !== undefined) {
+if (config.usageDuration !== undefined 
+    && config.warningDuration !== undefined 
+    && config.resetTimerAllowed !== undefined) {
     config.modes.inactivityTimer = true;
 }
 if (config.jwtSecret !== undefined) {
     config.modes.jwtEnabled = true;
+}
+
+//convert strings to booleans for certain properties
+if (config.resetTimerAllowed === "false") {
+    config.resetTimerAllowed = false;
+}
+if (config.resetTimerAllowed === "true") {
+    config.resetTimerAllowed = true;
 }
 
 module.exports = config;

@@ -11,7 +11,7 @@ module.exports = app => {
     /* MIDDLEWARE */
 
     //all routes under /api/v2 are eligible for identification via JWT if enabled
-    if (config.jwtSecret) {
+    if (config.modes.jwt) {
         app.use(async (ctx, next) => {
             if (!ctx.request.url.startsWith(API_PREFIX)) return await next();
             await jwt({secret: config.jwtSecret});
@@ -29,6 +29,12 @@ module.exports = app => {
     });
 
     /* API ROUTES */
+
+    //health endpoint
+    app.use(async (ctx, next) => {
+        if (ctx.request.url !== "/health") return await next();
+        ctx.response.status = 200;
+    });
 
     //return all viable job types
     app.use(async (ctx, next) => {
