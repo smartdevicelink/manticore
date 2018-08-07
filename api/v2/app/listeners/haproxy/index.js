@@ -14,7 +14,6 @@ module.exports = {
             for(var service in ctx.currentRequest.services){
                 for(var addressObj in ctx.currentRequest.services[service]){
                     if(ctx.currentRequest.services[service][addressObj].isHttp){
-                        console.log(addressObj)
                         user.http.push({
                             subdomain: ctx.currentRequest.services[service][addressObj].external,
                             address: ctx.currentRequest.services[service][addressObj].internal
