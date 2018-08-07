@@ -20,7 +20,7 @@ function buildManticoreJobFile () {
 	//restart manticore if it has failed up to 3 times within 30 seconds, with 5 seconds between restart attempts
 	job.setRestartPolicy(groupName, 30000000000, 3, 5000000000, "delay");
 	job.addTask(groupName, taskName);
-	job.setImage(groupName, taskName, "smartdevicelink/manticore:master");
+	job.setImage(groupName, taskName, process.env.MANTICORE_IMAGE);
 	//http port that is internally 4000, but dynamically allocated on the host
 	job.addPort(groupName, taskName, true, "http", 4000);
 	//add all environment variables from .env here
