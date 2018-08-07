@@ -25,7 +25,6 @@ function buildManticoreJobFile () {
 	job.addPort(groupName, taskName, true, "http", 4000);
 	//add all environment variables from .env here
 	addEnvs(job, groupName, taskName, [
-		"HTTP_PORT",
         "JWT_SECRET",
         "NOMAD_IP_http",
         "NOMAD_AGENT_PORT",
