@@ -4,24 +4,42 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build-webpage": "webpack"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "async-request": "^1.2.0",
+    "axios": "^0.18.0",
     "check-types": "^7.4.0",
     "consul": "^0.33.1",
     "dotenv": "^6.0.0",
     "koa": "^2.5.1",
     "koa-bodyparser": "^4.2.1",
     "koa-compose": "^4.1.0",
+    "koa-cors": "0.0.16",
     "koa-jwt": "^3.3.2",
     "koa-router": "^7.4.0",
+    "koa-static": "^5.0.0",
     "koa-websocket": "^5.0.1",
     "nomad-helper": "^3.6.1",
     "randomatic": "^3.0.0",
+    "vue": "^2.5.17",
     "winston": "^3.0.0",
     "ws": "^6.0.0"
+  },
+  "devDependencies": {
+    "babel-core": "^6.26.3",
+    "babel-loader": "^7.1.5",
+    "babel-preset-env": "^1.7.0",
+    "babel-preset-stage-3": "^6.24.1",
+    "css-loader": "^1.0.0",
+    "file-loader": "^1.1.11",
+    "style-loader": "^0.22.0",
+    "vue-loader": "^15.2.7",
+    "vue-template-compiler": "^2.5.17",
+    "webpack": "^4.16.5",
+    "webpack-cli": "^3.1.0"
   }
 }
