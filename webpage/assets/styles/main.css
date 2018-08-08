@@ -1,0 +1,83 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    font-family: 'Muli', sans-serif;
+    background-color: #f2f2f2;
+}
+
+.dev-page-header {
+    width: 100%;
+    background-color: #000;
+}
+
+.dev-page-title {
+    margin: 0;
+    padding: 20px 10px;
+    font-size: 1.6em;
+    color: #fff;
+}
+
+.dev-page-actions-container {
+    display: flex;
+    flex-direction: row;
+    margin: 5px;
+}
+
+.dev-action-container {
+    margin: 5px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2);
+    width: 500px;
+    min-width: 500px;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    align-self: flex-start;
+}
+
+.action-title {
+    margin: 10px;
+    font-size: 1.45em;
+}
+
+.action-text {
+    margin: 10px;
+    font-size: 1em;
+}
+
+.action-text-input {
+    margin: 10px;
+}
+
+.action-label {
+    margin: 10px;
+    font-size: 1em;
+}
+
+.action-text-area {
+    margin: 10px;
+    min-height: 200px;
+    resize: none;
+}
+
+.action-button {
+    margin: 10px;
+    font-family: 'Muli', sans-serif;
+    font-size: 1em;
+}
+
+.error-container {
+    margin: 10px;
+    background-color: #ff9f9f;
+    color:#000;
+    border: solid 1px #ff0000;
+}
+
+.response-container {
+    margin: 10px;
+    background-color: #a4eda4;
+    color: #000;
+    border: solid 1px #008000;
+}

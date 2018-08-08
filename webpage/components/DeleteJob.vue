@@ -1,16 +1,16 @@
 <template>
-    <div>
-        <h2>Delete Job</h2>
-        <div v-if="errorMessage != null">
-            <p>Error:</p>
-            <p>{{ errorMessage }}</p>
+    <div class="dev-action-container">
+        <h2 class="action-title">Delete Job</h2>
+        <div v-if="errorMessage != null" class="error-container">
+            <p class="action-text">Error: {{ errorMessage }}</p>
         </div>
-        <label>ID: </label>
-        <input type="text" v-model="idText">
-        <button v-on:click="deleteJob">Delete</button>
-        <div v-if="manticoreResponse != null">
-            <p>Response {{ responseTime }} :</p>
-            <p>{{ manticoreResponse }}</p>
+        <div>
+            <label class="action-label">ID: </label>
+            <input class="action-text-input" type="text" v-model="idText">
+        </div>
+        <button v-on:click="deleteJob" class="action-button">Delete</button>
+        <div v-if="manticoreResponse != null" class="response-container">
+            <p class="action-text">Response [{{ responseTime }}] : {{ manticoreResponse }}</p>
         </div>
     </div>
 </template>
@@ -20,9 +20,6 @@ import axios from 'axios';
 
 export default {
     name: 'DeleteJob',
-    props: {
-        manticoreAddress: String
-    },
     data() {
         return {
             idText: '',
@@ -33,7 +30,7 @@ export default {
     },
     methods: {
         deleteJob() {
-            axios.delete(this.manticoreAddress + '/api/v2/job', {
+            axios.delete('/api/v2/job', {
                     data: {
                         id: this.idText
                     }

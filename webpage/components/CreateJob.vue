@@ -1,16 +1,14 @@
 <template>
-    <div>
-        <h2>Create Job</h2>
-        <div v-if="errorMessage != null">
-            <p>Error:</p>
-            <p>{{ errorMessage }}</p>
+    <div class="dev-action-container">
+        <h2 class="action-title">Create Job</h2>
+        <div v-if="errorMessage != null" class="error-container">
+            <p class="action-text">Error: {{ errorMessage }}</p>
         </div>
-        <label>Job Object: </label>
-        <textarea v-model="jobText"></textarea>
-        <button v-on:click="submitJob">Create</button>
-        <div v-if="manticoreResponse != null">
-            <p>Response {{ responseTime }} :</p>
-            <p>{{ manticoreResponse }}</p>
+        <label class="action-label">Job Object: </label>
+        <textarea v-model="jobText" class="action-text-area"></textarea>
+        <button v-on:click="submitJob" class="action-button">Create</button>
+        <div v-if="manticoreResponse != null" class="response-container">
+            <p class="action-text">Response [{{ responseTime }}] : {{ manticoreResponse }}</p>
         </div>
     </div>
 </template>
@@ -20,9 +18,6 @@ import axios from 'axios';
 
 export default {
     name: 'CreateJob',
-    props: {
-        manticoreAddress: String
-    },
     data() {
         return {
             genericJob: {
@@ -57,14 +52,15 @@ export default {
                 return;
             }
 
-            axios.post(this.manticoreAddress + '/api/v2/job', job)
+            axios.post('/api/v2/job', job)
                 .then((response) => {
                     this.manticoreResponse = response.data;
                     this.responseTime = new Date().toTimeString();
                 })
                 .catch((error) => {
-                    this.errorMessage = error;
+                    this.errorMessage = error.response.data;
                     this.manticoreResponse = null;
+                    console.log(error);
                 });
         }
     }
