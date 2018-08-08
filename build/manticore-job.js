@@ -26,7 +26,6 @@ function buildManticoreJobFile () {
 	//add all environment variables from .env here
 	addEnvs(job, groupName, taskName, [
         "JWT_SECRET",
-        "NOMAD_IP_http",
         "NOMAD_AGENT_PORT",
         "CONSUL_AGENT_PORT",
         "CONSUL_DNS_PORT",
