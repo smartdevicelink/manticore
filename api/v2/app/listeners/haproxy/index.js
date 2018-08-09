@@ -26,7 +26,6 @@ module.exports = {
                         }
                     }
                 }
-                template.addWebAppAddress(ctx.waitingState[id].services.webAppAddress);
             }
 
             await store.set({
