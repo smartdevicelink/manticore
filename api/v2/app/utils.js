@@ -225,6 +225,10 @@ async function logAllocationsError (allocations, eval) {
         for (let groupName in eval.FailedTGAllocs) {
             logger.error(`Evaluation error report for task group ${groupName}:`);
             const groupInfo = eval.FailedTGAllocs[groupName];
+            logger.error(`Constraint Filters: ${JSON.stringify(groupInfo.ConstraintFiltered)}`);
+            const {NodesEvaluated, NodesFiltered, NodesExhausted} = groupInfo;
+            logger.error(`Nodes Evaluated/Filtered/Exhausted: ${NodesEvaluated}/${NodesFiltered}/${NodesExhausted}`);
+
             for (let dimension in groupInfo.DimensionExhausted) {
                 logger.error(`${dimension} has been exhausted!`);
             }

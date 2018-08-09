@@ -30,11 +30,15 @@ module.exports = {
     //listen to activity messages from a client
     "ws-message": async (ctx, next) => {
         const {id, message, websocket} = ctx;
+        if (!config.modes.inactivityTimer) return await next(); //mode not enabled
+        //ignore activity messages if the environment says to
+        if (!config.resetTimerAllowed) return await next();
         //look for messages of this format: { type: "activity" }
         //if such a message is received, reset the client's timer
         const msgJson = await utils.parseJson(message);
-        if (!msgJson.type || !msgJson.type === "activity") return; //invalid message
+        if (!msgJson.type || !msgJson.type === "activity") return await next(); //invalid message
         restartTimer(id);
+        next();
     }
 }
 

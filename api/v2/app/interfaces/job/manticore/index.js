@@ -10,9 +10,9 @@ const randomString = require('randomatic');
 const pattern = 'af09'
 
 //times to wait for healthy instances in milliseconds
-const CORE_ALLOCATION_TIME = 2000;
+const CORE_ALLOCATION_TIME = 5000;
 const CORE_HEALTH_TIME = 8000;
-const HMI_ALLOCATION_TIME = 2000;
+const HMI_ALLOCATION_TIME = 5000;
 const HMI_HEALTH_TIME = 8000;
 
 
