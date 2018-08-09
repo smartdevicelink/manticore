@@ -1,30 +1,33 @@
 const config = require('../../config.js');
 const {job, logger, store} = config;
 
-const template = require('./HAProxyTemplate.js')()
-
 module.exports = {
     "post-waiting-job-advance": async (ctx, next) => {
-        if(ctx.currentRequest.state == 'claimed' && config.modes.haproxy){
-            template.addUser(ctx.currentRequest.id);
-            for(var service in ctx.currentRequest.services){
-                for(var addressObj in ctx.currentRequest.services[service]){
-                    if(ctx.currentRequest.services[service][addressObj].isHttp){
-                        template.addHttpRoute(
-                            ctx.currentRequest.id,
-                            ctx.currentRequest.services[service][addressObj].external, 
-                            ctx.currentRequest.services[service][addressObj].internal
-                        );
-                    } else {
-                        template.addTcpRoute(
-                            ctx.currentRequest.id,
-                            ctx.currentRequest.services[service][addressObj].external,
-                            ctx.currentRequest.services[service][addressObj].internal
-                        );
+        if(config.modes.haproxy){
+            const template = require('./HAProxyTemplate.js')();
+            for(var id in ctx.waitingState){
+                if(ctx.waitingState[id].state == 'claimed'){
+                    template.addUser(id);
+                    for(var service in ctx.waitingState[id].services){
+                        for(var addressObj in ctx.waitingState[id].services[service]){
+                            if(ctx.waitingState[id].services[service][addressObj].isHttp){
+                                template.addHttpRoute(
+                                    id,
+                                    ctx.waitingState[id].services[service][addressObj].external, 
+                                    ctx.waitingState[id].services[service][addressObj].internal
+                                );
+                            } else {
+                                template.addTcpRoute(
+                                    id,
+                                    ctx.waitingState[id].services[service][addressObj].external,
+                                    ctx.waitingState[id].services[service][addressObj].internal
+                                );
+                            }
+                        }
                     }
                 }
+                template.addWebAppAddress(ctx.waitingState[id].services.webAppAddress);
             }
-            template.addWebAppAddress(ctx.currentRequest.services.webAppAddress);
 
             await store.set({
                 key: 'haproxy/webAppAddresses',
