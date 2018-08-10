@@ -45,8 +45,6 @@ defaults
     backend app
         balance source
         mode http
-        option httpchk GET /
-        http-check expect status 200
 
         {{ range service "manticore-service" }}
             server {{ .Name }} {{ .Address }}:{{ .Port }} {{ end }}
