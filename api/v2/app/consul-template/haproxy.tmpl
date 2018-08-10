@@ -47,9 +47,9 @@ defaults
         mode http
         option httpchk GET /
         http-check expect status 200
-        
+
         {{ range service "manticore-service" }}
-            server {{ .Name }}{{ .Address }}:{{ .Port }}{{ end }}
+            server {{ .Name }} {{ .Address }}:{{ .Port }} {{ end }}
 
         {{range $userIndex, $userObj := $td.users}}
             {{range $httpIndex, $httpObj := $userObj.http}}
