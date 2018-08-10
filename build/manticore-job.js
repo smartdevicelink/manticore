@@ -44,7 +44,7 @@ function buildManticoreJobFile () {
 		Name: "manticore-alive",
 		Interval: 12000000000, //test the health check every 12 seconds
 		Timeout: 10000000000, //wait 10 seconds for a response
-		Path: "/",
+		Path: "/health",
 		Protocol: "http"
 	});
 	//set resource constraints
