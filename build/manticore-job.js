@@ -36,7 +36,9 @@ function buildManticoreJobFile () {
         "USAGE_DURATION",
         "WARNING_DURATION",
         "RESET_TIMER_ALLOWED",
-        "WEBPAGE_DISABLED"
+        "WEBPAGE_DISABLED",
+        "TCP_PORT_RANGE_START",
+        "TCP_PORT_RANGE_END"
 	]);
 	job.addService(groupName, taskName, serviceName);
 	job.setPortLabel(groupName, taskName, serviceName, "http");

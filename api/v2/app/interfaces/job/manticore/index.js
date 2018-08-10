@@ -7,7 +7,8 @@ const logger = config.logger;
 const utils = require('../../../utils.js'); //contains useful functions for the job submission process
 
 const randomString = require('randomatic');
-const pattern = 'af09'
+const PATTERN = 'af09';
+const PORTS_USED_THRESHOLD = .5;
 
 //times to wait for healthy instances in milliseconds
 const CORE_ALLOCATION_TIME = 5000;
@@ -165,26 +166,31 @@ async function advance (ctx) {
             servicesKey: "hmi"
         });
 
-        console.log("job done!");
-        console.log(JSON.stringify(ctx.currentRequest.services));
-
         //if haproxy is configured, generate the external addresses
-        if(config.haproxyPort){
-            ctx.currentRequest.services.core[`core-broker-${id}`].external = randomString(pattern, 16);
+        if (config.haproxyPort) {
+            //ensure that the tcp port numbers generated haven't been used before
+            //make the string addresses long enough to be improbable for collisions to ever happen
+            const usedTcpPorts = getUsedTcpPorts(ctx.waitingState);
+            const coreTcpPort = await generateTcpPort(config.tcpPortStart, config.tcpPortEnd, usedTcpPorts);
+
+            ctx.currentRequest.services.core[`core-broker-${id}`].external = randomString(PATTERN, 16);
             ctx.currentRequest.services.core[`core-broker-${id}`].isHttp = true;
 
-            ctx.currentRequest.services.core[`core-file-${id}`].external = randomString(pattern, 16);
+            ctx.currentRequest.services.core[`core-file-${id}`].external = randomString(PATTERN, 16);
             ctx.currentRequest.services.core[`core-file-${id}`].isHttp = true;
 
-            ctx.currentRequest.services.core[`core-log-${id}`].external = randomString(pattern, 16);
+            ctx.currentRequest.services.core[`core-log-${id}`].external = randomString(PATTERN, 16);
             ctx.currentRequest.services.core[`core-log-${id}`].isHttp = true;
 
-            ctx.currentRequest.services.core[`core-tcp-${id}`].external = Math.floor(Math.random() * 10000);
+            ctx.currentRequest.services.core[`core-tcp-${id}`].external = coreTcpPort;
             ctx.currentRequest.services.core[`core-tcp-${id}`].isHttp = false;
             
-            ctx.currentRequest.services.hmi[`hmi-user-${id}`].external = randomString(pattern, 16);
+            ctx.currentRequest.services.hmi[`hmi-user-${id}`].external = randomString(PATTERN, 16);
             ctx.currentRequest.services.hmi[`hmi-user-${id}`].isHttp = true;
         }
+
+        console.log("job done!");
+        console.log(JSON.stringify(ctx.currentRequest.services));
 
         return; //done
     }
@@ -201,6 +207,34 @@ async function idToTaskNames (id) {
     const coreTaskName = `core-task-${id}`;
     const hmiTaskName = `hmi-task-${id}`;
     return [coreTaskName, hmiTaskName];
+}
+
+//use the waiting state to find all used tcp ports
+function getUsedTcpPorts (waitingState) {
+    let usedPorts = [];
+    for (let id in waitingState) {
+        usedPorts.push(waitingState[id].services.core[`core-tcp-${id}`].external);
+    }
+    return usedPorts;
+}
+
+//continue to create random numbers between min and max until one isn't in the blacklisted ports
+//WARNING: will get much slower the greater the percentage of possible ports are taken. make sure 
+//the range is always large enough for your load!
+async function generateTcpPort (min, max, blacklistedPorts) {
+    //start printing warnings if a significant percentage of ports are already taken
+    const range = max - min + 1;
+    const portsTakenPercentage = blacklistedPorts.length / range;
+    if (portsTakenPercentage >= PORTS_USED_THRESHOLD) {
+        logger.warn("Port supply running low! Percentage used: " + portsTakenPercentage);
+    }
+    let foundPort = false;
+    let port;
+    while (!foundPort) {
+        port = Math.floor(Math.random() * range) + min;
+        foundPort = !blacklistedPorts.includes(port);
+    }
+    return port;
 }
 
 module.exports = {

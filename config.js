@@ -15,7 +15,9 @@ const config = {
     //the folder under /api to load from. only one version is allowed to run at a time
     apiVersion: process.env.API_VERSION || 'v2',
     haproxyPort: process.env.HAPROXY_HTTP_PORT, //the port haproxy listens on for http traffic
-    haproxyDomain: process.env.DOMAIN_NAME,
+    haproxyDomain: process.env.DOMAIN_NAME, //the domain under which clients will connect to the server
+    tcpPortStart: process.env.TCP_PORT_RANGE_START, //the smallest port haproxy can bind to for tcp
+    tcpPortEnd: process.env.TCP_PORT_RANGE_END, //the largest port haproxy can bind to for tcp
     //reserved properties for manticore's use
     //how long a user is allowed to use the Manticore service uninterrupted (in seconds)
     usageDuration: process.env.USAGE_DURATION,
@@ -48,7 +50,9 @@ const config = {
 //provide properties to easily determine whether certain modes of manticore are enabled
 
 if (config.haproxyPort !== undefined
-    && config.haproxyDomain !== undefined) {
+    && config.haproxyDomain !== undefined
+    && config.tcpPortStart !== undefined
+    && config.tcpPortEnd !== undefined) {
     config.modes.haproxy = true;
 }
 if (config.usageDuration !== undefined
