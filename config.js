@@ -26,8 +26,8 @@ const config = {
     //whether a client can send a websocket message to reset the amount of time before a user is removed
     //from Manticore. Enable this if you want to enforce a max limit of how long a user can use their jobs
     resetTimerAllowed: process.env.RESET_TIMER_ALLOWED,
-    //whether the simple Manticore webpage will be served or not
-    webpageEnabled: process.env.MANTICORE_WEBPAGE_ENABLED || false,
+    //whether the simple Manticore webpage will be served
+    webpageDisabled: process.env.WEBPAGE_DISABLED || false,
 
     //RESERVED PROPERTIES FOR MANTICORE'S USE
 
