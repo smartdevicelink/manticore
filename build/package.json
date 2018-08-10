@@ -1,0 +1,17 @@
+{
+    "name": "manticore-builder",
+    "version": "1.0.0",
+    "description": "",
+    "main": "manticore-job.js",
+    "scripts": {
+        "start": "node manticore-job.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "dotenv": "^6.0.0",
+        "ip": "^1.1.5",
+        "nomad-helper": "^3.6.1"
+    }
+}

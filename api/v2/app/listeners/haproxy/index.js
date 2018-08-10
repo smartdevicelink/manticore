@@ -3,48 +3,54 @@ const {job, logger, store} = config;
 
 module.exports = {
     "post-waiting-job-advance": async (ctx, next) => {
-        if(ctx.currentRequest.state == 'claimed' && config.modes.haproxy){
-            let jsonObj = {
-                users: []
-            }
-            let user = {
-                tcp: {},
-                http: []
-            };
-            for(var service in ctx.currentRequest.services){
-                for(var addressObj in ctx.currentRequest.services[service]){
-                    if(ctx.currentRequest.services[service][addressObj].isHttp){
-                        console.log(addressObj)
-                        user.http.push({
-                            subdomain: ctx.currentRequest.services[service][addressObj].external,
-                            address: ctx.currentRequest.services[service][addressObj].internal
-                        });
-                    } else {
-                        user.tcp = {
-                            port: ctx.currentRequest.services[service][addressObj].external,
-                            address: ctx.currentRequest.services[service][addressObj].internal
-                        };
+        if(config.modes.haproxy){
+            const template = require('./HAProxyTemplate.js')();
+            for(var id in ctx.waitingState){
+                if(ctx.waitingState[id].state == 'claimed'){
+                    template.addUser(id);
+                    for(var service in ctx.waitingState[id].services){
+                        for(var addressObj in ctx.waitingState[id].services[service]){
+                            if(ctx.waitingState[id].services[service][addressObj].isHttp){
+                                template.addHttpRoute(
+                                    id,
+                                    ctx.waitingState[id].services[service][addressObj].external, 
+                                    ctx.waitingState[id].services[service][addressObj].internal
+                                );
+                            } else {
+                                template.addTcpRoute(
+                                    id,
+                                    ctx.waitingState[id].services[service][addressObj].external,
+                                    ctx.waitingState[id].services[service][addressObj].internal
+                                );
+                            }
+                        }
                     }
                 }
             }
-            jsonObj.users.push(user);
-            await store.set({
-                key: 'haproxy/mainPort',
-                value: config.haproxyPort
-            });
+
             await store.set({
                 key: 'haproxy/webAppAddresses',
-                value: ctx.currentRequest.services.webAppAddresses
+                value: template.webAppAddresses
             });
-            await store.set({
-                key: 'haproxy/domainName',
-                value: config.haproxyDomain
-            });
+
             await store.set({
                 key: 'templateData',
-                value: JSON.stringify(jsonObj)
+                value: JSON.stringify(template.kvFormat())
             });
         }
+        next();
+    },
+
+    "startup": async (ctx, next) => {
+        await store.set({
+            key: 'haproxy/domainName',
+            value: config.haproxyDomain
+        });
+
+        await store.set({
+            key: 'haproxy/mainPort',
+            value: config.haproxyPort
+        });
         next();
     }
 };

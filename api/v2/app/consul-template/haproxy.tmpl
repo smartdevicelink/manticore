@@ -61,11 +61,13 @@ defaults
 
 
     {{range $userIndex, $userObj := $td.users}}
-        listen tcp-{{$userIndex}}
-            bind *:{{$userObj.tcp.port}}
-            mode tcp
-            option tcplog
-            server tcp-server-{{$userIndex}} {{$userObj.tcp.address}}
+        {{range $tcpIndex, $tcpObj := $userObj.tcp}}
+            listen tcp-{{$userIndex}}-{{$tcpIndex}}
+                bind *:{{$tcpObj.port}}
+                mode tcp
+                option tcplog
+                server tcp-server-{{$userIndex}} {{$tcpObj.address}}
+        {{ end }}
     {{end}}
 
 {{ end }}
