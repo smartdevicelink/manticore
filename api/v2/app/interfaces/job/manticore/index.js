@@ -145,8 +145,12 @@ async function advance (ctx) {
             brokerAddress: `ws:\\/\\/${brokerAddress}`,
             coreFileAddress: `${coreFileAddress}`,
         };
-        //build off the cached core job
+        //build off the cached core job if it exists
+        if (!cachedJobs[id]) {
+            cachedJobs[id] = coreSettings.generateJobFile(jobName, currentRequest);
+        }
         const job = hmiSettings.generateJobFile(cachedJobs[id], currentRequest, envs);
+
         const jobFile = job.getJob().Job;
         const imageInfo = hmiSettings.configurationToImageInfo(hmiVersion, type, id, envs);
 

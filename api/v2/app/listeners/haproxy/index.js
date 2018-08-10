@@ -42,15 +42,17 @@ module.exports = {
     },
 
     "startup": async (ctx, next) => {
-        await store.set({
-            key: 'haproxy/domainName',
-            value: config.haproxyDomain
-        });
+        if (config.modes.haproxy) {
+            await store.set({
+                key: 'haproxy/domainName',
+                value: config.haproxyDomain
+            });
 
-        await store.set({
-            key: 'haproxy/mainPort',
-            value: config.haproxyPort
-        });
+            await store.set({
+                key: 'haproxy/mainPort',
+                value: config.haproxyPort
+            });
+        }
         next();
     }
 };
