@@ -1,25 +1,17 @@
 <template>
-    <div>
-        <div class="dev-page-header">
-            <p class="dev-page-title">Manticore Developer Page</p>
+    <div class="main-container">
+        <div class="header">
+            <p class="header-title">Manticore Developer Page</p>
+            <router-link to="/actions" class="header-link">Actions</router-link>
+            <router-link to="/monitor" class="header-link">Monitor</router-link>
         </div>
-        <div class="dev-page-actions-container">
-            <CreateJob />
-            <DeleteJob />
-        </div>
+        <router-view></router-view>
     </div>
 </template>
 
 <script>
-import CreateJob from './components/CreateJob.vue';
-import DeleteJob from './components/DeleteJob.vue';
-
 export default {
-    name: 'App',
-    components: {
-        CreateJob,
-        DeleteJob
-    }
+    name: 'App'
 }
 </script>
 

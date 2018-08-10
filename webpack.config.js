@@ -2,6 +2,7 @@ const path = require('path');
 const { VueLoaderPlugin } = require('vue-loader');
 
 module.exports = {
+    mode: 'development',
     entry: './webpage/index.js',
     output: {
         filename: 'main.js',

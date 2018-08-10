@@ -1,5 +1,5 @@
 <template>
-    <div class="dev-action-container">
+    <div class="action-container">
         <h2 class="action-title">Create Job</h2>
         <div v-if="errorMessage != null" class="error-container">
             <p class="action-text">Error: {{ errorMessage }}</p>
@@ -56,6 +56,8 @@ export default {
                 .then((response) => {
                     this.manticoreResponse = response.data;
                     this.responseTime = new Date().toTimeString();
+                    this.$root.$data.createJob(job.id, response.data.address, response.request.responseURL);
+                    this.$root.$data.createWebSocket(job.id, response.data.address);
                 })
                 .catch((error) => {
                     this.errorMessage = error.response.data;
