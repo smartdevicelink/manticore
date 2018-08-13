@@ -72,4 +72,24 @@ if (config.resetTimerAllowed === "true") {
     config.resetTimerAllowed = true;
 }
 
+//convert strings to numbers for certain properties
+if (config.httpPort !== undefined) {
+    config.httpPort = Number(config.httpPort);
+}
+if (config.nomadAgentPort !== undefined) {
+    config.nomadAgentPort = Number(config.nomadAgentPort);
+}
+if (config.consulAgentPort !== undefined) {
+    config.consulAgentPort = Number(config.consulAgentPort);
+}
+if (config.consulDnsPort !== undefined) {
+    config.consulDnsPort = Number(config.consulDnsPort);
+}
+if (config.tcpPortStart !== undefined) {
+    config.tcpPortStart = Number(config.tcpPortStart);
+}
+if (config.tcpPortEnd !== undefined) {
+    config.tcpPortEnd = Number(config.tcpPortEnd);
+}
+
 module.exports = config;

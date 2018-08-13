@@ -415,6 +415,11 @@ async function parseJson (string) {
 //creates a map with the service names as keys and the addresses as values
 //returns null if even one of the services are unreachable
 async function findServiceAddresses (serviceNames) {
+    //arbitrary wait for Consul's DNS server to update. there's probably a better way to do this
+    await new Promise( resolve => {
+        setTimeout(resolve, 1000);
+    });
+
     const addressPromises = serviceNames.map(async serviceName => {
         return Promise.all([
             dnsResolve(`${serviceName}.service.consul`, "A"), //get the IP address

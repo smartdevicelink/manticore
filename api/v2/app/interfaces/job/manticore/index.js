@@ -170,7 +170,7 @@ async function advance (ctx) {
         if (config.haproxyPort) {
             //ensure that the tcp port numbers generated haven't been used before
             //make the string addresses long enough to be improbable for collisions to ever happen
-            const usedTcpPorts = getUsedTcpPorts(ctx.waitingState);
+            const usedTcpPorts = getUsedTcpPorts(waitingState);
             const coreTcpPort = await generateTcpPort(config.tcpPortStart, config.tcpPortEnd, usedTcpPorts);
 
             ctx.currentRequest.services.core[`core-broker-${id}`].external = randomString(PATTERN, 16);
@@ -213,7 +213,12 @@ async function idToTaskNames (id) {
 function getUsedTcpPorts (waitingState) {
     let usedPorts = [];
     for (let id in waitingState) {
-        usedPorts.push(waitingState[id].services.core[`core-tcp-${id}`].external);
+        const cond1 = waitingState[id].services !== undefined;
+        const cond2 = waitingState[id].services.core !== undefined;
+        const cond3 = waitingState[id].services.core[`core-tcp-${id}`].external !== undefined;
+        if (cond1 && cond2 && cond3) {
+            usedPorts.push(waitingState[id].services.core[`core-tcp-${id}`].external);
+        }
     }
     return usedPorts;
 }
@@ -234,6 +239,7 @@ async function generateTcpPort (min, max, blacklistedPorts) {
         port = Math.floor(Math.random() * range) + min;
         foundPort = !blacklistedPorts.includes(port);
     }
+
     return port;
 }
 
