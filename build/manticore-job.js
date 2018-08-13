@@ -38,7 +38,12 @@ function buildManticoreJobFile () {
         "RESET_TIMER_ALLOWED",
         "WEBPAGE_DISABLED",
         "TCP_PORT_RANGE_START",
-        "TCP_PORT_RANGE_END"
+        "TCP_PORT_RANGE_END",
+        "AWS_REGION",
+        "AWS_HAPROXY_GROUP_ID",
+        "ELB_MANTICORE_NAME",
+        "SSL_CERTIFICATE_ARN",
+        "ELB_SSL_PORT", 
 	]);
 	job.addService(groupName, taskName, serviceName);
 	job.setPortLabel(groupName, taskName, serviceName, "http");

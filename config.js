@@ -30,6 +30,13 @@ const config = {
     resetTimerAllowed: process.env.RESET_TIMER_ALLOWED,
     //whether the simple Manticore webpage will be served
     webpageDisabled: process.env.WEBPAGE_DISABLED || false,
+/* TODO:
+    "AWS_REGION",
+    "AWS_HAPROXY_GROUP_ID",
+    "ELB_MANTICORE_NAME",
+    "SSL_CERTIFICATE_ARN",
+    "ELB_SSL_PORT", 
+*/
 
     //RESERVED PROPERTIES FOR MANTICORE'S USE
 

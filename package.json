@@ -12,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "async-request": "^1.2.0",
+    "aws-sdk": "^2.291.0",
     "axios": "^0.18.0",
     "check-types": "^7.4.0",
     "consul": "^0.33.1",
