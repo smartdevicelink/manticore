@@ -45,11 +45,9 @@ defaults
     backend app
         balance source
         mode http
-        option httpchk GET /
-        http-check expect status 200
-        {{range ls "haproxy/webAppAddresses"}}
-            server webapp-{{.Key}} {{.Value}} check 
-        {{end}}
+
+        {{ range service "manticore-service" }}
+            server {{ .Name }} {{ .Address }}:{{ .Port }} {{ end }}
 
         {{range $userIndex, $userObj := $td.users}}
             {{range $httpIndex, $httpObj := $userObj.http}}

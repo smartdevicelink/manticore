@@ -11,7 +11,7 @@ app.use(bodyParser());
 
 //serve Manticore webpage if enabled
 //Must build it first by running 'npm run build-webpage'
-if (config.webpageEnabled) {
+if (!config.webpageDisabled) {
     app.use(cors());
     app.use(serve(__dirname + '/dist'));
 }

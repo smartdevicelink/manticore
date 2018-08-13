@@ -1,5 +1,3 @@
 const config = require('../../../config.js');
 
-module.exports = {
-    logLevel: config.logLevel,
-}
+module.exports = config;

@@ -35,7 +35,10 @@ function buildManticoreJobFile () {
         "DOMAIN_NAME",
         "USAGE_DURATION",
         "WARNING_DURATION",
-        "RESET_TIMER_ALLOWED"
+        "RESET_TIMER_ALLOWED",
+        "WEBPAGE_DISABLED",
+        "TCP_PORT_RANGE_START",
+        "TCP_PORT_RANGE_END"
 	]);
 	job.addService(groupName, taskName, serviceName);
 	job.setPortLabel(groupName, taskName, serviceName, "http");
@@ -44,7 +47,7 @@ function buildManticoreJobFile () {
 		Name: "manticore-alive",
 		Interval: 12000000000, //test the health check every 12 seconds
 		Timeout: 10000000000, //wait 10 seconds for a response
-		Path: "/",
+		Path: "/health",
 		Protocol: "http"
 	});
 	//set resource constraints
