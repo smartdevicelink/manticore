@@ -71,6 +71,12 @@ if (config.resetTimerAllowed === "false") {
 if (config.resetTimerAllowed === "true") {
     config.resetTimerAllowed = true;
 }
+if (config.webpageDisabled === "false") {
+    config.webpageDisabled = false;
+}
+if (config.webpageDisabled === "true") {
+    config.webpageDisabled = true;
+}
 
 //convert strings to numbers for certain properties
 if (config.httpPort !== undefined) {
