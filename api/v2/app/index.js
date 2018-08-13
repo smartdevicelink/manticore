@@ -68,7 +68,7 @@ async function startWatches () {
     //load up the listeners to the listener store
     listeners = await loader.init();
     logger.debug("listeners loaded");
-    //invoke startup listeners. no updates with the store will happen until this phase completes
+    //invoke startup listeners. watches to the store will not happen until this phase completes
     await listeners['startup']({});
     //watch for KV store changes
     const w1 = store.watch(REQUESTS_KEY, requestTrigger);
