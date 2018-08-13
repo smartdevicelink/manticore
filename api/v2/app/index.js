@@ -107,7 +107,11 @@ async function waitingTrigger (waitingSetter) {
     await listeners['waiting-find'](ctx);
     await listeners['post-waiting-find'](ctx);
     //if currentRequest doesnt exist then there are no users to handle
-    if (ctx.currentRequest === null || ctx.currentRequest === undefined) return;
+    if (ctx.currentRequest === null || ctx.currentRequest === undefined) {
+        //call this anyway, as some modules need updates on the waiting list
+        await listeners['post-waiting-job-advance'](ctx);
+        return;
+    };
 
     //determine whether a request's job status is at the point where further updates can happen.
     await listeners['pre-waiting-job-advance'](ctx);
