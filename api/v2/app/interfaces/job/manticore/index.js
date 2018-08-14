@@ -127,7 +127,10 @@ async function advance (ctx) {
         await utils.autoHandleAll({
             ctx: ctx,
             job: jobFile,
-            taskNames: [coreTaskName],
+            taskNames: [{
+                name: coreTaskName,
+                count: 3
+            }],
             allocationTime: CORE_ALLOCATION_TIME,
             services: imageInfo.services,
             healthTime: CORE_HEALTH_TIME,
@@ -158,7 +161,14 @@ async function advance (ctx) {
         await utils.autoHandleAll({
             ctx: ctx,
             job: jobFile,
-            taskNames: [coreTaskName, hmiTaskName],
+            taskNames: [{
+                name: coreTaskName,
+                count: 3
+            },
+            {
+                name: hmiTaskName,
+                count: 1
+            }],
             allocationTime: HMI_ALLOCATION_TIME,
             services: imageInfo.services,
             healthTime: HMI_HEALTH_TIME,
@@ -206,7 +216,16 @@ async function idToJobName (id) {
 async function idToTaskNames (id) {
     const coreTaskName = `core-task-${id}`;
     const hmiTaskName = `hmi-task-${id}`;
-    return [coreTaskName, hmiTaskName];
+    return [
+        {
+            name: coreTaskName,
+            count: 3
+        },
+        {
+            name: hmiTaskName,
+            count: 1
+        }
+    ];
 }
 
 //use the waiting state to find all used tcp ports
