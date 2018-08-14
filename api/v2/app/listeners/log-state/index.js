@@ -35,6 +35,8 @@ module.exports = {
     "post-waiting-job-advance": async (ctx, next) => {
         //cut off the 'request' property of each user for the sake of brevity
         //modifying the context in a pre/post hook is forbidden. clone it
+        if (!ctx.currentRequest) return next();
+        
         if (!ctx.removeUser) {
             let request = JSON.parse(JSON.stringify(ctx.currentRequest.id));
             delete request.request;
