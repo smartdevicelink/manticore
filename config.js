@@ -30,13 +30,12 @@ const config = {
     resetTimerAllowed: process.env.RESET_TIMER_ALLOWED,
     //whether the simple Manticore webpage will be served
     webpageDisabled: process.env.WEBPAGE_DISABLED || false,
-/* TODO:
-    "AWS_REGION",
-    "AWS_HAPROXY_GROUP_ID",
-    "ELB_MANTICORE_NAME",
-    "SSL_CERTIFICATE_ARN",
-    "ELB_SSL_PORT", 
-*/
+    awsRegion: process.env.AWS_REGION, //the region Manticore is running on in AWS
+    //the security group ID that will allow access to Manticore's internal network
+    awsHaproxyGroupId: process.env.AWS_HAPROXY_GROUP_ID,
+    elbName: process.env.ELB_MANTICORE_NAME, //name of the AWS ELB
+    sslCertificateArn: process.env.SSL_CERTIFICATE_ARN, //SSL certificate attached to the AWS ELB
+    elbSslPort: process.env.ELB_SSL_PORT, //SSL port for secure TCP connections
 
     //RESERVED PROPERTIES FOR MANTICORE'S USE
 
@@ -50,7 +49,10 @@ const config = {
     modes: {
         haproxy: false,
         inactivityTimer: false,
-        jwt: false
+        jwt: false,
+        aws: false,
+        awsSecurityGroup: false,
+        elb: false,
     }
 };
 
@@ -69,6 +71,21 @@ if (config.usageDuration !== undefined
 }
 if (config.jwtSecret !== undefined) {
     config.modes.jwtEnabled = true;
+}
+if (config.awsRegion !== undefined) {
+    config.modes.aws = true;
+}
+if (config.modes.haproxy
+    && config.modes.aws
+    && config.awsHaproxyGroupId !== undefined) {
+    config.modes.awsSecurityGroup = true;
+}
+if (config.modes.haproxy
+    && config.modes.aws
+    && config.elbName !== undefined
+    && config.sslCertificateArn !== undefined
+    && config.elbSslPort !== undefined) {
+    config.modes.elb = true;
 }
 
 //convert strings to booleans for certain properties
@@ -103,6 +120,9 @@ if (config.tcpPortStart !== undefined) {
 }
 if (config.tcpPortEnd !== undefined) {
     config.tcpPortEnd = Number(config.tcpPortEnd);
+}
+if (config.elbSslPort !== undefined) {
+    config.elbSslPort = Number(config.elbSslPort);
 }
 
 module.exports = config;

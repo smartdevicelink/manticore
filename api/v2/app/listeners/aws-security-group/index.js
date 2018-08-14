@@ -6,54 +6,48 @@ const config = require('../../config.js');
 const {job, logger, store} = config;
 
 //set the region
-if (config.modes.haproxy) {
-    console.log(process.env.AWS_REGION);
-    AWS.config.update({region: process.env.AWS_REGION});
+if (config.modes.aws) {
+    AWS.config.update({region: config.awsRegion});
 }
 
 //module that sets up the security group that allows access to Manticore's network through HAProxy
 module.exports = {
     "startup": async (ctx, next) => {
-        if (config.modes.haproxy) {
-            //open up the port that leads to HAProxy
-            //also open up the range of TCP ports possible on the API machines
+        if (config.modes.awsSecurityGroup) {
 
             //clear out all permissions for this security group
-            const securityGroups = await getSecurityGroupInfo();
+            const securityGroups = await getSecurityGroupInfo(config.awsHaproxyGroupId);
             const removeGroupPromises = securityGroups.SecurityGroups.map(securityGroup => {
+                if (securityGroup.IpPermissions.length === 0) { //no permissions!
+                    return Promise.resolve();
+                }
                 const cleanedGroup = cleanSecurityGroup(securityGroup);
-                console.log(JSON.stringify(cleanedGroup, null, 4));
                 return revokeSecurityGroupIngress(cleanedGroup);
             });
-            await Promise.all(removeGroupPromises);
 
+            await Promise.all(removeGroupPromises);
+            //insert a new security group using Manticore's environment settings
+            //open up the port that leads to HAProxy
+            //also open up the range of TCP ports possible on the API machines
+            await authorizeSecurityGroupIngress(createSecurityGroupObj());
         }
         next();
     }
 };
 
-async function getSecurityGroupInfo () {
-    return new Promise((resolve, reject) => {
-        const securityGroupId = process.env.AWS_HAPROXY_GROUP_ID;
-        const params = {
-            GroupIds: [securityGroupId]
-        };
-        ec2.describeSecurityGroups(params, function (err, data) {
-            if (err) return reject(err);
-            resolve(data);
-        });        
-    });
+async function getSecurityGroupInfo (groupId) {
+    const params = {
+        GroupIds: [groupId]
+    };    
+    return promisify(ec2.describeSecurityGroups.bind(ec2))(params);
 }
 
 async function revokeSecurityGroupIngress (params) {
-    return new Promise((resolve, reject) => {
-        ec2.revokeSecurityGroupIngress(params, function (err, data) {
-            console.log(err);
-            console.log(JSON.stringify(data, null, 4));
-            if (err) return reject(err);
-            resolve(data);
-        });        
-    });
+    return promisify(ec2.revokeSecurityGroupIngress.bind(ec2))(params);
+}
+
+async function authorizeSecurityGroupIngress (params) {
+    return promisify(ec2.authorizeSecurityGroupIngress.bind(ec2))(params);
 }
 
 //accepts a security group from AWS and reformats it for revoking those same IP permissions
@@ -73,6 +67,7 @@ function cleanSecurityGroup (group) {
     }
 }
 
+//uses the config object to create the JSON
 function createSecurityGroupObj () {
     return {
         "IpPermissions": [
@@ -107,6 +102,6 @@ function createSecurityGroupObj () {
                 "ToPort": config.tcpPortEnd
             }
         ],
-        "GroupId": process.env.AWS_HAPROXY_GROUP_ID
-    }
+        "GroupId": config.awsHaproxyGroupId
+    };
 }
