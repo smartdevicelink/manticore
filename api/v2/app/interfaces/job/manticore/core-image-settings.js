@@ -21,7 +21,7 @@ function generateJobFile (jobName, body) {
     //attempts number should be 0. interval and delay don't matter since task is in fail mode
     job.setRestartPolicy(groupName, 60000000000, 0, 60000000000, "fail");
 
-    job.setCount(groupName, 3);
+    job.setCount(groupName, 1);
 
     job.addTask(groupName, taskName);
     job.setImage(groupName, taskName, info.imageName);

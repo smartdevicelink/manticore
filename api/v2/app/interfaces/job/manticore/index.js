@@ -129,7 +129,7 @@ async function advance (ctx) {
             job: jobFile,
             taskNames: [{
                 name: coreTaskName,
-                count: 3
+                count: 1
             }],
             allocationTime: CORE_ALLOCATION_TIME,
             services: imageInfo.services,
@@ -143,8 +143,8 @@ async function advance (ctx) {
         return; //done
     }
     if (currentRequest.state === "pending-1") { //this stage causes an hmi job to run
-        const brokerAddress = currentRequest.services.core[`core-broker-${id}`].internal;
-        const coreFileAddress = currentRequest.services.core[`core-file-${id}`].internal;
+        const brokerAddress = currentRequest.services.core[`core-broker-${id}-0`].internal;
+        const coreFileAddress = currentRequest.services.core[`core-file-${id}-0`].internal;
         const envs = { //extract service addresses found from the previous stage
             brokerAddress: `ws:\\/\\/${brokerAddress}`,
             coreFileAddress: `${coreFileAddress}`,
@@ -163,7 +163,7 @@ async function advance (ctx) {
             job: jobFile,
             taskNames: [{
                 name: coreTaskName,
-                count: 3
+                count: 1
             },
             {
                 name: hmiTaskName,
@@ -183,20 +183,20 @@ async function advance (ctx) {
             const usedTcpPorts = getUsedTcpPorts(waitingState);
             const coreTcpPort = await generateTcpPort(config.tcpPortStart, config.tcpPortEnd, usedTcpPorts);
 
-            ctx.currentRequest.services.core[`core-broker-${id}`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.core[`core-broker-${id}`].isHttp = true;
+            ctx.currentRequest.services.core[`core-broker-${id}-0`].external = randomString(PATTERN, 16);
+            ctx.currentRequest.services.core[`core-broker-${id}-0`].isHttp = true;
 
-            ctx.currentRequest.services.core[`core-file-${id}`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.core[`core-file-${id}`].isHttp = true;
+            ctx.currentRequest.services.core[`core-file-${id}-0`].external = randomString(PATTERN, 16);
+            ctx.currentRequest.services.core[`core-file-${id}-0`].isHttp = true;
 
-            ctx.currentRequest.services.core[`core-log-${id}`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.core[`core-log-${id}`].isHttp = true;
+            ctx.currentRequest.services.core[`core-log-${id}-0`].external = randomString(PATTERN, 16);
+            ctx.currentRequest.services.core[`core-log-${id}-0`].isHttp = true;
 
-            ctx.currentRequest.services.core[`core-tcp-${id}`].external = coreTcpPort;
-            ctx.currentRequest.services.core[`core-tcp-${id}`].isHttp = false;
+            ctx.currentRequest.services.core[`core-tcp-${id}-0`].external = coreTcpPort;
+            ctx.currentRequest.services.core[`core-tcp-${id}-0`].isHttp = false;
             
-            ctx.currentRequest.services.hmi[`hmi-user-${id}`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.hmi[`hmi-user-${id}`].isHttp = true;
+            ctx.currentRequest.services.hmi[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
+            ctx.currentRequest.services.hmi[`hmi-user-${id}-0`].isHttp = true;
         }
 
         console.log("job done!");
@@ -219,7 +219,7 @@ async function idToTaskNames (id) {
     return [
         {
             name: coreTaskName,
-            count: 3
+            count: 1
         },
         {
             name: hmiTaskName,

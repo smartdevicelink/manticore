@@ -10,7 +10,6 @@ const config = {
     clientAgentIp: process.env.NOMAD_IP_http || 'localhost',
     nomadAgentPort: process.env.NOMAD_AGENT_PORT || 4646, //the port the nomad agent listens on
     consulAgentPort: process.env.CONSUL_AGENT_PORT || 8500, //the port the consul agent listens on
-    consulDnsPort: process.env.CONSUL_DNS_PORT || 8600, //the port the consul DNS server listens on
     logLevel: process.env.LOG_LEVEL || 'debug', //the logging level of manticore to stdout
     //the folder under /api to load from. only one version is allowed to run at a time
     apiVersion: process.env.API_VERSION || 'v2',
@@ -87,9 +86,6 @@ if (config.nomadAgentPort !== undefined) {
 }
 if (config.consulAgentPort !== undefined) {
     config.consulAgentPort = Number(config.consulAgentPort);
-}
-if (config.consulDnsPort !== undefined) {
-    config.consulDnsPort = Number(config.consulDnsPort);
 }
 if (config.tcpPortStart !== undefined) {
     config.tcpPortStart = Number(config.tcpPortStart);

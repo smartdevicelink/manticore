@@ -2,11 +2,7 @@
 const config = require('./config.js');
 const logger = config.logger;
 const http = require('async-request');
-const dns = require('dns');
-//set the module to target consul's DNS server for querying service addresses
-dns.setServers([`${config.clientAgentIp}:${config.consulDnsPort}`]);
-const promisify = require('util').promisify;
-const dnsResolve = promisify(dns.resolve);
+
 //failure types
 const FAILURE_TYPE_PERMANENT = "PERMANENT";
 const FAILURE_TYPE_PENDING = "PENDING";
@@ -52,7 +48,7 @@ async function autoHandleAll (config) {
 
     let serviceInfo;
 
-    try { //could get an error regarding the dns lookup failing
+    try { //could get an error regarding the address lookup failing
         serviceInfo = await findServiceAddresses(allServiceNames);
     }
     catch (err) { //fail out
@@ -425,36 +421,31 @@ async function parseJson (string) {
     }
 }
 
-//TODO: DO NOT USE DNS SERVER ANYMORE. GET RID OF IT AND THE ENV VAR
-
-//given an array of service names, looks them up using consul's DNS server and retrieves the address and port info
+//given an array of service names, looks them up using consul's API to get the addresses
 //creates a map with the service names as keys and the addresses as values
-//returns null if even one of the services are unreachable
+
 async function findServiceAddresses (serviceNames) {
-    console.log(serviceNames);
-    //arbitrary wait for Consul's DNS server to update. there's probably a better way to do this
-    await new Promise( resolve => {
-        setTimeout(resolve, 1000);
+    let serviceToAddressMap = {};
+
+    const servicesPromises = serviceNames.map(async serviceName => {
+        const response = await getService(serviceName);
+        const services = await parseJson(response.body);
+        return services.forEach((service, index) => {
+            serviceToAddressMap[`${serviceName}-${index}`] = {
+                internal: `${service.Address}:${service.ServicePort}`
+            };
+        });
     });
 
-    const addressPromises = serviceNames.map(async serviceName => {
-        return Promise.all([
-            dnsResolve(`${serviceName}.service.consul`, "A"), //get the IP address
-            dnsResolve(`${serviceName}.service.consul`, "SRV") //get the port number
-        ]);
-    });
-    const addressInfo = await Promise.all(addressPromises);
-
-    const serviceToAddressMap = {};
-    for (let i = 0; i < serviceNames.length; i++) {
-        const serviceName = serviceNames[i];
-        const info = addressInfo[i];
-        serviceToAddressMap[serviceName] = {
-            internal: `${info[0][0]}:${info[1][0].port}`, //grab the address info
-        }
-    }
+    await Promise.all(servicesPromises); //wait for the promises to build the address map
 
     return serviceToAddressMap;
+}
+
+//queries consul for all nodes that house the running service
+async function getService (name) {
+    const baseUrl = `http://${config.clientAgentIp}:${config.consulAgentPort}/v1/catalog/service/${name}`;
+    return http(baseUrl); 
 }
 
 //modifies ctx depending on what error string gets passed in

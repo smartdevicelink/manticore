@@ -28,7 +28,6 @@ function buildManticoreJobFile () {
         "JWT_SECRET",
         "NOMAD_AGENT_PORT",
         "CONSUL_AGENT_PORT",
-        "CONSUL_DNS_PORT",
         "LOG_LEVEL",
         "API_VERSION",
         "HAPROXY_HTTP_PORT",
