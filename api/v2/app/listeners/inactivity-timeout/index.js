@@ -45,7 +45,7 @@ module.exports = {
     "startup": async (ctx, next) => {
         if (!config.modes.inactivityTimer) return await next();
 
-        var timeoutDuration = config.usageDuration + config.warningDuration;
+        var timeoutDuration = parseInt(config.usageDuration) + parseInt(config.warningDuration)
         if (config.modes.elb && timeoutDuration > 4000) {
             logger.debug('Idle timeout capped at 4000 seconds since ELB mode is enabled');
             timeoutDuration = 4000;
