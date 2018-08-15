@@ -72,8 +72,7 @@ if (config.usageDuration !== undefined
 if (config.jwtSecret !== undefined) {
     config.modes.jwtEnabled = true;
 }
-if (config.awsRegion !== undefined
-    && config.namespace !== undefined) {
+if (config.awsRegion !== undefined) {
     config.modes.aws = true;
     if (config.manticoreName !== undefined
         && config.sslPort !== undefined
