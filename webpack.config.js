@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 const path = require('path');
 const { VueLoaderPlugin } = require('vue-loader');
 

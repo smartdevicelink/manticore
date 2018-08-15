@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 module.exports = {
     //uses the request data and waiting data to update the waiting list
     "request": async (ctx, next) => {

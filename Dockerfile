@@ -1,3 +1,4 @@
+# Copyright (c) 2018, Livio, Inc.
 FROM node:8
 
 WORKDIR /app

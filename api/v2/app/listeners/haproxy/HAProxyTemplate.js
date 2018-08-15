@@ -1,4 +1,4 @@
-
+// Copyright (c) 2018, Livio, Inc.
 module.exports = function () {
     return new HAProxyTemplate();
 };

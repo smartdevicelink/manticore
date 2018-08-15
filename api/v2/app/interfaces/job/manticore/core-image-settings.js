@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 const builder = require('nomad-helper');
 
 //a template for constructing core job files easily

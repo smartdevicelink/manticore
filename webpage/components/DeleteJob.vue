@@ -1,3 +1,4 @@
+<!-- Copyright (c) 2018, Livio, Inc. -->
 <template>
     <div class="action-container">
         <h2 class="action-title">Delete Job</h2>

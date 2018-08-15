@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 const fs = require('fs');
 const compose = require("koa-compose");
 const logger = require('./config.js').logger;

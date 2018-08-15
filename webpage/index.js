@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 import Vue from 'vue';
 import App from './App.vue';
 import router from './router';

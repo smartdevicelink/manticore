@@ -1,3 +1,4 @@
+<!-- Copyright (c) 2018, Livio, Inc. -->
 <template>
     <div class="job-list-container">
         <JobListItem v-for="jobId in Object.keys($root.$data.state.jobs)"
