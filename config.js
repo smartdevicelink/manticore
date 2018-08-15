@@ -31,6 +31,13 @@ const config = {
     //whether the simple Manticore webpage will be served
     webpageDisabled: process.env.WEBPAGE_DISABLED || false,
 
+    awsRegion: process.env.AWS_REGION,
+    namespace: process.env.CLOUD_WATCH_NAMESPACE,
+
+    manticoreName: process.env.ELB_MANTICORE_NAME,
+    sslPort: process.env.ELB_SSL_PORT,
+    sslCertificateArn: process.env.SSL_CERTIFICATE_ARN,
+
     //RESERVED PROPERTIES FOR MANTICORE'S USE
 
     //manticore interface modules
@@ -43,7 +50,9 @@ const config = {
     modes: {
         haproxy: false,
         inactivityTimer: false,
-        jwt: false
+        jwt: false,
+        aws: false,
+        elb: false
     }
 };
 
@@ -62,6 +71,14 @@ if (config.usageDuration !== undefined
 }
 if (config.jwtSecret !== undefined) {
     config.modes.jwtEnabled = true;
+}
+if (config.awsRegion !== undefined) {
+    config.modes.aws = true;
+    if (config.manticoreName !== undefined
+        && config.sslPort !== undefined
+        && config.sslCertificateArn !== undefined){
+        config.modes.elb = true;
+    }
 }
 
 //convert strings to booleans for certain properties
