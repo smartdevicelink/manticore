@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 require('dotenv').config(); //load environment
 const Koa = require('koa');
 const serve = require('koa-static');

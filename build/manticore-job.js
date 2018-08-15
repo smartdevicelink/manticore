@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 //load the environment variables from the .env file in the same directory
 require('dotenv').config();
 var nomader = require('nomad-helper'); //for submitting manticore to nomad

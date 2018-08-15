@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 //the master config of which all other config files get their data from
 const config = {
     //USER CONFIGURABLE PROPERTIES

@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 const check = require('check-types');
 const jwt = require('koa-jwt');
 const websockify = require('koa-websocket');

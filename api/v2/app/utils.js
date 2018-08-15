@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 //utility module for easy interfacing with Nomad and Consul and for other functions
 const config = require('./config.js');
 const logger = config.logger;

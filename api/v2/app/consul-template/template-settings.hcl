@@ -1,3 +1,4 @@
+# Copyright (c) 2018, Livio, Inc.
 # A sample settings file for generating haproxy.cfg files
 # sudo consul-template -config template-settings.hcl &
 

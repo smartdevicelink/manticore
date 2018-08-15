@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 const builder = require('nomad-helper');
 const http = require('async-request');
 const config = require('./config');

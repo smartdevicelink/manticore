@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 import Vue from 'vue';
 import Router from 'vue-router';
 import Actions from '../components/Actions.vue';

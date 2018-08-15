@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 const AWS = require('aws-sdk');
 const elb = new AWS.ELB();
 const cloudWatch = new AWS.CloudWatch();

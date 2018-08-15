@@ -1,3 +1,4 @@
+<!-- Copyright (c) 2018, Livio, Inc. -->
 <template>
     <div v-on:click="selectJob(jobId)" class="job-list-item-container">
         <span v-if="job.status == 'connected'" class="dot dot-green"></span>

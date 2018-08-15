@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 const AWS = require('aws-sdk');
 const ec2 = new AWS.EC2();
 const promisify = require('util').promisify;

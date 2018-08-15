@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 module.exports = {
     //logic for determining the request to pick:
     //if the waiting list is empty, return null

@@ -1,3 +1,4 @@
+// Copyright (c) 2018, Livio, Inc.
 const parent = require('../../index.js');
 const config = require('../../config.js');
 const {store, job, logger, websocket, usageDuration, warningDuration} = config;
