@@ -19,10 +19,10 @@ defaults
     option redispatch
     retries 3
     timeout http-request 20s
-    timeout queue 60m
+    timeout queue {{ key "timeoutDuration" }}s
     timeout connect 20s
-    timeout client 60m
-    timeout server 60m
+    timeout client {{ key "timeoutDuration" }}s
+    timeout server {{ key "timeoutDuration" }}s
     timeout http-keep-alive 20s
     timeout check 20s
     maxconn 3000
