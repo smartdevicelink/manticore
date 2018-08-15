@@ -2,21 +2,17 @@
 const config = require('./config.js');
 const logger = config.logger;
 const http = require('async-request');
-const dns = require('dns');
-//set the module to target consul's DNS server for querying service addresses
-dns.setServers([`${config.clientAgentIp}:${config.consulDnsPort}`]);
-const promisify = require('util').promisify;
-const dnsResolve = promisify(dns.resolve);
+
 //failure types
 const FAILURE_TYPE_PERMANENT = "PERMANENT";
 const FAILURE_TYPE_PENDING = "PENDING";
 const FAILURE_TYPE_RESTART = "RESTART";
 
 /*
-    watchAllocationsToResolution and watchServiceToResolution only check until the job and services are healthy. 
+    watchAllocationsToResolution and watchServicesToResolution only check until the job and services are healthy. 
     This means that they don't check for the case where an already healthy job/service becomes unhealthy.
     
-    watchAllocationsToResolution and watchServiceToResolution both use a forced end date and will not stop early
+    watchAllocationsToResolution and watchServicesToResolution both use a forced end date and will not stop early
     unless a successful result is returned. watchAllocationsToResolution could stop early when a dead/failed state
     is found since its starting state is pending, unlike with watching a service where it starts in a failed state. 
     However, there could be a case where an allocation is in a non-pending, non-running state when read and it is simply
@@ -52,7 +48,7 @@ async function autoHandleAll (config) {
 
     let serviceInfo;
 
-    try { //could get an error regarding the dns lookup failing
+    try { //could get an error regarding the address lookup failing
         serviceInfo = await findServiceAddresses(allServiceNames);
     }
     catch (err) { //fail out
@@ -165,14 +161,15 @@ async function watchAllocationsToEnd (jobName, taskNames, index) {
     }
 }
 
-//retrieve all allocations with unique task groups with the highest job version number
+//retrieve all allocations with unique task names with the highest job version number
+//be aware of multiple tasks per task group running simultaneously
 async function getLatestAllocations (allocs) {
     let uniqueGroupIndeces = {};
     for (let i = 0; i < allocs.length; i++) {
-        const {TaskGroup, JobVersion} = allocs[i];
-        if (!uniqueGroupIndeces[TaskGroup] || uniqueGroupIndeces[TaskGroup].version < JobVersion) {
+        const {JobVersion, Name} = allocs[i];
+        if (!uniqueGroupIndeces[Name] || uniqueGroupIndeces[Name].version < JobVersion) {
             //found a more recent allocation for this task group
-            uniqueGroupIndeces[TaskGroup] = {
+            uniqueGroupIndeces[Name] = {
                 version: JobVersion,
                 index: i
             }
@@ -180,8 +177,8 @@ async function getLatestAllocations (allocs) {
     }
     //get the filtered allocations using the found indeces
     let filteredAllocs = [];
-    for (let groupName in uniqueGroupIndeces) {
-        const allocIndex = uniqueGroupIndeces[groupName].index;
+    for (let name in uniqueGroupIndeces) {
+        const allocIndex = uniqueGroupIndeces[name].index;
         filteredAllocs.push(allocs[allocIndex]);
     }
     return filteredAllocs;
@@ -190,18 +187,26 @@ async function getLatestAllocations (allocs) {
 //determine if the job is healthy by inspecting the allocations and running tasks
 //use getLatestAllocations before passing allocations here
 async function allocationsHealthCheck (allocs, taskNames) {
-    let foundTaskNames = {};
+    let requiredTasksMap = {};
+    //populate the task map
+    taskNames.forEach(task => {
+        requiredTasksMap[task.name] = task.count;
+    });
+
     //check that all filtered allocations are running
     for (let i = 0; i < allocs.length; i++) {
         if (allocs[i].ClientStatus !== "running") return false;
-        //find all tasks and add to foundTaskNames
-        for (let taskName in allocs[i].TaskStates)  {
-            foundTaskNames[taskName] = true;
+        //find all tasks and update the tasks map accordingly
+        for (let taskName in allocs[i].TaskStates) {
+            if (requiredTasksMap[taskName] === undefined) return false; //unexpected task running
+            requiredTasksMap[taskName]--;
         }
     }
-    //every element in taskName must exist in foundTaskNames for a pass
-    for (let i = 0; i < taskNames.length; i++) {
-        if (!foundTaskNames[taskNames[i]]) return false;
+
+    //requiredTasksMap must have a 0 count in all elements by the time allocs are parsed
+    //if not, fail the health check
+    for (let taskName in requiredTasksMap) {
+        if (requiredTasksMap[taskName] !== 0) return false;
     }
     //pass
     return true;
@@ -304,17 +309,22 @@ async function casJob (key) {
 async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
     const serviceWatches = serviceNames.map(name => {
         //run synchronously to prevent blocking. force a result by healthTime milliseconds
-        return watchServiceToResolution(name, Date.now() + healthTime); 
+        return watchServicesToResolution(name, Date.now() + healthTime); 
     });
     const services = await Promise.all(serviceWatches); //wait for resolution on all watches
 
     //all statuses must be passing at this point, or else this should be considered a failure
-    const servicesPassing = await servicesHealthCheck(services);
+    //services should be flattened first
+    const flattenedServices = services.reduce((arr, serviceArray) => {
+        return arr.concat(serviceArray);
+    }, []);
+
+    const servicesPassing = await servicesHealthCheck(flattenedServices);
     if (!servicesPassing) { 
         logger.error(`Health checks failed for user ${ctx.currentRequest.id}!`);
-        await logServicesError(serviceNames, services); //log the error information
+        await logServicesError(serviceNames, flattenedServices); //log the error information
 
-        const failureType = await determineServicesFailureType(services);
+        const failureType = await determineServicesFailureType(flattenedServices);
         handleFailureType(ctx, failureType); //manage the failure here
         return false;
     }
@@ -331,7 +341,7 @@ async function servicesHealthCheck (services) {
 }
 
 //continuously hit the health checks endpoint until either the end date is passed or until the status is passing
-async function watchServiceToResolution (serviceName, endDate = 0, index) {
+async function watchServicesToResolution (serviceName, endDate = 0, index) {
     let baseUrl = `http://${config.clientAgentIp}:${config.consulAgentPort}/v1/health/checks/${serviceName}?`;
     if (index !== undefined) {
         baseUrl = `${baseUrl}index=${index}&`;
@@ -346,18 +356,18 @@ async function watchServiceToResolution (serviceName, endDate = 0, index) {
     const response = await http(baseUrl); //get info about all the health checks from this service
     const newIndex = response.headers["x-consul-index"];
     const services = await parseJson(response.body);
-    //a max of one service should ever be returned
-    const service = services.length !== 0 ? services[0] : null;
+    
     //check if the current date is larger than the specified end date
     if (Date.now() > endDate) { //out of time. do not continue watching
-        return service;
+        return services;
     }
 
-    if (!service || service.Status !== "passing") { //start over and wait for more updates
-        return await watchServiceToResolution(serviceName, endDate, newIndex);
+    //all services found must be passing
+    if (!servicesHealthCheck(services)) { //start over and wait for more updates
+        return await watchServicesToResolution(serviceName, endDate, newIndex);
     }
     else { //a passing state is found. return the service info for further evaluation
-        return service;
+        return services;
     }
 }
 
@@ -411,33 +421,31 @@ async function parseJson (string) {
     }
 }
 
-//given an array of service names, looks them up using consul's DNS server and retrieves the address and port info
+//given an array of service names, looks them up using consul's API to get the addresses
 //creates a map with the service names as keys and the addresses as values
-//returns null if even one of the services are unreachable
+
 async function findServiceAddresses (serviceNames) {
-    //arbitrary wait for Consul's DNS server to update. there's probably a better way to do this
-    await new Promise( resolve => {
-        setTimeout(resolve, 1000);
+    let serviceToAddressMap = {};
+
+    const servicesPromises = serviceNames.map(async serviceName => {
+        const response = await getService(serviceName);
+        const services = await parseJson(response.body);
+        return services.forEach((service, index) => {
+            serviceToAddressMap[`${serviceName}-${index}`] = {
+                internal: `${service.Address}:${service.ServicePort}`
+            };
+        });
     });
 
-    const addressPromises = serviceNames.map(async serviceName => {
-        return Promise.all([
-            dnsResolve(`${serviceName}.service.consul`, "A"), //get the IP address
-            dnsResolve(`${serviceName}.service.consul`, "SRV") //get the port number
-        ]);
-    });
-    const addressInfo = await Promise.all(addressPromises);
-
-    const serviceToAddressMap = {};
-    for (let i = 0; i < serviceNames.length; i++) {
-        const serviceName = serviceNames[i];
-        const info = addressInfo[i];
-        serviceToAddressMap[serviceName] = {
-            internal: `${info[0][0]}:${info[1][0].port}`, //grab the address info
-        }
-    }
+    await Promise.all(servicesPromises); //wait for the promises to build the address map
 
     return serviceToAddressMap;
+}
+
+//queries consul for all nodes that house the running service
+async function getService (name) {
+    const baseUrl = `http://${config.clientAgentIp}:${config.consulAgentPort}/v1/catalog/service/${name}`;
+    return http(baseUrl); 
 }
 
 //modifies ctx depending on what error string gets passed in
@@ -475,7 +483,7 @@ module.exports = {
     //service check automation
     autoHandleServices: autoHandleServices,
     servicesHealthCheck: servicesHealthCheck,
-    watchServiceToResolution: watchServiceToResolution,
+    watchServicesToResolution: watchServicesToResolution,
     watchServiceToEnd: watchServiceToEnd,
     logServicesError: logServicesError,
     determineServicesFailureType: determineServicesFailureType,

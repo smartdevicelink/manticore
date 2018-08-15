@@ -127,7 +127,10 @@ async function advance (ctx) {
         await utils.autoHandleAll({
             ctx: ctx,
             job: jobFile,
-            taskNames: [coreTaskName],
+            taskNames: [{
+                name: coreTaskName,
+                count: 1
+            }],
             allocationTime: CORE_ALLOCATION_TIME,
             services: imageInfo.services,
             healthTime: CORE_HEALTH_TIME,
@@ -140,8 +143,8 @@ async function advance (ctx) {
         return; //done
     }
     if (currentRequest.state === "pending-1") { //this stage causes an hmi job to run
-        const brokerAddress = currentRequest.services.core[`core-broker-${id}`].internal;
-        const coreFileAddress = currentRequest.services.core[`core-file-${id}`].internal;
+        const brokerAddress = currentRequest.services.core[`core-broker-${id}-0`].internal;
+        const coreFileAddress = currentRequest.services.core[`core-file-${id}-0`].internal;
         const envs = { //extract service addresses found from the previous stage
             brokerAddress: `ws:\\/\\/${brokerAddress}`,
             coreFileAddress: `${coreFileAddress}`,
@@ -158,7 +161,14 @@ async function advance (ctx) {
         await utils.autoHandleAll({
             ctx: ctx,
             job: jobFile,
-            taskNames: [coreTaskName, hmiTaskName],
+            taskNames: [{
+                name: coreTaskName,
+                count: 1
+            },
+            {
+                name: hmiTaskName,
+                count: 1
+            }],
             allocationTime: HMI_ALLOCATION_TIME,
             services: imageInfo.services,
             healthTime: HMI_HEALTH_TIME,
@@ -173,20 +183,20 @@ async function advance (ctx) {
             const usedTcpPorts = getUsedTcpPorts(waitingState);
             const coreTcpPort = await generateTcpPort(config.tcpPortStart, config.tcpPortEnd, usedTcpPorts);
 
-            ctx.currentRequest.services.core[`core-broker-${id}`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.core[`core-broker-${id}`].isHttp = true;
+            ctx.currentRequest.services.core[`core-broker-${id}-0`].external = randomString(PATTERN, 16);
+            ctx.currentRequest.services.core[`core-broker-${id}-0`].isHttp = true;
 
-            ctx.currentRequest.services.core[`core-file-${id}`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.core[`core-file-${id}`].isHttp = true;
+            ctx.currentRequest.services.core[`core-file-${id}-0`].external = randomString(PATTERN, 16);
+            ctx.currentRequest.services.core[`core-file-${id}-0`].isHttp = true;
 
-            ctx.currentRequest.services.core[`core-log-${id}`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.core[`core-log-${id}`].isHttp = true;
+            ctx.currentRequest.services.core[`core-log-${id}-0`].external = randomString(PATTERN, 16);
+            ctx.currentRequest.services.core[`core-log-${id}-0`].isHttp = true;
 
-            ctx.currentRequest.services.core[`core-tcp-${id}`].external = coreTcpPort;
-            ctx.currentRequest.services.core[`core-tcp-${id}`].isHttp = false;
+            ctx.currentRequest.services.core[`core-tcp-${id}-0`].external = coreTcpPort;
+            ctx.currentRequest.services.core[`core-tcp-${id}-0`].isHttp = false;
             
-            ctx.currentRequest.services.hmi[`hmi-user-${id}`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.hmi[`hmi-user-${id}`].isHttp = true;
+            ctx.currentRequest.services.hmi[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
+            ctx.currentRequest.services.hmi[`hmi-user-${id}-0`].isHttp = true;
         }
 
         console.log("job done!");
@@ -206,7 +216,16 @@ async function idToJobName (id) {
 async function idToTaskNames (id) {
     const coreTaskName = `core-task-${id}`;
     const hmiTaskName = `hmi-task-${id}`;
-    return [coreTaskName, hmiTaskName];
+    return [
+        {
+            name: coreTaskName,
+            count: 1
+        },
+        {
+            name: hmiTaskName,
+            count: 1
+        }
+    ];
 }
 
 //use the waiting state to find all used tcp ports
