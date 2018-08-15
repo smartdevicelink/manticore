@@ -30,13 +30,15 @@ const config = {
     resetTimerAllowed: process.env.RESET_TIMER_ALLOWED,
     //whether the simple Manticore webpage will be served
     webpageDisabled: process.env.WEBPAGE_DISABLED || false,
+    awsRegion: process.env.AWS_REGION, //the region Manticore is running on in AWS
+    //the security group ID that will allow access to Manticore's internal network
+    awsHaproxyGroupId: process.env.AWS_HAPROXY_GROUP_ID,
+    elbName: process.env.ELB_MANTICORE_NAME, //name of the AWS ELB
+    sslCertificateArn: process.env.SSL_CERTIFICATE_ARN, //SSL certificate attached to the AWS ELB
+    sslPort: process.env.ELB_SSL_PORT, //SSL port for secure TCP connections
 
     awsRegion: process.env.AWS_REGION,
     namespace: process.env.CLOUD_WATCH_NAMESPACE,
-
-    manticoreName: process.env.ELB_MANTICORE_NAME,
-    sslPort: process.env.ELB_SSL_PORT,
-    sslCertificateArn: process.env.SSL_CERTIFICATE_ARN,
 
     //RESERVED PROPERTIES FOR MANTICORE'S USE
 
@@ -52,7 +54,8 @@ const config = {
         inactivityTimer: false,
         jwt: false,
         aws: false,
-        elb: false
+        awsSecurityGroup: false,
+        elb: false,
     }
 };
 
@@ -72,11 +75,19 @@ if (config.usageDuration !== undefined
 if (config.jwtSecret !== undefined) {
     config.modes.jwtEnabled = true;
 }
+
 if (config.awsRegion !== undefined) {
     config.modes.aws = true;
-    if (config.manticoreName !== undefined
+
+    if (config.modes.haproxy
+        && config.awsHaproxyGroupId !== undefined) {
+        config.modes.awsSecurityGroup = true;
+    }
+
+    if (config.modes.haproxy
+        && config.elbName !== undefined
         && config.sslPort !== undefined
-        && config.sslCertificateArn !== undefined){
+        && config.sslCertificateArn !== undefined) {
         config.modes.elb = true;
     }
 }
@@ -113,6 +124,9 @@ if (config.tcpPortStart !== undefined) {
 }
 if (config.tcpPortEnd !== undefined) {
     config.tcpPortEnd = Number(config.tcpPortEnd);
+}
+if (config.sslPort !== undefined) {
+    config.sslPort = Number(config.sslPort);
 }
 
 module.exports = config;

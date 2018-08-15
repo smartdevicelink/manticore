@@ -169,7 +169,7 @@ function comparelistenerStates (listener1, listener2) {
 */
 async function describeLoadBalancer () {
     var params = {
-        LoadBalancerNames: [config.manticoreName],
+        LoadBalancerNames: [config.elbName],
     }
     return promisify(elb.describeLoadBalancers.bind(elb))(params);
 }
@@ -185,7 +185,7 @@ async function describeLoadBalancer () {
 function addListeners (listeners, callback) {
     var params = {
         Listeners: listeners,
-        LoadBalancerName: config.manticoreName
+        LoadBalancerName: config.elbName
     };
     if (listeners.length > 0) { //only make a call if listeners has data
         elb.createLoadBalancerListeners(params, (err, data) => {
@@ -207,7 +207,7 @@ function addListeners (listeners, callback) {
 function removeListeners (lbPorts, callback) {
     var params = {
         LoadBalancerPorts: lbPorts,
-        LoadBalancerName: config.manticoreName
+        LoadBalancerName: config.elbName
     };
     if (lbPorts.length > 0) {
         elb.deleteLoadBalancerListeners(params, (err, data) => {
