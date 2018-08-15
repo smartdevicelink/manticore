@@ -2,36 +2,29 @@ const AWS = require('aws-sdk');
 const elb = new AWS.ELB();
 const cloudWatch = new AWS.CloudWatch();
 const config = require('../../config.js')
-const {job, logger, store} = config;
+const logger = config.logger;
+const promisify = require('util').promisify;
 
-module.exports = AwsHandler;
-
+module.exports = function(){
+	return new AwsHandler();
+}
 /**
 * Allows usage of the AWS SDK API
 * @constructor
 */
-function AwsHandler () {}
-
-/**
-* Sets up AwsHandler with logging 
-* @param {string} region - The AWS region to be used (ex. us-east-1)
-* @param {winston.Logger} log - An instance of the logger to use
-* @returns {AwsHandler} - An AwsHandler object
-*/
-AwsHandler.prototype.init = () => {
+function AwsHandler () {
     if (config.modes.aws) { //only do things if AWS is enabled
         AWS.config.update({region: config.awsRegion});
     }
-};
+}
 
 //ELB CODE HERE
-AwsHandler.prototype.changeState = async (waitingState) => {
+AwsHandler.prototype.changeState = async function (waitingState) {
     if (!config.modes.elb) {
         return; //do nothing if ELB isn't enabled
     }
-    var self = this; //consistent reference to 'this'
     //get the current state
-    const lbStatus = await this.describeLoadBalancer();
+    const lbStatus = (await describeLoadBalancer()).LoadBalancerDescriptions[0];
     //get listener information
     var actualListeners = [];
     for (let i = 0; i < lbStatus.ListenerDescriptions.length; i++) {
@@ -57,28 +50,27 @@ AwsHandler.prototype.changeState = async (waitingState) => {
         SSLCertificateId: config.sslCertificateArn
     })];
 
-	for(var id in ctx.waitingState){
-	    if(ctx.waitingState[id].state == 'claimed'){
-	        for(var service in ctx.waitingState[id].services){
-	            for(var addressObj in ctx.waitingState[id].services[service]){
-	                if(!ctx.waitingState[id].services[service][addressObj].isHttp){
+	for(var id in waitingState){
+	    if(waitingState[id].state == 'claimed'){
+	        for(var service in waitingState[id].services){
+	            for(var addressObj in waitingState[id].services[service]){
+	                if(!waitingState[id].services[service][addressObj].isHttp){
 	                    expectedListeners.push(new Listener({
 				            Protocol: "TCP",
-				            LoadBalancerPort: waitingState.[id].services[service][addressObj].external,
+				            LoadBalancerPort: waitingState[id].services[service][addressObj].external,
 				            InstanceProtocol: "TCP",
-				            InstancePort: waitingState.[id].services[service][addressObj].external
+				            InstancePort: waitingState[id].services[service][addressObj].external
 				        }));
 				    }
 	            }
 	        }
 	    }
 	}
-
     //determine which listeners need to be added and which need to be removed
-    var listenerChanges = await AwsHandler.calculateListenerChanges(expectedListeners, actualListeners);
+    var listenerChanges = calculateListenerChanges(expectedListeners, actualListeners);
     //ALWAYS remove unneeded listeners before adding needed listeners
-    await self.removeListeners(listenerChanges.toBeDeletedListeners);
-    await self.addListeners(listenerChanges.toBeAddedListeners);
+    await promisify(removeListeners)(listenerChanges.toBeDeletedListeners);
+    await promisify(addListeners)(listenerChanges.toBeAddedListeners);
 }
 
 /**
@@ -89,7 +81,7 @@ AwsHandler.prototype.changeState = async (waitingState) => {
 * @returns {array} listenerChanges.toBeDeletedListeners - An array of port numbers to be removed from the ELB
 * @returns {array} listenerChanges.toBeAddedListeners - An array of Listener objects to be added to the ELB
 */
-AwsHandler.calculateListenerChanges = async (expectedListeners, actualListeners) => {
+function calculateListenerChanges (expectedListeners, actualListeners) {
     var listenerChanges = {
         toBeDeletedListeners: [], //NOTE: only save the LoadBalancer ports of the listeners here!
         toBeAddedListeners: []
@@ -111,7 +103,7 @@ AwsHandler.calculateListenerChanges = async (expectedListeners, actualListeners)
         //take the expected and current listener with the next lowest LB port number
         var expected = expectedListeners[0];
         var actual = actualListeners[0];
-        var comparison = AwsHandler.comparelistenerStates(expected, actual);
+        var comparison = comparelistenerStates(expected, actual);
         if (comparison.diff < 0) { 
             //an expected listener is missing. add expected listener into toBeAddedListeners
             listenerChanges.toBeAddedListeners.push(expectedListeners.shift()); 
@@ -155,7 +147,7 @@ AwsHandler.calculateListenerChanges = async (expectedListeners, actualListeners)
 * @returns {boolean} status.equivalent - States whether the Listener objects are equivalent
 * @returns {number} status.diff - The difference between two Listener objects' LoadBalancer ports
 */
-AwsHandler.comparelistenerStates = (listener1, listener2) => {
+function comparelistenerStates (listener1, listener2) {
     var status = {
         equivalent: true,
         diff: 0
@@ -175,18 +167,11 @@ AwsHandler.comparelistenerStates = (listener1, listener2) => {
 /**
 * Finds the current state of Listeners on the ELB
 */
-AwsHandler.prototype.describeLoadBalancer = () => {
+async function describeLoadBalancer () {
     var params = {
         LoadBalancerNames: [config.manticoreName],
     }
-    elb.describeLoadBalancers(params, function (err, data) {
-        //check if we got the load balancer that was requested via env variable
-        if (data && data.LoadBalancerDescriptions && data.LoadBalancerDescriptions[0]) {
-            var lbStatus = data.LoadBalancerDescriptions[0];
-            //lbStatus's ListenerDescriptions property describes open ports and stuff
-            return lbStatus;
-        }
-    });
+    return promisify(elb.describeLoadBalancers.bind(elb))(params);
 }
 /**
  * @param {object} lbStatus - An AWS response object describing everything about the ELB
@@ -197,7 +182,7 @@ AwsHandler.prototype.describeLoadBalancer = () => {
 * Adds listeners to the ELB
 * @param {array} listeners - An array of Listener objects
 */
-AwsHandler.prototype.addListeners = async (listeners) => {
+function addListeners (listeners, callback) {
     var params = {
         Listeners: listeners,
         LoadBalancerName: config.manticoreName
@@ -207,11 +192,11 @@ AwsHandler.prototype.addListeners = async (listeners) => {
             if (err) {
                 logger.error(err);
             }
-            return;
+            callback();
         });        
     }
     else {
-        return;
+        callback();
     }
 }
 
@@ -219,7 +204,7 @@ AwsHandler.prototype.addListeners = async (listeners) => {
 * Removes listeners from the ELB
 * @param {array} lbPorts - An array of numbers that are port numbers
 */
-AwsHandler.prototype.removeListeners = async (lbPorts) => {
+function removeListeners (lbPorts, callback) {
     var params = {
         LoadBalancerPorts: lbPorts,
         LoadBalancerName: config.manticoreName
@@ -229,11 +214,11 @@ AwsHandler.prototype.removeListeners = async (lbPorts) => {
             if (err) {
                 logger.error(err);
             }
-            return;
+            callback();
         });        
     }
     else {
-        return;
+        callback();
     }
 }
 
