@@ -2,6 +2,7 @@
 const check = require('check-types');
 const jwt = require('koa-jwt');
 const websockify = require('koa-websocket');
+const Router = require('koa-router');
 const API_PREFIX = "/api/v2";
 const logic = require('./app');
 const config = require('./app/config.js');
@@ -10,6 +11,7 @@ const {logger, websocket} = config;
 
 module.exports = app => {
     /* MIDDLEWARE */
+    const router = new Router();
 
     //all routes under /api/v2 are eligible for identification via JWT if enabled
     if (config.modes.jwt) {
@@ -32,21 +34,18 @@ module.exports = app => {
     /* API ROUTES */
 
     //health endpoint
-    app.use(async (ctx, next) => {
-        if (ctx.request.url !== "/health") return await next();
+    router.get('/health', async (ctx, next) => {
         ctx.response.status = 200;
     });
 
     //return all viable job types
-    app.use(async (ctx, next) => {
-        if (ctx.request.url !== `${API_PREFIX}/job` || ctx.method !== "GET") return await next();
+    router.get(`${API_PREFIX}/job`, async (ctx, next) => {
         logger.debug(`GET ${API_PREFIX}/job`);
         ctx.response.body = await logic.getJobInfo();
     });
 
     //submit a job for a user
-    app.use(async (ctx, next) => {
-        if (ctx.request.url !== `${API_PREFIX}/job` || ctx.method !== "POST") return await next();
+    router.post(`${API_PREFIX}/job`, async (ctx, next) => {
         logger.debug(`POST ${API_PREFIX}/job\n` + JSON.stringify(ctx.request.body));
         //user id check
         const ID = ctx.request.body.id;
@@ -61,11 +60,10 @@ module.exports = app => {
         ctx.response.body = {
             address: wsAddress
         };
-    }); 
+    });
 
     //stops a job for a user
-    app.use(async (ctx, next) => {
-        if (ctx.request.url !== `${API_PREFIX}/job` || ctx.method !== "DELETE") return await next();
+    router.delete(`${API_PREFIX}/job`, async (ctx, next) => {
         logger.debug(`DELETE ${API_PREFIX}/job`);
         //user id check
         const ID = ctx.request.body.id;
@@ -75,6 +73,8 @@ module.exports = app => {
             .catch(err => logger.error(err));
         ctx.response.status = 200;
     });
+
+    app.use(router.routes()); //load API router middleware 
 
     //hook up websockets to koa
     websockify(app);
@@ -115,6 +115,7 @@ module.exports = app => {
 
         next();
     });
+
 }
 
 //400 helper function
