@@ -5,7 +5,7 @@ const AwsHandler = require('./AwsHandler.js')();
 module.exports = {
 	"post-waiting-job-advance": async (ctx, next) =>{
 		if(config.modes.haproxy){
-			AwsHandler.changeState(ctx.waitingState);
+			await AwsHandler.changeState(ctx.waitingState);
 		}
 		next();
 	}
