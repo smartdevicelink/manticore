@@ -30,24 +30,24 @@ AwsHandler.prototype.changeState = async function (waitingState) {
     var actualListeners = [];
     for (let i = 0; i < lbStatus.ListenerDescriptions.length; i++) {
         actualListeners.push(new Listener(lbStatus.ListenerDescriptions[i].Listener));
-    }    
+    }
 
     //first, find and remove all ports that don't need to be listened on anymore
     //then, find and add all ports that need to be listened on
     //port 443 should always be open for HTTPS connections
-    //the websocket connections should always be open to whatever ELB_SSL_PORT is         
+    //the websocket connections should always be open to whatever ELB_SSL_PORT is
     var expectedListeners = [new Listener({
         Protocol: "HTTPS",
         LoadBalancerPort: 443,
         InstanceProtocol: "HTTP",
-        InstancePort: config.haproxyPort, 
+        InstancePort: config.haproxyPort,
         SSLCertificateId: config.sslCertificateArn
     }),
     new Listener({
         Protocol: "SSL",
-        LoadBalancerPort: config.sslPort, 
+        LoadBalancerPort: config.sslPort,
         InstanceProtocol: "TCP",
-        InstancePort: config.haproxyPort, 
+        InstancePort: config.haproxyPort,
         SSLCertificateId: config.sslCertificateArn
     })];
 
@@ -89,7 +89,7 @@ function calculateListenerChanges (expectedListeners, actualListeners) {
     }
     //with some clever foresight, we won't need two sets of nested for loops to get
     //all the information we need
-    //what is crucial about this algorithm is that the LoadBalancerPort number must be unique 
+    //what is crucial about this algorithm is that the LoadBalancerPort number must be unique
     //across all other listeners in an array
     //sort the arrays in ascending order using the LoadBalancerPort as the comparing element
     expectedListeners.sort((a, b) => {
@@ -105,11 +105,11 @@ function calculateListenerChanges (expectedListeners, actualListeners) {
         var expected = expectedListeners[0];
         var actual = actualListeners[0];
         var comparison = comparelistenerStates(expected, actual);
-        if (comparison.diff < 0) { 
+        if (comparison.diff < 0) {
             //an expected listener is missing. add expected listener into toBeAddedListeners
-            listenerChanges.toBeAddedListeners.push(expectedListeners.shift()); 
+            listenerChanges.toBeAddedListeners.push(expectedListeners.shift());
         }
-        else if (comparison.diff > 0) { 
+        else if (comparison.diff > 0) {
             //an actual listener needs to be removed. add listener's port to toBeDeletedListeners
             listenerChanges.toBeDeletedListeners.push(actualListeners.shift().LoadBalancerPort);
         }
@@ -119,10 +119,10 @@ function calculateListenerChanges (expectedListeners, actualListeners) {
                 //matching listeners. do nothing to change the state
                 expectedListeners.shift();
                 actualListeners.shift();
-            } else { 
+            } else {
                 //listeners do not match. we must update the listener with this port
                 //remove actual listener and add expected listener
-                listenerChanges.toBeAddedListeners.push(expectedListeners.shift()); 
+                listenerChanges.toBeAddedListeners.push(expectedListeners.shift());
                 listenerChanges.toBeDeletedListeners.push(actualListeners.shift().LoadBalancerPort);
             }
         }
@@ -131,10 +131,10 @@ function calculateListenerChanges (expectedListeners, actualListeners) {
     //all remaining listeners in expected array need to be added
     //all remaining listeners in actual array need to be removed
     while (expectedListeners.length > 0) {
-        listenerChanges.toBeAddedListeners.push(expectedListeners.shift()); 
+        listenerChanges.toBeAddedListeners.push(expectedListeners.shift());
     }
     while (actualListeners.length > 0) {
-        listenerChanges.toBeDeletedListeners.push(actualListeners.shift().LoadBalancerPort); 
+        listenerChanges.toBeDeletedListeners.push(actualListeners.shift().LoadBalancerPort);
     }
     //finally complete!
     return listenerChanges;
@@ -174,6 +174,22 @@ async function describeLoadBalancer () {
     }
     return promisify(elb.describeLoadBalancers.bind(elb))(params);
 }
+
+/*
+ * Sets the idleTimeout for the Manticore load balancer
+ */
+AwsHandler.prototype.setElbTimeout = async function (timeout) {
+	var params = {
+		LoadBalancerAttributes: {
+			ConnectionSettings: {
+				IdleTimeout: timeout
+			}
+		},
+		LoadBalancerName: config.manticoreName
+	};
+	await promisify(elb.modifyLoadBalancerAttributes.bind(elb))(params);
+}
+
 /**
  * @param {object} lbStatus - An AWS response object describing everything about the ELB
  */
@@ -194,7 +210,7 @@ function addListeners (listeners, callback) {
                 logger.error(err);
             }
             callback();
-        });        
+        });
     }
     else {
         callback();
@@ -216,7 +232,7 @@ function removeListeners (lbPorts, callback) {
                 logger.error(err);
             }
             callback();
-        });        
+        });
     }
     else {
         callback();

@@ -3,6 +3,7 @@ const parent = require('../../index.js');
 const config = require('../../config.js');
 const {store, job, logger, websocket, usageDuration, warningDuration} = config;
 const utils = require('../../utils');
+const AwsHandler = require('../aws-elb/AwsHandler.js')();
 
 //module that will force the request's removal if the client does not send an activity update often enough
 
@@ -20,7 +21,7 @@ module.exports = {
             }
         }
 
-        //parse through all claimed requests and setup activity timers 
+        //parse through all claimed requests and setup activity timers
         claimedRequests.forEach(request => {
             const id = request.id;
             addTimer(id);
@@ -40,6 +41,26 @@ module.exports = {
         if (!msgJson.type || !msgJson.type === "activity") return await next(); //invalid message
         restartTimer(id);
         next();
+    },
+
+    "startup": async (ctx, next) => {
+        if (!config.modes.inactivityTimer) return await next();
+
+        var timeoutDuration = parseInt(config.usageDuration) + parseInt(config.warningDuration)
+        if (config.modes.elb && timeoutDuration > 4000) {
+            logger.warn('Idle timeout capped at 4000 seconds since ELB mode is enabled');
+            timeoutDuration = 4000;
+        }
+
+        await store.set({
+            key: 'timeoutDuration',
+            value: timeoutDuration
+        });
+
+        if (!config.modes.elb) return await next();
+        await AwsHandler.setElbTimeout(timeoutDuration).catch(err => logger.error(err));
+
+        next();
     }
 }
 
@@ -48,7 +69,7 @@ module.exports = {
 function addTimer (id) {
     //do not use the timers if manticore isn't configured to use them
     if (!config.modes.inactivityTimer) return;
-    
+
     if (!activityTimers[id]) {
         activityTimers[id] = setTimeout(afterUsageDuration.bind(null, id), usageDuration * 1000);
     }
