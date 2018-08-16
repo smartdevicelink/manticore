@@ -57,7 +57,7 @@ module.exports = {
         });
 
         if (!config.modes.elb) return await next();
-        await AwsHandler.setElbTimeout(timeoutDuration);
+        await AwsHandler.setElbTimeout(timeoutDuration).catch(err => logger.error(err));
 
         next();
     }

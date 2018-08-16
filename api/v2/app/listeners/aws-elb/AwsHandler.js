@@ -186,10 +186,7 @@ AwsHandler.prototype.setElbTimeout = async function (timeout) {
 		},
 		LoadBalancerName: config.manticoreName
 	};
-	var cb = (err, data) => {
-		if (err) logger.debug(err);
-	};
-	await promisify(elb.modifyLoadBalancerAttributes.bind(elb))(params, cb);
+	await promisify(elb.modifyLoadBalancerAttributes.bind(elb))(params);
 }
 
 /**
