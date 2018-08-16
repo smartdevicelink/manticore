@@ -41,6 +41,7 @@ function buildManticoreJobFile () {
         "TCP_PORT_RANGE_END",
         "AWS_REGION",
         "AWS_HAPROXY_GROUP_ID",
+        "AWS_ELB_GROUP_ID",
         "ELB_MANTICORE_NAME",
         "SSL_CERTIFICATE_ARN",
         "ELB_SSL_PORT", 
