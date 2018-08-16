@@ -56,7 +56,6 @@ module.exports = {
                     return Promise.resolve();
                 }
                 const cleanedGroup = cleanSecurityGroup(securityGroup);
-                console.log(JSON.stringify(cleanedGroup, null, 4));
                 return revokeSecurityGroupIngress(cleanedGroup);
             });
 
@@ -79,7 +78,6 @@ module.exports = {
                     return Promise.resolve();
                 }
                 const cleanedGroup = cleanSecurityGroup(securityGroup);
-                console.log(JSON.stringify(cleanedGroup, null, 4));
                 return revokeSecurityGroupIngress(cleanedGroup);
             });
 
