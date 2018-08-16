@@ -1,4 +1,35 @@
-// Copyright (c) 2018, Livio, Inc.
+/*
+ * Copyright (c) 2018 Livio, Inc.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * Redistributions of source code must retain the above copyright notice, this
+ * list of conditions and the following disclaimer.
+ *
+ * Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following
+ * disclaimer in the documentation and/or other materials provided with the
+ * distribution.
+ *
+ * Neither the name of the Livio Inc. nor the names of its contributors
+ * may be used to endorse or promote products derived from this software
+ * without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
 //the master config of which all other config files get their data from
 const config = {
     //USER CONFIGURABLE PROPERTIES
@@ -33,6 +64,8 @@ const config = {
     awsRegion: process.env.AWS_REGION, //the region Manticore is running on in AWS
     //the security group ID that will allow access to Manticore's internal network
     awsHaproxyGroupId: process.env.AWS_HAPROXY_GROUP_ID,
+    //the security group ID that will allow access through Manticore's external load balancer
+    awsElbGroupId: process.env.AWS_ELB_GROUP_ID,
     elbName: process.env.ELB_MANTICORE_NAME, //name of the AWS ELB
     sslCertificateArn: process.env.SSL_CERTIFICATE_ARN, //SSL certificate attached to the AWS ELB
     sslPort: process.env.ELB_SSL_PORT, //SSL port for secure TCP connections
@@ -80,17 +113,20 @@ if (config.awsRegion !== undefined) {
     config.modes.aws = true;
 
     if (config.modes.haproxy
-        && config.awsHaproxyGroupId !== undefined) {
-        config.modes.awsSecurityGroup = true;
-    }
-
-    if (config.modes.haproxy
         && config.elbName !== undefined
         && config.sslPort !== undefined
         && config.sslCertificateArn !== undefined) {
         config.modes.elb = true;
     }
+
+    if (config.modes.haproxy
+        && config.modes.elb
+        && config.awsHaproxyGroupId !== undefined
+        && config.awsElbGroupId !== undefined) {
+        config.modes.awsSecurityGroup = true;
+    }
 }
+
 
 //convert strings to booleans for certain properties
 if (config.resetTimerAllowed === "false") {
