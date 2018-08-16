@@ -7,14 +7,9 @@ const {store, job, logger, websocket} = config;
 let cachedInfo = {};
 
 module.exports = {
-    //finds users in the waiting list not in the request list and clears their cached info
-    "pre-request": async (ctx, next) => {
-        const {requestState, waitingState} = ctx;
-        for (let id in waitingState) {
-            if (!requestState[id]) { //user in waiting is not in the requests
-                clearInfo(id);
-            }
-        }
+    //clears cached info of removed users
+    "removed-request": async (ctx, next) => {
+        clearInfo(ctx.id);
         next();
     },
     //for transmitting position information ASAP to non-claimed users

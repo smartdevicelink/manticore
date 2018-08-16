@@ -87,6 +87,15 @@ async function requestTrigger (requestSetter) {
         requestState: requestState,
         waitingState: waitingState
     };
+
+    //propagate which users are in the waiting list that are not in the request list
+    //this is evidence that a user has been removed from Manticore's system
+    for (let id in waitingState) {
+        if (!requestState[id]) { //user in waiting is not in the requests
+            await listeners['removed-request']({id: id});
+        }
+    }
+
     await listeners['pre-request'](ctx);
     await listeners['request'](ctx);
     await listeners['post-request'](ctx);
