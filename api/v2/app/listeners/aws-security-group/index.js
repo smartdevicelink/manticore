@@ -50,44 +50,46 @@ module.exports = {
 
             //clear out all permissions for this security group
             const securityGroupsHaProxy = await getSecurityGroupInfo(config.awsHaproxyGroupId)
-                .catch(err => logger.error(err));
+                .catch(err => logger.error(new Error(err).stack));
             const removeGroupPromisesHaproxy = securityGroupsHaProxy.SecurityGroups.map(securityGroup => {
                 if (securityGroup.IpPermissions.length === 0) { //no permissions!
                     return Promise.resolve();
                 }
                 const cleanedGroup = cleanSecurityGroup(securityGroup);
+                console.log(JSON.stringify(cleanedGroup, null, 4));
                 return revokeSecurityGroupIngress(cleanedGroup);
             });
 
             await Promise.all(removeGroupPromisesHaproxy)
-                .catch(err => logger.error(err));
+                .catch(err => logger.error(new Error(err).stack));
             //insert a new security group using Manticore's environment settings
             //open up the port that leads to HAProxy
             //also open up the range of TCP ports possible on the API machines
             await authorizeSecurityGroupIngress(createSecurityGroupHaproxy())
-                .catch(err => logger.error(err));
+                .catch(err => logger.error(new Error(err).stack));
 
 
             //for the security group attached to the ELB
 
             //clear out all permissions for this security group
             const securityGroupsElb = await getSecurityGroupInfo(config.awsElbGroupId)
-                .catch(err => logger.error(err));
+                .catch(err => logger.error(new Error(err).stack));
             const removeGroupPromisesElb = securityGroupsElb.SecurityGroups.map(securityGroup => {
                 if (securityGroup.IpPermissions.length === 0) { //no permissions!
                     return Promise.resolve();
                 }
                 const cleanedGroup = cleanSecurityGroup(securityGroup);
+                console.log(JSON.stringify(cleanedGroup, null, 4));
                 return revokeSecurityGroupIngress(cleanedGroup);
             });
 
             await Promise.all(removeGroupPromisesElb)
-                .catch(err => logger.error(err));
+                .catch(err => logger.error(new Error(err).stack));
             //insert a new security group using Manticore's environment settings
             //open up the ports for HTTPS and SSL
             //also open up the range of TCP ports possible on the API machines
             await authorizeSecurityGroupIngress(createSecurityGroupElb())
-                .catch(err => logger.error(err));            
+                .catch(err => logger.error(new Error(err).stack));            
 
         }
         next();
@@ -112,13 +114,20 @@ async function authorizeSecurityGroupIngress (params) {
 //accepts a security group from AWS and reformats it for revoking those same IP permissions
 function cleanSecurityGroup (group) {
     for (let i = 0; i < group.IpPermissions.length; i++) {
-        group.IpPermissions[i] = {
+        const tmp = {
             FromPort: group.IpPermissions[i].FromPort,
             IpProtocol: group.IpPermissions[i].IpProtocol,
-            IpRanges: group.IpPermissions[i].IpRanges,
-            Ipv6Ranges: group.IpPermissions[i].Ipv6Ranges,
             ToPort: group.IpPermissions[i].ToPort,
+        };
+        //make sure IpRanges and Ipv6Ranges are populated first before including them
+        if (group.IpPermissions[i].IpRanges.length > 0) {
+            tmp.IpRanges = group.IpPermissions[i].IpRanges;
         }
+        if (group.IpPermissions[i].Ipv6Ranges.length > 0) {
+            tmp.Ipv6Ranges = group.IpPermissions[i].Ipv6Ranges;
+        }
+
+        group.IpPermissions[i] = tmp;
     }
     return {
         IpPermissions: group.IpPermissions,
