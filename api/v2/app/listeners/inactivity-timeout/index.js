@@ -48,7 +48,7 @@ module.exports = {
 
         var timeoutDuration = parseInt(config.usageDuration) + parseInt(config.warningDuration)
         if (config.modes.elb && timeoutDuration > 4000) {
-            logger.warn('Idle timeout capped at 4000 seconds since ELB mode is enabled');
+            logger.warn(new Error('Idle timeout capped at 4000 seconds since ELB mode is enabled').stack);
             timeoutDuration = 4000;
         }
 
@@ -58,7 +58,7 @@ module.exports = {
         });
 
         if (!config.modes.elb) return await next();
-        await AwsHandler.setElbTimeout(timeoutDuration).catch(err => logger.error(err));
+        await AwsHandler.setElbTimeout(timeoutDuration).catch(err => logger.error(new Error(err).stack));
 
         next();
     }

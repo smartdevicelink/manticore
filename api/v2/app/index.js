@@ -63,7 +63,7 @@ for (let name in config.modes) {
 }
 
 //initialize watches to the KV store
-startWatches().catch(err => logger.error(err));
+startWatches().catch(err => logger.error(new Error(err).stack));
 
 async function startWatches () {
     //load up the listeners to the listener store
