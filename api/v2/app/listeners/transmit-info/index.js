@@ -101,29 +101,29 @@ async function manageClaimedRequests (requests) {
             data: request.services
         };
         storeInfo(id, "services", serviceInfo); //cache service info
-        await websocket.send(id, JSON.stringify(formatAddresses(serviceInfo.data)));
+        await websocket.send(id, JSON.stringify(job.formatAddresses(id, serviceInfo.data)));
     });
 }
 
-function formatAddresses(services){
-    var jsonObj = {};
-    let addressObj = {};
-    for(var service in services){
-        for(var addressName in services[service]){
-            addressObj = services[service][addressName];
-            if(config.modes.haproxy){
-                if(addressObj.isHttp){
-                    jsonObj[addressName] = addressObj.external + '.' + config.haproxyDomain;
-                } else {
-                    jsonObj[addressName] = config.haproxyDomain + ':' + addressObj.external;
-                }
-            } else {
-                jsonObj[addressName] = addressObj.internal;
-            }
-        }
-    }
-    return jsonObj;
-}
+// function formatAddresses(id, services){
+//     var jsonObj = {};
+//     let addressObj = {};
+//     for(var service in services){
+//         for(var addressName in services[service]){
+//             addressObj = services[service][addressName];
+//             if(config.modes.haproxy){
+//                 if(addressObj.isHttp){
+//                     jsonObj[addressName] = addressObj.external + '.' + config.haproxyDomain;
+//                 } else {
+//                     jsonObj[addressName] = config.haproxyDomain + ':' + addressObj.external;
+//                 }
+//             } else {
+//                 jsonObj[addressName] = addressObj.internal;
+//             }
+//         }
+//     }
+//     return jsonObj;
+// }
 
 //cache-related functions
 

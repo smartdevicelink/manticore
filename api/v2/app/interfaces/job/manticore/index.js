@@ -146,10 +146,55 @@ async function advance (ctx) {
     if (currentRequest.state === "pending-1") { //this stage causes an hmi job to run
         const brokerAddress = currentRequest.services.core[`core-broker-${id}-0`].internal;
         const coreFileAddress = currentRequest.services.core[`core-file-${id}-0`].internal;
+
+        let fullBrokerAddress = `ws:\\/\\/${brokerAddress}`; //internal address
+
+        //if haproxy is configured, generate the external addresses
+        if (config.modes.haproxy) {
+            //ensure that the tcp port numbers generated haven't been used before
+            //make the string addresses long enough to be improbable for collisions to ever happen
+            const usedTcpPorts = getUsedTcpPorts(waitingState);
+            const coreTcpPort = await generateTcpPort(config.tcpPortStart, config.tcpPortEnd, usedTcpPorts);
+
+            const externalBrokerAddress = randomString(PATTERN, 16);
+            ctx.currentRequest.services.core[`core-broker-${id}-0`].external = externalBrokerAddress;
+            ctx.currentRequest.services.core[`core-broker-${id}-0`].isHttp = true;
+
+            ctx.currentRequest.services.core[`core-file-${id}-0`].external = randomString(PATTERN, 16);
+            ctx.currentRequest.services.core[`core-file-${id}-0`].isHttp = true;
+
+            ctx.currentRequest.services.core[`core-log-${id}-0`].external = randomString(PATTERN, 16);
+            ctx.currentRequest.services.core[`core-log-${id}-0`].isHttp = true;
+
+            ctx.currentRequest.services.core[`core-tcp-${id}-0`].external = coreTcpPort;
+            ctx.currentRequest.services.core[`core-tcp-${id}-0`].isHttp = false;
+            
+            ctx.currentRequest.services.hmi[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
+            ctx.currentRequest.services.hmi[`hmi-user-${id}-0`].isHttp = true;
+
+            //domain addresses
+            const brokerDomainAddress = `${externalBrokerAddress}.${config.haproxyDomain}`;
+
+            //external address (HAProxy)
+            fullBrokerAddress = `ws:\\/\\/${brokerDomainAddress}:${config.haproxyPort}`; 
+
+            if (config.modes.elb) { //external address (ELB)
+                fullBrokerAddress = `ws:\\/\\/${brokerDomainAddress}:${config.wsPort}`;
+            }
+            
+            if (config.modes.elbEncryptWs) { //secure external address (ELB)
+                fullBrokerAddress = `wss:\\/\\/${brokerDomainAddress}:${config.wsPort}`; 
+            }
+        }
+
         const envs = { //extract service addresses found from the previous stage
-            brokerAddress: `ws:\\/\\/${brokerAddress}`,
-            coreFileAddress: `${coreFileAddress}`,
+            brokerAddress: fullBrokerAddress,
+            coreFileAddress: coreFileAddress,
         };
+
+        console.log("ADDRESSES TO PASS TO HMI");
+        console.log(envs);
+
         //build off the cached core job if it exists
         if (!cachedJobs[id]) {
             cachedJobs[id] = coreSettings.generateJobFile(jobName, currentRequest);
@@ -176,29 +221,6 @@ async function advance (ctx) {
             stateChangeValue: "claimed", //final transition
             servicesKey: "hmi"
         });
-
-        //if haproxy is configured, generate the external addresses
-        if (config.haproxyPort) {
-            //ensure that the tcp port numbers generated haven't been used before
-            //make the string addresses long enough to be improbable for collisions to ever happen
-            const usedTcpPorts = getUsedTcpPorts(waitingState);
-            const coreTcpPort = await generateTcpPort(config.tcpPortStart, config.tcpPortEnd, usedTcpPorts);
-
-            ctx.currentRequest.services.core[`core-broker-${id}-0`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.core[`core-broker-${id}-0`].isHttp = true;
-
-            ctx.currentRequest.services.core[`core-file-${id}-0`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.core[`core-file-${id}-0`].isHttp = true;
-
-            ctx.currentRequest.services.core[`core-log-${id}-0`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.core[`core-log-${id}-0`].isHttp = true;
-
-            ctx.currentRequest.services.core[`core-tcp-${id}-0`].external = coreTcpPort;
-            ctx.currentRequest.services.core[`core-tcp-${id}-0`].isHttp = false;
-            
-            ctx.currentRequest.services.hmi[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.hmi[`hmi-user-${id}-0`].isHttp = true;
-        }
 
         console.log("job done!");
         console.log(JSON.stringify(ctx.currentRequest.services));
@@ -263,10 +285,55 @@ async function generateTcpPort (min, max, blacklistedPorts) {
     return port;
 }
 
+//given a services object, formats the addresses in some friendly manner and returns them for a client
+function formatAddresses (id, services) {
+
+    let finalFormat = { //default to internal addresses
+        "core-broker": services.core[`core-broker-${id}-0`].internal,
+        "core-tcp": services.core[`core-tcp-${id}-0`].internal,
+        "core-file": services.core[`core-file-${id}-0`].internal,
+        "core-log": services.core[`core-log-${id}-0`].internal,
+        "hmi-user": services.hmi[`hmi-user-${id}-0`].internal
+    };
+
+    if (config.modes.haproxy) {
+        const coreBrokerDomain = `${services.core[`core-broker-${id}-0`].external}.${config.haproxyDomain}`;
+        const coreTcpDomain = `${config.haproxyDomain}:${services.core[`core-tcp-${id}-0`].external}`;
+        const coreFileDomain = `${services.core[`core-file-${id}-0`].external}.${config.haproxyDomain}`;
+        const coreLogDomain = `${services.core[`core-log-${id}-0`].external}.${config.haproxyDomain}`;
+        const hmiUserDomain = `${services.hmi[`hmi-user-${id}-0`].external}.${config.haproxyDomain}`;
+        //external addresses (HAProxy)
+        finalFormat["core-broker"] = `ws://${coreBrokerDomain}:${config.haproxyPort}`;
+        finalFormat["core-tcp"] = `${coreTcpDomain}`;
+        finalFormat["core-file"] = `http://${coreBrokerDomain}:${config.haproxyPort}`;
+        finalFormat["core-log"] = `ws://${coreBrokerDomain}:${config.haproxyPort}`;
+        finalFormat["hmi-user"] = `http://${coreBrokerDomain}:${config.haproxyPort}`;
+
+        if (config.modes.elb) { //external addresses (ELB)
+            finalFormat["core-broker"] = `ws://${coreBrokerDomain}:${config.wsPort}`;
+            finalFormat["core-tcp"] = `${coreTcpDomain}`;
+            finalFormat["core-file"] = `http://${coreBrokerDomain}`;
+            finalFormat["core-log"] = `ws://${coreBrokerDomain}:${config.wsPort}`;
+            finalFormat["hmi-user"] = `http://${coreBrokerDomain}`;
+        }
+
+        if (config.modes.elbEncryptWs) { //secure external addresses (ELB)
+            finalFormat["core-broker"] = `wss://${coreBrokerDomain}:${config.wsPort}`;
+            finalFormat["core-tcp"] = `${coreTcpDomain}`;
+            finalFormat["core-file"] = `https://${coreBrokerDomain}`;
+            finalFormat["core-log"] = `wss://${coreBrokerDomain}:${config.wsPort}`;
+            finalFormat["hmi-user"] = `https://${coreBrokerDomain}`;
+        }
+    }
+
+    return finalFormat;
+}
+
 module.exports = {
     jobOptions: jobOptions,
     validate: validate,
     advance: advance,
     idToJobName: idToJobName,
-    idToTaskNames: idToTaskNames
+    idToTaskNames: idToTaskNames,
+    formatAddresses: formatAddresses
 }

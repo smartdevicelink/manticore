@@ -192,7 +192,7 @@ function createSecurityGroupElb () {
                 "ToPort": 443
             },
             {
-                "FromPort": config.sslPort,
+                "FromPort": config.wsPort,
                 "IpProtocol": "tcp",
                 "IpRanges": [
                     {
@@ -204,7 +204,7 @@ function createSecurityGroupElb () {
                         "CidrIpv6": "::/0"
                     }
                 ],
-                "ToPort": config.sslPort
+                "ToPort": config.wsPort
             },
             {
                 "FromPort": config.tcpPortStart,

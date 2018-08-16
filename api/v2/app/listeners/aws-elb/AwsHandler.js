@@ -35,33 +35,54 @@ AwsHandler.prototype.changeState = async function (waitingState) {
     //first, find and remove all ports that don't need to be listened on anymore
     //then, find and add all ports that need to be listened on
     //port 443 should always be open for HTTPS connections
-    //the websocket connections should always be open to whatever ELB_SSL_PORT is
-    var expectedListeners = [new Listener({
-        Protocol: "HTTPS",
-        LoadBalancerPort: 443,
+    //the websocket connection should always be open to whatever config.wsPort is
+
+    const httpListener = new Listener({
+        Protocol: "HTTP",
+        LoadBalancerPort: 80,
         InstanceProtocol: "HTTP",
         InstancePort: config.haproxyPort,
-        SSLCertificateId: config.sslCertificateArn
-    }),
-    new Listener({
-        Protocol: "SSL",
-        LoadBalancerPort: config.sslPort,
+    });
+    const wsListener = new Listener({
+        Protocol: "TCP",
+        LoadBalancerPort: config.wsPort,
         InstanceProtocol: "TCP",
         InstancePort: config.haproxyPort,
-        SSLCertificateId: config.sslCertificateArn
-    })];
+    });
+
+    if (config.modes.elbEncryptHttp) {
+        httpListener.Protocol = "HTTPS";
+        httpListener.LoadBalancerPort = 443;
+        httpListener.SSLCertificateId = config.sslCertificateArn;
+    }
+
+    if (config.modes.elbEncryptWs) {
+        httpListener.Protocol = "SSL";
+        httpListener.SSLCertificateId = config.sslCertificateArn;
+    }
+
+    let expectedListeners = [httpListener, wsListener];
+
+
 
 	for(var id in waitingState){
 	    if(waitingState[id].state == 'claimed'){
 	        for(var service in waitingState[id].services){
 	            for(var addressObj in waitingState[id].services[service]){
 	                if(!waitingState[id].services[service][addressObj].isHttp){
-	                    expectedListeners.push(new Listener({
-				            Protocol: "TCP",
-				            LoadBalancerPort: waitingState[id].services[service][addressObj].external,
-				            InstanceProtocol: "TCP",
-				            InstancePort: waitingState[id].services[service][addressObj].external
-				        }));
+                        const listener = new Listener({
+                            Protocol: "TCP",
+                            LoadBalancerPort: waitingState[id].services[service][addressObj].external,
+                            InstanceProtocol: "TCP",
+                            InstancePort: waitingState[id].services[service][addressObj].external
+                        })
+
+                        if (config.modes.elbEncryptTcp) {
+                            listener.Protocol = "SSL";
+                            listener.SSLCertificateId = config.sslCertificateArn;
+                        }
+    
+	                    expectedListeners.push(listener);
 				    }
 	            }
 	        }

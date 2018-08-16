@@ -44,7 +44,10 @@ function buildManticoreJobFile () {
         "AWS_ELB_GROUP_ID",
         "ELB_MANTICORE_NAME",
         "SSL_CERTIFICATE_ARN",
-        "ELB_SSL_PORT", 
+        "ELB_WS_PORT", 
+        "ELB_ENCRYPT_HTTP",
+        "ELB_ENCRYPT_WS",
+        "ELB_ENCRYPT_TCP",
 	]);
 	job.addService(groupName, taskName, serviceName);
 	job.setPortLabel(groupName, taskName, serviceName, "http");
