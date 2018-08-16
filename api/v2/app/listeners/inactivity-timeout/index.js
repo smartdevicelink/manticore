@@ -47,7 +47,7 @@ module.exports = {
 
         var timeoutDuration = parseInt(config.usageDuration) + parseInt(config.warningDuration)
         if (config.modes.elb && timeoutDuration > 4000) {
-            logger.debug('Idle timeout capped at 4000 seconds since ELB mode is enabled');
+            logger.warn('Idle timeout capped at 4000 seconds since ELB mode is enabled');
             timeoutDuration = 4000;
         }
 
