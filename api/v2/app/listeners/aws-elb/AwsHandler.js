@@ -185,7 +185,7 @@ AwsHandler.prototype.setElbTimeout = async function (timeout) {
 				IdleTimeout: timeout
 			}
 		},
-		LoadBalancerName: config.manticoreName
+		LoadBalancerName: config.elbName
 	};
 	await promisify(elb.modifyLoadBalancerAttributes.bind(elb))(params);
 }
@@ -207,7 +207,7 @@ function addListeners (listeners, callback) {
     if (listeners.length > 0) { //only make a call if listeners has data
         elb.createLoadBalancerListeners(params, (err, data) => {
             if (err) {
-                logger.error(err);
+                logger.error(new Error(err).stack);
             }
             callback();
         });
@@ -229,7 +229,7 @@ function removeListeners (lbPorts, callback) {
     if (lbPorts.length > 0) {
         elb.deleteLoadBalancerListeners(params, (err, data) => {
             if (err) {
-                logger.error(err);
+                logger.error(new Error(err).stack);
             }
             callback();
         });

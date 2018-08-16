@@ -86,7 +86,7 @@ module.exports = app => {
         if (!result.isValid) return handle400(ctx, result.errorMessage);
         //attempt to store the user request
         const wsAddress = await logic.storeRequest(ID, result.body)
-            .catch(err => logger.error(err));
+            .catch(err => logger.error(new Error(err).stack));
         ctx.response.status = 200;
         ctx.response.body = {
             address: wsAddress
@@ -101,7 +101,7 @@ module.exports = app => {
         if (!check.string(ID)) return handle400(ctx, "Invalid or missing id");
         //attempt to delete the user request
         await logic.deleteRequest(ID)
-            .catch(err => logger.error(err));
+            .catch(err => logger.error(new Error(err).stack));
         ctx.response.status = 200;
     });
 

@@ -251,7 +251,7 @@ async function generateTcpPort (min, max, blacklistedPorts) {
     const range = max - min + 1;
     const portsTakenPercentage = blacklistedPorts.length / range;
     if (portsTakenPercentage >= PORTS_USED_THRESHOLD) {
-        logger.warn("Port supply running low! Percentage used: " + portsTakenPercentage);
+        logger.warn(new Error("Port supply running low! Percentage used: " + portsTakenPercentage).stack);
     }
     let foundPort = false;
     let port;
