@@ -44,7 +44,7 @@ module.exports = {
             logger.debug("Updated user in waiting: " + JSON.stringify(request));
         }
         else {
-            logger.warn(new Error(`User ${ctx.currentRequest.id} has been booted off the store!`).stack);
+            logger.warn(`User ${ctx.currentRequest.id} has been booted off the store!`);
         }
         next();
     },

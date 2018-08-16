@@ -86,7 +86,8 @@ module.exports = {
             //insert a new security group using Manticore's environment settings
             //open up the ports for HTTPS and SSL
             //also open up the range of TCP ports possible on the API machines
-            await authorizeSecurityGroupIngress(createSecurityGroupElb())
+
+            await authorizeSecurityGroupIngress(createSecurityGroupElb(config.modes.elbEncryptHttp))
                 .catch(err => logger.error(new Error(err).stack));            
 
         }
@@ -173,11 +174,12 @@ function createSecurityGroupHaproxy () {
 }
 
 //uses the config object to create the JSON
-function createSecurityGroupElb () {
+function createSecurityGroupElb (useHttps) {
+    const httpPort = useHttps ? 443 : 80;
     return {
         "IpPermissions": [
             {
-                "FromPort": 443,
+                "FromPort": httpPort,
                 "IpProtocol": "tcp",
                 "IpRanges": [
                     {
@@ -189,10 +191,10 @@ function createSecurityGroupElb () {
                         "CidrIpv6": "::/0"
                     }
                 ],
-                "ToPort": 443
+                "ToPort": httpPort
             },
             {
-                "FromPort": config.sslPort,
+                "FromPort": config.wsPort,
                 "IpProtocol": "tcp",
                 "IpRanges": [
                     {
@@ -204,7 +206,7 @@ function createSecurityGroupElb () {
                         "CidrIpv6": "::/0"
                     }
                 ],
-                "ToPort": config.sslPort
+                "ToPort": config.wsPort
             },
             {
                 "FromPort": config.tcpPortStart,

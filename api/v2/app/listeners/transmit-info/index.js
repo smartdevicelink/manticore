@@ -7,14 +7,9 @@ const {store, job, logger, websocket} = config;
 let cachedInfo = {};
 
 module.exports = {
-    //finds users in the waiting list not in the request list and clears their cached info
-    "pre-request": async (ctx, next) => {
-        const {requestState, waitingState} = ctx;
-        for (let id in waitingState) {
-            if (!requestState[id]) { //user in waiting is not in the requests
-                clearInfo(id);
-            }
-        }
+    //clears cached info of removed users
+    "removed-request": async (ctx, next) => {
+        clearInfo(ctx.id);
         next();
     },
     //for transmitting position information ASAP to non-claimed users
@@ -58,12 +53,11 @@ module.exports = {
         //if instance information already exists for this user, then send it
         const positionInfo = getInfo(ctx.id, "position");
         const serviceInfo = getInfo(ctx.id, "services");
-
         if (positionInfo) {
             await websocket.send(ctx.id, JSON.stringify(positionInfo));
         }
         if (serviceInfo) {
-            await websocket.send(ctx.id, JSON.stringify(formatAddresses(serviceInfo.data)));
+            await websocket.send(ctx.id, JSON.stringify(job.formatAddresses(ctx.id, serviceInfo.data)));
         }
         next();
     }
@@ -101,28 +95,8 @@ async function manageClaimedRequests (requests) {
             data: request.services
         };
         storeInfo(id, "services", serviceInfo); //cache service info
-        await websocket.send(id, JSON.stringify(formatAddresses(serviceInfo.data)));
+        await websocket.send(id, JSON.stringify(job.formatAddresses(id, serviceInfo.data)));
     });
-}
-
-function formatAddresses(services){
-    var jsonObj = {};
-    let addressObj = {};
-    for(var service in services){
-        for(var addressName in services[service]){
-            addressObj = services[service][addressName];
-            if(config.modes.haproxy){
-                if(addressObj.isHttp){
-                    jsonObj[addressName] = addressObj.external + '.' + config.haproxyDomain;
-                } else {
-                    jsonObj[addressName] = config.haproxyDomain + ':' + addressObj.external;
-                }
-            } else {
-                jsonObj[addressName] = addressObj.internal;
-            }
-        }
-    }
-    return jsonObj;
 }
 
 //cache-related functions
