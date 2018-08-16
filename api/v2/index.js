@@ -72,7 +72,8 @@ module.exports = app => {
     //return all viable job types
     router.get(`${API_PREFIX}/job`, async (ctx, next) => {
         logger.debug(`GET ${API_PREFIX}/job`);
-        ctx.response.body = await logic.getJobInfo();
+        ctx.response.body = await logic.getJobInfo()
+            .catch(err => logger.error(new Error(err).stack));
     });
 
     //submit a job for a user
@@ -82,15 +83,33 @@ module.exports = app => {
         const ID = ctx.request.body.id;
         if (!check.string(ID)) return handle400(ctx, "Invalid or missing id");
         //validate the input
-        const result = await logic.validateJob(ctx.request.body);
+        const result = await logic.validateJob(ctx.request.body)
+            .catch(err => logger.error(new Error(err).stack));
         if (!result.isValid) return handle400(ctx, result.errorMessage);
         //attempt to store the user request
         const wsAddress = await logic.storeRequest(ID, result.body)
             .catch(err => logger.error(new Error(err).stack));
         ctx.response.status = 200;
+
+        //return address information to use for connection
+        //these values change depending on the modes enabled
         ctx.response.body = {
-            address: wsAddress
+            path: `${API_PREFIX}/job/`,
+            protocol: 'ws',
+            passcode: wsAddress,
         };
+
+        if (config.modes.haproxy) {
+            ctx.response.body.port = config.haproxyPort;
+            ctx.response.body.domain = config.haproxyDomain;
+
+            if (config.modes.elb) { //ws addresses (ELB)
+                ctx.response.body.port = config.wsPort;
+            }
+            if (config.modes.elbEncryptWs) { //secure ws addresses (ELB)
+                ctx.response.body.protocol = 'wss';
+            }
+        }
     });
 
     //stops a job for a user

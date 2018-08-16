@@ -58,12 +58,11 @@ module.exports = {
         //if instance information already exists for this user, then send it
         const positionInfo = getInfo(ctx.id, "position");
         const serviceInfo = getInfo(ctx.id, "services");
-
         if (positionInfo) {
             await websocket.send(ctx.id, JSON.stringify(positionInfo));
         }
         if (serviceInfo) {
-            await websocket.send(ctx.id, JSON.stringify(formatAddresses(serviceInfo.data)));
+            await websocket.send(ctx.id, JSON.stringify(job.formatAddresses(ctx.id, serviceInfo.data)));
         }
         next();
     }
@@ -104,26 +103,6 @@ async function manageClaimedRequests (requests) {
         await websocket.send(id, JSON.stringify(job.formatAddresses(id, serviceInfo.data)));
     });
 }
-
-// function formatAddresses(id, services){
-//     var jsonObj = {};
-//     let addressObj = {};
-//     for(var service in services){
-//         for(var addressName in services[service]){
-//             addressObj = services[service][addressName];
-//             if(config.modes.haproxy){
-//                 if(addressObj.isHttp){
-//                     jsonObj[addressName] = addressObj.external + '.' + config.haproxyDomain;
-//                 } else {
-//                     jsonObj[addressName] = config.haproxyDomain + ':' + addressObj.external;
-//                 }
-//             } else {
-//                 jsonObj[addressName] = addressObj.internal;
-//             }
-//         }
-//     }
-//     return jsonObj;
-// }
 
 //cache-related functions
 

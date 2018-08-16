@@ -157,21 +157,18 @@ async function advance (ctx) {
             const coreTcpPort = await generateTcpPort(config.tcpPortStart, config.tcpPortEnd, usedTcpPorts);
 
             const externalBrokerAddress = randomString(PATTERN, 16);
-            ctx.currentRequest.services.core[`core-broker-${id}-0`].external = externalBrokerAddress;
-            ctx.currentRequest.services.core[`core-broker-${id}-0`].isHttp = true;
+            currentRequest.services.core[`core-broker-${id}-0`].external = externalBrokerAddress;
+            currentRequest.services.core[`core-broker-${id}-0`].isHttp = true;
 
-            ctx.currentRequest.services.core[`core-file-${id}-0`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.core[`core-file-${id}-0`].isHttp = true;
+            currentRequest.services.core[`core-file-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.core[`core-file-${id}-0`].isHttp = true;
 
-            ctx.currentRequest.services.core[`core-log-${id}-0`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.core[`core-log-${id}-0`].isHttp = true;
+            currentRequest.services.core[`core-log-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.core[`core-log-${id}-0`].isHttp = true;
 
-            ctx.currentRequest.services.core[`core-tcp-${id}-0`].external = coreTcpPort;
-            ctx.currentRequest.services.core[`core-tcp-${id}-0`].isHttp = false;
+            currentRequest.services.core[`core-tcp-${id}-0`].external = coreTcpPort;
+            currentRequest.services.core[`core-tcp-${id}-0`].isHttp = false;
             
-            ctx.currentRequest.services.hmi[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
-            ctx.currentRequest.services.hmi[`hmi-user-${id}-0`].isHttp = true;
-
             //domain addresses
             const brokerDomainAddress = `${externalBrokerAddress}.${config.haproxyDomain}`;
 
@@ -191,9 +188,6 @@ async function advance (ctx) {
             brokerAddress: fullBrokerAddress,
             coreFileAddress: coreFileAddress,
         };
-
-        console.log("ADDRESSES TO PASS TO HMI");
-        console.log(envs);
 
         //build off the cached core job if it exists
         if (!cachedJobs[id]) {
@@ -222,8 +216,11 @@ async function advance (ctx) {
             servicesKey: "hmi"
         });
 
-        console.log("job done!");
-        console.log(JSON.stringify(ctx.currentRequest.services));
+        //if haproxy is configured, generate the external addresses
+        if (config.modes.haproxy) {
+            currentRequest.services.hmi[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.hmi[`hmi-user-${id}-0`].isHttp = true;
+        }
 
         return; //done
     }
@@ -305,24 +302,30 @@ function formatAddresses (id, services) {
         //external addresses (HAProxy)
         finalFormat["core-broker"] = `ws://${coreBrokerDomain}:${config.haproxyPort}`;
         finalFormat["core-tcp"] = `${coreTcpDomain}`;
-        finalFormat["core-file"] = `http://${coreBrokerDomain}:${config.haproxyPort}`;
-        finalFormat["core-log"] = `ws://${coreBrokerDomain}:${config.haproxyPort}`;
-        finalFormat["hmi-user"] = `http://${coreBrokerDomain}:${config.haproxyPort}`;
+        finalFormat["core-file"] = `http://${coreFileDomain}:${config.haproxyPort}`;
+        finalFormat["core-log"] = `ws://${coreLogDomain}:${config.haproxyPort}`;
+        finalFormat["hmi-user"] = `http://${hmiUserDomain}:${config.haproxyPort}`;
 
         if (config.modes.elb) { //external addresses (ELB)
             finalFormat["core-broker"] = `ws://${coreBrokerDomain}:${config.wsPort}`;
-            finalFormat["core-tcp"] = `${coreTcpDomain}`;
-            finalFormat["core-file"] = `http://${coreBrokerDomain}`;
-            finalFormat["core-log"] = `ws://${coreBrokerDomain}:${config.wsPort}`;
-            finalFormat["hmi-user"] = `http://${coreBrokerDomain}`;
+            finalFormat["core-file"] = `http://${coreFileDomain}`;
+            finalFormat["core-log"] = `ws://${coreLogDomain}:${config.wsPort}`;
+            finalFormat["hmi-user"] = `http://${hmiUserDomain}`;
+        }
+
+        if (config.modes.elbEncryptHttp) { //secure external addresses (ELB)
+            finalFormat["core-file"] = `https://${coreFileDomain}`;
+            finalFormat["hmi-user"] = `https://${hmiUserDomain}`;
         }
 
         if (config.modes.elbEncryptWs) { //secure external addresses (ELB)
             finalFormat["core-broker"] = `wss://${coreBrokerDomain}:${config.wsPort}`;
-            finalFormat["core-tcp"] = `${coreTcpDomain}`;
-            finalFormat["core-file"] = `https://${coreBrokerDomain}`;
-            finalFormat["core-log"] = `wss://${coreBrokerDomain}:${config.wsPort}`;
-            finalFormat["hmi-user"] = `https://${coreBrokerDomain}`;
+            finalFormat["core-log"] = `wss://${coreLogDomain}:${config.wsPort}`;
+        }
+
+        if (config.modes.elbEncryptWs) { //secure external addresses (ELB)
+            finalFormat["core-broker"] = `wss://${coreBrokerDomain}:${config.wsPort}`;
+            finalFormat["core-log"] = `wss://${coreLogDomain}:${config.wsPort}`;
         }
     }
 

@@ -57,13 +57,11 @@ AwsHandler.prototype.changeState = async function (waitingState) {
     }
 
     if (config.modes.elbEncryptWs) {
-        httpListener.Protocol = "SSL";
-        httpListener.SSLCertificateId = config.sslCertificateArn;
+        wsListener.Protocol = "SSL";
+        wsListener.SSLCertificateId = config.sslCertificateArn;
     }
 
     let expectedListeners = [httpListener, wsListener];
-
-
 
 	for(var id in waitingState){
 	    if(waitingState[id].state == 'claimed'){
