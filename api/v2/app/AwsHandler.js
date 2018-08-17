@@ -2,7 +2,7 @@
 const AWS = require('aws-sdk');
 const elb = new AWS.ELB();
 const cloudWatch = new AWS.CloudWatch();
-const config = require('../../config.js')
+const config = require('./config.js')
 const logger = config.logger;
 const promisify = require('util').promisify;
 
