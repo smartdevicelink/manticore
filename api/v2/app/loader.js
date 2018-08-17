@@ -10,6 +10,7 @@ const listenerOptions = [
     { name: "ws-message", isMainHook: false},
     { name: "ws-disconnect", isMainHook: false},
     { name: "startup", isMainHook: false},
+    { name: "removed-request", isMainHook: false},
     { name: "pre-request", isMainHook: false},
     { name: "request", isMainHook: true},
     { name: "post-request", isMainHook: false},

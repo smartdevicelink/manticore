@@ -67,8 +67,11 @@ const config = {
     //the security group ID that will allow access through Manticore's external load balancer
     awsElbGroupId: process.env.AWS_ELB_GROUP_ID,
     elbName: process.env.ELB_MANTICORE_NAME, //name of the AWS ELB
+    elbEncryptHttp: process.env.ELB_ENCRYPT_HTTP, //whether to encrypt HTTP traffic to jobs and to the server
+    elbEncryptWs: process.env.ELB_ENCRYPT_WS, //whether to encrypt WS traffic to the server
+    elbEncryptTcp: process.env.ELB_ENCRYPT_TCP, //whether to encrypt TCP traffic to jobs
     sslCertificateArn: process.env.SSL_CERTIFICATE_ARN, //SSL certificate attached to the AWS ELB
-    sslPort: process.env.ELB_SSL_PORT, //SSL port for secure TCP connections
+    wsPort: process.env.ELB_WS_PORT, //WS port for TCP connections
 
     awsRegion: process.env.AWS_REGION,
     namespace: process.env.CLOUD_WATCH_NAMESPACE,
@@ -89,8 +92,63 @@ const config = {
         aws: false,
         awsSecurityGroup: false,
         elb: false,
+        elbEncryptHttp: false,
+        elbEncryptWs: false,
+        elbEncryptTcp: false,
     }
 };
+
+//convert strings to booleans for certain properties
+if (config.resetTimerAllowed === "false") {
+    config.resetTimerAllowed = false;
+}
+if (config.resetTimerAllowed === "true") {
+    config.resetTimerAllowed = true;
+}
+if (config.webpageDisabled === "false") {
+    config.webpageDisabled = false;
+}
+if (config.webpageDisabled === "true") {
+    config.webpageDisabled = true;
+}
+if (config.elbEncryptHttp === "false") {
+    config.elbEncryptHttp = false;
+}
+if (config.elbEncryptHttp === "true") {
+    config.elbEncryptHttp = true;
+}
+if (config.elbEncryptWs === "false") {
+    config.elbEncryptWs = false;
+}
+if (config.elbEncryptWs === "true") {
+    config.elbEncryptWs = true;
+}
+if (config.elbEncryptTcp === "false") {
+    config.elbEncryptTcp = false;
+}
+if (config.elbEncryptTcp === "true") {
+    config.elbEncryptTcp = true;
+}
+
+//convert strings to numbers for certain properties
+if (config.httpPort !== undefined) {
+    config.httpPort = Number(config.httpPort);
+}
+if (config.nomadAgentPort !== undefined) {
+    config.nomadAgentPort = Number(config.nomadAgentPort);
+}
+if (config.consulAgentPort !== undefined) {
+    config.consulAgentPort = Number(config.consulAgentPort);
+}
+if (config.tcpPortStart !== undefined) {
+    config.tcpPortStart = Number(config.tcpPortStart);
+}
+if (config.tcpPortEnd !== undefined) {
+    config.tcpPortEnd = Number(config.tcpPortEnd);
+}
+if (config.wsPort !== undefined) {
+    config.wsPort = Number(config.wsPort);
+}
 
 //provide properties to easily determine whether certain modes of manticore are enabled
 
@@ -114,8 +172,7 @@ if (config.awsRegion !== undefined) {
 
     if (config.modes.haproxy
         && config.elbName !== undefined
-        && config.sslPort !== undefined
-        && config.sslCertificateArn !== undefined) {
+        && config.wsPort !== undefined) {
         config.modes.elb = true;
     }
 
@@ -125,41 +182,23 @@ if (config.awsRegion !== undefined) {
         && config.awsElbGroupId !== undefined) {
         config.modes.awsSecurityGroup = true;
     }
+
+    //encryption modes
+    if (config.modes.haproxy
+        && config.modes.elb
+        && config.sslCertificateArn !== undefined) {
+        if (config.elbEncryptHttp) {
+            config.modes.elbEncryptHttp = true;
+        }
+        if (config.elbEncryptWs) {
+            config.modes.elbEncryptWs = true;
+        }
+        if (config.elbEncryptTcp) {
+            config.modes.elbEncryptTcp = true;
+        }
+    }
+
 }
 
-
-//convert strings to booleans for certain properties
-if (config.resetTimerAllowed === "false") {
-    config.resetTimerAllowed = false;
-}
-if (config.resetTimerAllowed === "true") {
-    config.resetTimerAllowed = true;
-}
-if (config.webpageDisabled === "false") {
-    config.webpageDisabled = false;
-}
-if (config.webpageDisabled === "true") {
-    config.webpageDisabled = true;
-}
-
-//convert strings to numbers for certain properties
-if (config.httpPort !== undefined) {
-    config.httpPort = Number(config.httpPort);
-}
-if (config.nomadAgentPort !== undefined) {
-    config.nomadAgentPort = Number(config.nomadAgentPort);
-}
-if (config.consulAgentPort !== undefined) {
-    config.consulAgentPort = Number(config.consulAgentPort);
-}
-if (config.tcpPortStart !== undefined) {
-    config.tcpPortStart = Number(config.tcpPortStart);
-}
-if (config.tcpPortEnd !== undefined) {
-    config.tcpPortEnd = Number(config.tcpPortEnd);
-}
-if (config.sslPort !== undefined) {
-    config.sslPort = Number(config.sslPort);
-}
 
 module.exports = config;
