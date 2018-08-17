@@ -3,7 +3,7 @@ const parent = require('../../index.js');
 const config = require('../../config.js');
 const {store, job, logger, websocket, usageDuration, warningDuration} = config;
 const utils = require('../../utils');
-const AwsHandler = require('../aws-elb/AwsHandler.js')();
+const AwsHandler = require('../../AwsHandler.js')();
 
 //module that will force the request's removal if the client does not send an activity update often enough
 
