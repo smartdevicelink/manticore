@@ -64,8 +64,9 @@ module.exports = app => {
 
     /* API ROUTES */
 
-    //health endpoint
-    router.get('/health', async (ctx, next) => {
+
+    //health endpoints
+    router.get(['/', '/health'], async (ctx, next) => {
         ctx.response.status = 200;
     });
 
