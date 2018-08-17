@@ -76,6 +76,9 @@ const config = {
     awsRegion: process.env.AWS_REGION,
     namespace: process.env.CLOUD_WATCH_NAMESPACE,
 
+    cors: process.env.CORS,
+    allowedRemote: process.env.ALLOWED_REMOTE,
+
     //RESERVED PROPERTIES FOR MANTICORE'S USE
 
     //manticore interface modules

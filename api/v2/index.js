@@ -53,6 +53,10 @@ module.exports = app => {
         });
     }
 
+    if (config.cors){
+        //insert cors middleware here
+    }
+
     //consolidate the identification types to the id property in the body
     app.use(async (ctx, next) => {
         if (config.jwtSecret && ctx.request.user) {

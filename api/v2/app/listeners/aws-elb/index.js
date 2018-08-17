@@ -1,6 +1,6 @@
 // Copyright (c) 2018, Livio, Inc.
 const config = require('../../config.js');
-const AwsHandler = require('./AwsHandler.js')();
+const AwsHandler = require('../../AwsHandler.js')();
 
 module.exports = {
 	"post-waiting-job-advance": async (ctx, next) =>{

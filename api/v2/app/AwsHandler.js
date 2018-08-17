@@ -2,12 +2,12 @@
 const AWS = require('aws-sdk');
 const elb = new AWS.ELB();
 const cloudWatch = new AWS.CloudWatch();
-const config = require('../../config.js')
+const config = require('./config.js')
 const logger = config.logger;
 const promisify = require('util').promisify;
 
 module.exports = function(){
-	return new AwsHandler();
+    return new AwsHandler();
 }
 /**
 * Allows usage of the AWS SDK API
@@ -63,11 +63,11 @@ AwsHandler.prototype.changeState = async function (waitingState) {
 
     let expectedListeners = [httpListener, wsListener];
 
-	for(var id in waitingState){
-	    if(waitingState[id].state == 'claimed'){
-	        for(var service in waitingState[id].services){
-	            for(var addressObj in waitingState[id].services[service]){
-	                if(!waitingState[id].services[service][addressObj].isHttp){
+    for(var id in waitingState){
+        if(waitingState[id].state == 'claimed'){
+            for(var service in waitingState[id].services){
+                for(var addressObj in waitingState[id].services[service]){
+                    if(!waitingState[id].services[service][addressObj].isHttp){
                         const listener = new Listener({
                             Protocol: "TCP",
                             LoadBalancerPort: waitingState[id].services[service][addressObj].external,
@@ -80,12 +80,12 @@ AwsHandler.prototype.changeState = async function (waitingState) {
                             listener.SSLCertificateId = config.sslCertificateArn;
                         }
     
-	                    expectedListeners.push(listener);
-				    }
-	            }
-	        }
-	    }
-	}
+                        expectedListeners.push(listener);
+                    }
+                }
+            }
+        }
+    }
     //determine which listeners need to be added and which need to be removed
     var listenerChanges = calculateListenerChanges(expectedListeners, actualListeners);
     //ALWAYS remove unneeded listeners before adding needed listeners
@@ -198,15 +198,15 @@ async function describeLoadBalancer () {
  * Sets the idleTimeout for the Manticore load balancer
  */
 AwsHandler.prototype.setElbTimeout = async function (timeout) {
-	var params = {
-		LoadBalancerAttributes: {
-			ConnectionSettings: {
-				IdleTimeout: timeout
-			}
-		},
-		LoadBalancerName: config.elbName
-	};
-	await promisify(elb.modifyLoadBalancerAttributes.bind(elb))(params);
+    var params = {
+        LoadBalancerAttributes: {
+            ConnectionSettings: {
+                IdleTimeout: timeout
+            }
+        },
+        LoadBalancerName: config.elbName
+    };
+    await promisify(elb.modifyLoadBalancerAttributes.bind(elb))(params);
 }
 
 /**
