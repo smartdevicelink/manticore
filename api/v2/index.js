@@ -49,9 +49,11 @@ module.exports = app => {
         forbidden: '403: Forbidden'
     }
 
-    if (config.modes.cors){
-        corsOptions.filter = [config.allowedIpv6];
-        app.use(ipFilter(corsOptions));
+    if (config.cors){
+        if (config.allowedIpv6) {
+            corsOptions.filter = [config.allowedIpv6];
+            app.use(ipFilter(corsOptions));
+        }
     } else {
         // disallow all incoming traffic
         corsOptions.filter = ['!*'];
