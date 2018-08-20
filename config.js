@@ -77,7 +77,7 @@ const config = {
     namespace: process.env.CLOUD_WATCH_NAMESPACE,
 
     cors: process.env.CORS,
-    allowedRemote: process.env.ALLOWED_REMOTE,
+    allowedIpv6: process.env.ALLOWED_IPV6, //the address which is allowed to make requests to manticore
 
     //RESERVED PROPERTIES FOR MANTICORE'S USE
 
@@ -98,6 +98,7 @@ const config = {
         elbEncryptHttp: false,
         elbEncryptWs: false,
         elbEncryptTcp: false,
+        cors: false,
     }
 };
 
@@ -131,6 +132,12 @@ if (config.elbEncryptTcp === "false") {
 }
 if (config.elbEncryptTcp === "true") {
     config.elbEncryptTcp = true;
+}
+if (config.cors === "false") {
+    config.cors = false;
+}
+if (config.cors === "true") {
+    config.cors = true;
 }
 
 //convert strings to numbers for certain properties
@@ -201,6 +208,11 @@ if (config.awsRegion !== undefined) {
         }
     }
 
+}
+
+if (config.cors
+    && config.allowedIpv6) {
+    config.modes.cors = true;
 }
 
 
