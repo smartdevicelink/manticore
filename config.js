@@ -132,6 +132,12 @@ if (config.elbEncryptTcp === "false") {
 if (config.elbEncryptTcp === "true") {
     config.elbEncryptTcp = true;
 }
+if (config.cors === "false") {
+    config.cors = false;
+}
+if (config.cors === "true") {
+    config.cors = true;
+}
 
 //convert strings to numbers for certain properties
 if (config.httpPort !== undefined) {
