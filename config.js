@@ -98,7 +98,6 @@ const config = {
         elbEncryptHttp: false,
         elbEncryptWs: false,
         elbEncryptTcp: false,
-        cors: false,
     }
 };
 
@@ -132,12 +131,6 @@ if (config.elbEncryptTcp === "false") {
 }
 if (config.elbEncryptTcp === "true") {
     config.elbEncryptTcp = true;
-}
-if (config.cors === "false") {
-    config.cors = false;
-}
-if (config.cors === "true") {
-    config.cors = true;
 }
 
 //convert strings to numbers for certain properties
@@ -208,11 +201,6 @@ if (config.awsRegion !== undefined) {
         }
     }
 
-}
-
-if (config.cors
-    && config.allowedIpv6) {
-    config.modes.cors = true;
 }
 
 
