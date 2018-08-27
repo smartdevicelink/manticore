@@ -173,7 +173,7 @@ if (config.usageDuration !== undefined
     config.modes.inactivityTimer = true;
 }
 if (config.jwtSecret !== undefined) {
-    config.modes.jwtEnabled = true;
+    config.modes.jwt = true;
 }
 
 if (config.awsRegion !== undefined) {
