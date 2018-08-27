@@ -29,7 +29,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
- 
+
 const check = require('check-types');
 const jwt = require('koa-jwt');
 const websockify = require('koa-websocket');
@@ -62,18 +62,13 @@ module.exports = app => {
 
     //all routes under /api/v2 are eligible for identification via JWT if enabled
     if (config.modes.jwt) {
-        app.use(async (ctx, next) => {
-            if (!ctx.request.url.startsWith(API_PREFIX)) return await next();
-            await jwt({secret: config.jwtSecret});
-            await next();
-        });
+        app.use(jwt({secret: config.jwtSecret}).unless({path: [/^(?!\/api\/v2).+/]}));
     }
 
     //consolidate the identification types to the id property in the body
     app.use(async (ctx, next) => {
-        if (config.jwtSecret && ctx.request.user) {
-            var id = ctx.request.user.user_id;
-            ctx.request.body.id = id;
+        if (config.modes.jwt && ctx.state.user) {
+            ctx.request.body.id = '' + ctx.state.user.user_id;
         }
         await next();
     });
@@ -141,7 +136,7 @@ module.exports = app => {
         ctx.response.status = 200;
     });
 
-    app.use(router.routes()); //load API router middleware 
+    app.use(router.routes()); //load API router middleware
 
     //hook up websockets to koa
     websockify(app);
@@ -168,17 +163,17 @@ module.exports = app => {
         }
 
         //validated and found the id! listen to future events
-        logic.onConnection(id, ctx.websocket); 
+        logic.onConnection(id, ctx.websocket);
 
         ctx.websocket.on('message', async message => {
-            logic.onMessage(id, message, ctx.websocket); 
+            logic.onMessage(id, message, ctx.websocket);
         });
 
         ctx.websocket.on('close', async () => {
             //reset the passcode for this user
             await websocket.deletePasscode(id);
             logic.onDisconnection(id, ctx.websocket);
-        });         
+        });
 
         next();
     });
