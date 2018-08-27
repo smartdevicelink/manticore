@@ -83,7 +83,16 @@ module.exports = app => {
 
     //health endpoints
     router.get(['/', '/health'], async (ctx, next) => {
-        ctx.response.status = 200;
+        const status = await logic.getHealth();
+        if (status.isHealthy) {
+            ctx.response.status = 200;
+        }
+        else if (status.stuckWaiting) { //no more resources for jobs. not necessarily an issue
+            ctx.response.status = 200;
+        }
+        else { //unhealthy due to job submission errors
+            ctx.response.status = 500;
+        }
     });
 
     //return all viable job types

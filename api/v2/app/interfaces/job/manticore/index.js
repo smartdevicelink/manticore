@@ -332,11 +332,26 @@ function formatAddresses (id, services) {
     return finalFormat;
 }
 
+//returns some valid job configuration that could be used as a request
+function exampleJobOption () {
+    return {
+        core: {
+            version: "4.5.1",
+            build: "default"
+        },
+        hmi: {
+            type: "generic",
+            version: "minimal"
+        }
+    };
+}
+
 module.exports = {
     jobOptions: jobOptions,
     validate: validate,
     advance: advance,
     idToJobName: idToJobName,
     idToTaskNames: idToTaskNames,
-    formatAddresses: formatAddresses
+    formatAddresses: formatAddresses,
+    exampleJobOption: exampleJobOption
 }

@@ -10,6 +10,7 @@ const listenerOptions = [
     { name: "ws-message", isMainHook: false},
     { name: "ws-disconnect", isMainHook: false},
     { name: "startup", isMainHook: false},
+    { name: "post-startup", isMainHook: false},
     { name: "removed-request", isMainHook: false},
     { name: "pre-request", isMainHook: false},
     { name: "request", isMainHook: true},
@@ -20,6 +21,7 @@ const listenerOptions = [
     { name: "pre-waiting-job-advance", isMainHook: false},
     { name: "waiting-job-advance", isMainHook: true},
     { name: "post-waiting-job-advance", isMainHook: false},
+    { name: "health", isMainHook: true},
 ];
 
 module.exports = {
