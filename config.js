@@ -73,11 +73,13 @@ const config = {
     sslCertificateArn: process.env.SSL_CERTIFICATE_ARN, //SSL certificate attached to the AWS ELB
     wsPort: process.env.ELB_WS_PORT, //WS port for TCP connections
 
-    awsRegion: process.env.AWS_REGION,
+    //TODO: UNUSED
     namespace: process.env.CLOUD_WATCH_NAMESPACE,
 
     cors: process.env.CORS,
     allowedIpv6: process.env.ALLOWED_IPV6, //the address which is allowed to make requests to manticore
+    //the amount of time in seconds between health evaluations
+    healthCheckPeriod: process.env.HEALTH_CHECK_PERIOD, 
 
     //RESERVED PROPERTIES FOR MANTICORE'S USE
 
@@ -98,6 +100,7 @@ const config = {
         elbEncryptHttp: false,
         elbEncryptWs: false,
         elbEncryptTcp: false,
+        healthCheck: false
     }
 };
 
@@ -158,6 +161,9 @@ if (config.tcpPortEnd !== undefined) {
 if (config.wsPort !== undefined) {
     config.wsPort = Number(config.wsPort);
 }
+if (config.healthCheckPeriod !== undefined) {
+    config.healthCheckPeriod = Number(config.healthCheckPeriod);
+}
 
 //provide properties to easily determine whether certain modes of manticore are enabled
 
@@ -206,7 +212,10 @@ if (config.awsRegion !== undefined) {
             config.modes.elbEncryptTcp = true;
         }
     }
+}
 
+if (config.healthCheckPeriod !== undefined) {
+    config.modes.healthCheck = true;
 }
 
 

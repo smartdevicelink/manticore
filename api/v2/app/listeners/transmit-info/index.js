@@ -24,6 +24,8 @@ module.exports = {
         }
 
         await manageNonClaimedRequests(nonClaimedRequests);
+
+        next();
     },
     //for transmitting services and position information to users
     "post-waiting-job-advance": async (ctx, next) => {

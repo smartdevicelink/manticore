@@ -464,6 +464,57 @@ function handleFailureType (ctx, type) {
     }
 }
 
+//given a service object, determine what the correct address should be based on the server's configuration
+function formatHttpAddress (serviceObj) {
+    //default to internal address
+    let address = serviceObj.internal;
+
+    if (config.modes.haproxy) {
+        let domainAddress = `${serviceObj.external}.${config.haproxyDomain}`;
+        //external address (HAProxy)
+        address = `http://${domainAddress}:${config.haproxyPort}`;
+        if (config.modes.elb) { //external address (ELB)
+            address = `http://${domainAddress}`;
+        }
+        if (config.modes.elbEncryptHttp) { //secure external address (ELB)
+            address = `https://${domainAddress}`;
+        }
+    }
+    return address;
+}
+
+//given a service object, determine what the correct address should be based on the server's configuration
+function formatWsAddress (serviceObj) {
+    //default to internal address
+    let address = serviceObj.internal;
+
+    if (config.modes.haproxy) {
+        let domainAddress = `${serviceObj.external}.${config.haproxyDomain}`;
+        //external address (HAProxy)
+        address = `ws://${domainAddress}:${config.haproxyPort}`;
+        if (config.modes.elb) { //external address (ELB)
+            address = `ws://${domainAddress}`;
+        }
+        if (config.modes.elbEncryptWs) { //secure external address (ELB)
+            address = `wss://${domainAddress}`;
+        }
+    }
+    return address;
+}
+
+//given a service object, determine what the correct address should be based on the server's configuration
+function formatTcpAddress (serviceObj) {
+    //default to internal address
+    let address = serviceObj.internal;
+
+    if (config.modes.haproxy) {
+        let domainAddress = `${config.haproxyDomain}:${serviceObj.external}`;
+        //external address (HAProxy)
+        address = `${domainAddress}`;
+    }
+    return address;
+}
+
 module.exports = {
     //master function
     autoHandleAll: autoHandleAll,
@@ -494,5 +545,8 @@ module.exports = {
     FAILURE_TYPE_PENDING: FAILURE_TYPE_PENDING,
     FAILURE_TYPE_RESTART: FAILURE_TYPE_RESTART,
     findServiceAddresses: findServiceAddresses,
-    handleFailureType: handleFailureType
+    handleFailureType: handleFailureType,
+    formatHttpAddress: formatHttpAddress,
+    formatWsAddress: formatWsAddress,
+    formatTcpAddress: formatTcpAddress
 }

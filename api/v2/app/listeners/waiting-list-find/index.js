@@ -31,6 +31,6 @@ module.exports = {
             }
         }
         ctx.currentRequest = waitingState[lowestKey];
-        return next();
+        next();
     },
 }
