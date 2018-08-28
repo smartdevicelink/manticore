@@ -284,52 +284,13 @@ async function generateTcpPort (min, max, blacklistedPorts) {
 
 //given a services object, formats the addresses in some friendly manner and returns them for a client
 function formatAddresses (id, services) {
-
-    let finalFormat = { //default to internal addresses
-        "core-broker": services.core[`core-broker-${id}-0`].internal,
-        "core-tcp": services.core[`core-tcp-${id}-0`].internal,
-        "core-file": services.core[`core-file-${id}-0`].internal,
-        "core-log": services.core[`core-log-${id}-0`].internal,
-        "hmi-user": services.hmi[`hmi-user-${id}-0`].internal
+    return {
+        "core-broker": utils.formatWsAddress(services.core[`core-broker-${id}-0`]),
+        "core-tcp": utils.formatTcpAddress(services.core[`core-tcp-${id}-0`]),
+        "core-file": utils.formatHttpAddress(services.core[`core-file-${id}-0`]),
+        "core-log": utils.formatWsAddress(services.core[`core-log-${id}-0`]),
+        "hmi-user": utils.formatHttpAddress(services.hmi[`hmi-user-${id}-0`]),
     };
-
-    if (config.modes.haproxy) {
-        const coreBrokerDomain = `${services.core[`core-broker-${id}-0`].external}.${config.haproxyDomain}`;
-        const coreTcpDomain = `${config.haproxyDomain}:${services.core[`core-tcp-${id}-0`].external}`;
-        const coreFileDomain = `${services.core[`core-file-${id}-0`].external}.${config.haproxyDomain}`;
-        const coreLogDomain = `${services.core[`core-log-${id}-0`].external}.${config.haproxyDomain}`;
-        const hmiUserDomain = `${services.hmi[`hmi-user-${id}-0`].external}.${config.haproxyDomain}`;
-        //external addresses (HAProxy)
-        finalFormat["core-broker"] = `ws://${coreBrokerDomain}:${config.haproxyPort}`;
-        finalFormat["core-tcp"] = `${coreTcpDomain}`;
-        finalFormat["core-file"] = `http://${coreFileDomain}:${config.haproxyPort}`;
-        finalFormat["core-log"] = `ws://${coreLogDomain}:${config.haproxyPort}`;
-        finalFormat["hmi-user"] = `http://${hmiUserDomain}:${config.haproxyPort}`;
-
-        if (config.modes.elb) { //external addresses (ELB)
-            finalFormat["core-broker"] = `ws://${coreBrokerDomain}:${config.wsPort}`;
-            finalFormat["core-file"] = `http://${coreFileDomain}`;
-            finalFormat["core-log"] = `ws://${coreLogDomain}:${config.wsPort}`;
-            finalFormat["hmi-user"] = `http://${hmiUserDomain}`;
-        }
-
-        if (config.modes.elbEncryptHttp) { //secure external addresses (ELB)
-            finalFormat["core-file"] = `https://${coreFileDomain}`;
-            finalFormat["hmi-user"] = `https://${hmiUserDomain}`;
-        }
-
-        if (config.modes.elbEncryptWs) { //secure external addresses (ELB)
-            finalFormat["core-broker"] = `wss://${coreBrokerDomain}:${config.wsPort}`;
-            finalFormat["core-log"] = `wss://${coreLogDomain}:${config.wsPort}`;
-        }
-
-        if (config.modes.elbEncryptWs) { //secure external addresses (ELB)
-            finalFormat["core-broker"] = `wss://${coreBrokerDomain}:${config.wsPort}`;
-            finalFormat["core-log"] = `wss://${coreLogDomain}:${config.wsPort}`;
-        }
-    }
-
-    return finalFormat;
 }
 
 //returns some valid job configuration that could be used as a request
