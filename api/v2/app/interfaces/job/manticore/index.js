@@ -217,7 +217,7 @@ async function advance (ctx) {
         });
 
         //if haproxy is configured, generate the external addresses
-        if (config.modes.haproxy) {
+        if (config.modes.haproxy && currentRequest.services.hmi) {
             currentRequest.services.hmi[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
             currentRequest.services.hmi[`hmi-user-${id}-0`].isHttp = true;
         }
