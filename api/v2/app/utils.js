@@ -82,26 +82,24 @@ async function autoHandleJob (ctx, jobName, jobFile, taskNames, healthTime = 100
     const jobResult = await jobSetter.set(jobFile); //submit the job
     const parsedResult = await parseJson(jobResult.body);
 
-    if (parsedResult == '{}') { //jobResult.body is an error message
-        logger.error(new Error(jobResult.body).stack);
-        handleFailureType(ctx, FAILURE_TYPE_PERMANENT); //invalid job submission. boot the user off the store
-        return false;
-    }
-
     //retrieve the allocation information of the job. force a result by healthTime milliseconds
     const allocs = await watchAllocationsToResolution(jobName, taskNames, Date.now() + healthTime);
 
     //get the evaluation after the allocation has come to a resolution, or else the data will be outdated
-    const evalId = parsedResult.EvalID;
-    const eval = await getEval(evalId);
-    const parsedEval = await parseJson(eval.body);
+    const evals = await getEvals(jobName);
+
+    if (evals.length === 0) { //no evaluations for the job found! this is an error
+        logger.error(new Error("Evaluation not found for job " + jobName).stack);
+        handleFailureType(ctx, FAILURE_TYPE_PERMANENT); //boot the user off the store
+        return false;
+    }
 
     //the job has to be running at this point, or else this should be considered a failure
     if (!await allocationsHealthCheck(allocs, taskNames)) { 
         logger.error(`Allocation failed for user ${ctx.currentRequest.id}!`);
-        await logAllocationsError(allocs, parsedEval); //log the error information
+        await logAllocationsError(allocs, evals); //log the error information
 
-        const failureType = await determineAllocationsFailureType(allocs, parsedEval);
+        const failureType = await determineAllocationsFailureType(allocs, evals);
         handleFailureType(ctx, failureType); //manage the failure here
         return false;
     }
@@ -214,7 +212,7 @@ async function allocationsHealthCheck (allocs, taskNames) {
 }
 
 //diagnostics function. use getLatestAllocations before passing allocations here
-async function logAllocationsError (allocations, eval) {
+async function logAllocationsError (allocations, evals) {
     logger.error(`Allocation error report. Number of allocations: ${allocations.length}`);
     for (let i = 0; i < allocations.length; i++) {
         const allocation = allocations[i];
@@ -227,19 +225,21 @@ async function logAllocationsError (allocations, eval) {
             });
         }
     }
-    if (eval.FailedTGAllocs) {
-        for (let groupName in eval.FailedTGAllocs) {
-            logger.error(`Evaluation error report for task group ${groupName}:`);
-            const groupInfo = eval.FailedTGAllocs[groupName];
-            logger.error(`Constraint Filters: ${JSON.stringify(groupInfo.ConstraintFiltered)}`);
-            const {NodesEvaluated, NodesFiltered, NodesExhausted} = groupInfo;
-            logger.error(`Nodes Evaluated/Filtered/Exhausted: ${NodesEvaluated}/${NodesFiltered}/${NodesExhausted}`);
+    evals.forEach(eval => {
+        if (eval.FailedTGAllocs) {
+            for (let groupName in eval.FailedTGAllocs) {
+                logger.error(`Evaluation error report for task group ${groupName}:`);
+                const groupInfo = eval.FailedTGAllocs[groupName];
+                logger.error(`Constraint Filters: ${JSON.stringify(groupInfo.ConstraintFiltered)}`);
+                const {NodesEvaluated, NodesFiltered, NodesExhausted} = groupInfo;
+                logger.error(`Nodes Evaluated/Filtered/Exhausted: ${NodesEvaluated}/${NodesFiltered}/${NodesExhausted}`);
 
-            for (let dimension in groupInfo.DimensionExhausted) {
-                logger.error(`${dimension} has been exhausted!`);
+                for (let dimension in groupInfo.DimensionExhausted) {
+                    logger.error(`${dimension} has been exhausted!`);
+                }
             }
-        }
-    }
+        }        
+    });
 }
 
 /*
@@ -252,11 +252,14 @@ async function logAllocationsError (allocations, eval) {
     (ex. possible infinite loop for a Restart Failure, possible deadlock for a Pending Failure)
     returns one of the following strings: "PERMANENT", "PENDING", "RESTART"
 */
-async function determineAllocationsFailureType (allocations, eval) {
+async function determineAllocationsFailureType (allocations, evals) {
     if (allocations.length === 0) { 
         //no allocations were placed. check the evaluation details instead for information
-        if (eval.FailedTGAllocs !== null && eval.FailedTGAllocs !== undefined ) { 
-            return FAILURE_TYPE_PENDING; //some lack of resource has caused the allocation to be unplacable
+        for (let i = 0; i < evals.length; i++) {
+            const eval = evals[i];
+            if (eval.FailedTGAllocs !== null && eval.FailedTGAllocs !== undefined ) { 
+                return FAILURE_TYPE_PENDING; //some lack of resource has caused the allocation to be unplacable
+            }    
         }
     }
     return FAILURE_TYPE_PERMANENT;
@@ -266,8 +269,11 @@ async function getJob (key) {
     return await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${key}`);
 }
 
-async function getEval (id) {
-    return await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/evaluation/${id}`);
+async function getEvals (jobName) {
+    const result = await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${jobName}/evaluations`);
+    const parsedResult = await parseJson(result.body);
+    if (parsedResult+'' === '{}') return []; //no evaluations
+    return parsedResult;
 }
 
 async function setJob (key, opts) {
@@ -528,7 +534,7 @@ module.exports = {
     determineAllocationsFailureType: determineAllocationsFailureType,
     //getting and setting job info
     getJob: getJob,
-    getEval: getEval,
+    getEvals: getEvals,
     setJob: setJob,
     casJob: casJob,
     stopJob: stopJob,
