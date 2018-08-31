@@ -253,9 +253,9 @@ function getUsedTcpPorts (waitingState) {
     let usedPorts = [];
     for (let id in waitingState) {
         const cond1 = waitingState[id].services !== undefined;
-        const cond2 = waitingState[id].services.core !== undefined;
-        const cond3 = waitingState[id].services.core[`core-tcp-${id}-0`].external !== undefined;
-        if (cond1 && cond2 && cond3) {
+        const cond2 = cond1 && waitingState[id].services.core !== undefined;
+        const cond3 = cond2 && waitingState[id].services.core[`core-tcp-${id}-0`].external !== undefined;
+        if (cond3) {
             usedPorts.push(waitingState[id].services.core[`core-tcp-${id}-0`].external);
         }
     }
