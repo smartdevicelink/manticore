@@ -64,11 +64,11 @@ function buildManticoreJobFile () {
 		Protocol: "http"
 	});
 	//set resource constraints
-	job.setCPU(groupName, taskName, 100);
-	job.setMemory(groupName, taskName, 100);
-	job.setMbits(groupName, taskName, 1);
-	job.setEphemeralDisk(groupName, 10, false, false);
-	job.setLogs(groupName, taskName, 2, 2);
+	job.setCPU(groupName, taskName, 1000);
+	job.setMemory(groupName, taskName, 1000);
+	job.setMbits(groupName, taskName, 10);
+	job.setEphemeralDisk(groupName, 500, false, false);
+	job.setLogs(groupName, taskName, 10, 20);
 	job.addConstraint({
 		LTarget: "${meta.manticore}",
 		Operand: "=",
