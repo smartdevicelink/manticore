@@ -14,11 +14,10 @@ function buildManticoreJobFile () {
 	var taskName = "manticore-task";
 	var serviceName = "manticore-service";
 	job.addGroup(groupName);
-	job.setType("batch"); //one Manticore per client agent with the "manticore" meta attribute being true
+	job.setType("system"); //one Manticore per client agent with the "manticore" meta attribute being true
 	//update one manticore at a time every 10 seconds
 	job.setUpdate(1, 10000000000);
-	job.setCount(groupName, 2);
-	delete job.getJob().Job.Update;
+	job.setCount(groupName, 1);
 	//restart manticore if it has failed up to 3 times within 30 seconds, with 5 seconds between restart attempts
 	job.setRestartPolicy(groupName, 30000000000, 3, 5000000000, "delay");
 	job.addTask(groupName, taskName);
@@ -52,6 +51,7 @@ function buildManticoreJobFile () {
         "CORS",
         "ALLOWED_IPV6",
         "HEALTH_CHECK_PERIOD",
+        "RANDOM_SECRET"
 	]);
 	job.addService(groupName, taskName, serviceName);
 	job.setPortLabel(groupName, taskName, serviceName, "http");
@@ -64,11 +64,11 @@ function buildManticoreJobFile () {
 		Protocol: "http"
 	});
 	//set resource constraints
-	job.setCPU(groupName, taskName, 1000);
-	job.setMemory(groupName, taskName, 1000);
-	job.setMbits(groupName, taskName, 10);
-	job.setEphemeralDisk(groupName, 500, false, false);
-	job.setLogs(groupName, taskName, 10, 20);
+	job.setCPU(groupName, taskName, 100);
+	job.setMemory(groupName, taskName, 100);
+	job.setMbits(groupName, taskName, 1);
+	job.setEphemeralDisk(groupName, 10, false, false);
+	job.setLogs(groupName, taskName, 2, 2);
 	job.addConstraint({
 		LTarget: "${meta.manticore}",
 		Operand: "=",

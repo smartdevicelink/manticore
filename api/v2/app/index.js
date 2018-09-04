@@ -34,6 +34,8 @@ const config = require('./config.js');
 const {store, job, logger, websocket} = config;
 const check = require('check-types');
 const loader = require('./loader.js');
+const crypto = require('crypto');
+const CRYPTO_BYTE_LENGTH = 32;
 
 const REQUESTS_KEY = "manticore/requests";
 const WAITING_KEY = "manticore/waiting";
@@ -53,6 +55,9 @@ module.exports = {
         const requestState = await parseJson(setter.value);
         if (requestState[id]) return await websocket.getPasscode(id); //request already exists. do not update the store
         requestState[id] = body; //store the result of the job validation
+        //include a randomly generated string as a seed for creating replicable random values for this user
+        //example use: randomly generated external addresses when HAProxy mode is enabled
+        requestState[id].seed = crypto.randomBytes(CRYPTO_BYTE_LENGTH).toString('hex');
         await setter.set(JSON.stringify(requestState)); //submit the new entry to the store
         return await websocket.getPasscode(id); //passcode for the user to use when connecting via websockets
     },

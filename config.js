@@ -80,6 +80,8 @@ const config = {
     allowedIpv6: process.env.ALLOWED_IPV6, //the address which is allowed to make requests to manticore
     //the amount of time in seconds between health evaluations
     healthCheckPeriod: process.env.HEALTH_CHECK_PERIOD, 
+    //used as a seed for randomly generated values in Manticore. please overwrite this value in production systems
+    randomSecret: process.env.RANDOM_SECRET || "manticore", 
 
     //RESERVED PROPERTIES FOR MANTICORE'S USE
 
