@@ -51,6 +51,7 @@ function buildManticoreJobFile () {
         "CORS",
         "ALLOWED_IPV6",
         "HEALTH_CHECK_PERIOD",
+        "RANDOM_SECRET"
 	]);
 	job.addService(groupName, taskName, serviceName);
 	job.setPortLabel(groupName, taskName, serviceName, "http");

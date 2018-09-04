@@ -7,8 +7,8 @@ const hmiSettings = require('./hmi-image-settings');
 const logger = config.logger;
 const utils = require('../../../utils.js'); //contains useful functions for the job submission process
 
-const randomString = require('randomatic');
-const PATTERN = 'af09';
+const crypto = require('crypto');
+const PATTERN_LENGTH = 16;
 const PORTS_USED_THRESHOLD = .5;
 
 //times to wait for healthy instances in milliseconds
@@ -17,6 +17,11 @@ const CORE_HEALTH_TIME = 8000;
 const HMI_ALLOCATION_TIME = 5000;
 const HMI_HEALTH_TIME = 8000;
 
+async function cryptoGen (seed, id) {
+    return crypto.createHmac('sha256', config.randomSecret)
+        .update(seed + id).digest('hex')
+        .substr(0, PATTERN_LENGTH);
+}
 
 const jobInfo = {
     core: {
@@ -111,9 +116,10 @@ let cachedJobs = {};
 async function advance (ctx) {
     //note: modify currentRequest as a shortcut to modifying waitingState
     const {currentRequest, waitingState} = ctx;
-    const {id, request} = currentRequest;
+    const {id, request, services} = currentRequest;
     const {version: coreVersion, build} = request.core;
     const {version: hmiVersion, type} = request.hmi;
+    const seed = request.seed;
 
     const jobName = `core-hmi-${id}`;
     const coreTaskName = `core-task-${id}`;
@@ -144,8 +150,8 @@ async function advance (ctx) {
         return; //done
     }
     if (currentRequest.state === "pending-1") { //this stage causes an hmi job to run
-        const brokerAddress = currentRequest.services.core[`core-broker-${id}-0`].internal;
-        const coreFileAddress = currentRequest.services.core[`core-file-${id}-0`].internal;
+        const brokerAddress = services.core[`core-broker-${id}-0`].internal;
+        const coreFileAddress = services.core[`core-file-${id}-0`].internal;
 
         let fullBrokerAddress = `ws:\\/\\/${brokerAddress}`; //internal address
 
@@ -156,18 +162,18 @@ async function advance (ctx) {
             const usedTcpPorts = getUsedTcpPorts(waitingState);
             const coreTcpPort = await generateTcpPort(config.tcpPortStart, config.tcpPortEnd, usedTcpPorts);
 
-            const externalBrokerAddress = randomString(PATTERN, 16);
-            currentRequest.services.core[`core-broker-${id}-0`].external = externalBrokerAddress;
-            currentRequest.services.core[`core-broker-${id}-0`].isHttp = true;
+            const externalBrokerAddress = await cryptoGen(seed, `core-broker-${id}-0`);
+            services.core[`core-broker-${id}-0`].external = externalBrokerAddress;
+            services.core[`core-broker-${id}-0`].isHttp = true;
 
-            currentRequest.services.core[`core-file-${id}-0`].external = randomString(PATTERN, 16);
-            currentRequest.services.core[`core-file-${id}-0`].isHttp = true;
+            services.core[`core-file-${id}-0`].external = await cryptoGen(seed, `core-file-${id}-0`);
+            services.core[`core-file-${id}-0`].isHttp = true;
 
-            currentRequest.services.core[`core-log-${id}-0`].external = randomString(PATTERN, 16);
-            currentRequest.services.core[`core-log-${id}-0`].isHttp = true;
+            services.core[`core-log-${id}-0`].external = await cryptoGen(seed, `core-log-${id}-0`);
+            services.core[`core-log-${id}-0`].isHttp = true;
 
-            currentRequest.services.core[`core-tcp-${id}-0`].external = coreTcpPort;
-            currentRequest.services.core[`core-tcp-${id}-0`].isHttp = false;
+            services.core[`core-tcp-${id}-0`].external = coreTcpPort;
+            services.core[`core-tcp-${id}-0`].isHttp = false;
             
             //domain addresses
             const brokerDomainAddress = `${externalBrokerAddress}.${config.haproxyDomain}`;
@@ -182,6 +188,7 @@ async function advance (ctx) {
             if (config.modes.elbEncryptWs) { //secure external address (ELB)
                 fullBrokerAddress = `wss:\\/\\/${brokerDomainAddress}:${config.wsPort}`; 
             }
+
         }
 
         const envs = { //extract service addresses found from the previous stage
@@ -217,8 +224,8 @@ async function advance (ctx) {
         });
 
         //if haproxy is configured, generate the external addresses
-        if (config.modes.haproxy) {
-            currentRequest.services.hmi[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
+        if (config.modes.haproxy && services.hmi) {
+            currentRequest.services.hmi[`hmi-user-${id}-0`].external = await cryptoGen(seed, `hmi-user-${id}-0`);
             currentRequest.services.hmi[`hmi-user-${id}-0`].isHttp = true;
         }
 
@@ -253,9 +260,9 @@ function getUsedTcpPorts (waitingState) {
     let usedPorts = [];
     for (let id in waitingState) {
         const cond1 = waitingState[id].services !== undefined;
-        const cond2 = waitingState[id].services.core !== undefined;
-        const cond3 = waitingState[id].services.core[`core-tcp-${id}-0`].external !== undefined;
-        if (cond1 && cond2 && cond3) {
+        const cond2 = cond1 && waitingState[id].services.core !== undefined;
+        const cond3 = cond2 && waitingState[id].services.core[`core-tcp-${id}-0`].external !== undefined;
+        if (cond3) {
             usedPorts.push(waitingState[id].services.core[`core-tcp-${id}-0`].external);
         }
     }
