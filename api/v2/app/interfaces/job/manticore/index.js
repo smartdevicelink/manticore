@@ -8,8 +8,6 @@ const logger = config.logger;
 const utils = require('../../../utils.js'); //contains useful functions for the job submission process
 
 const crypto = require('crypto');
-
-const randomString = require('randomatic');
 const PATTERN_LENGTH = 16;
 const PORTS_USED_THRESHOLD = .5;
 
