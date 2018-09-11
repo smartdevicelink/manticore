@@ -40,6 +40,7 @@ const logic = require('./app');
 const config = require('./app/config.js');
 const utils = require('./app/utils.js');
 const {logger, websocket} = config;
+const cors = require('koa-cors');
 
 module.exports = app => {
     /* MIDDLEWARE */
@@ -51,6 +52,7 @@ module.exports = app => {
     }
 
     if (config.cors){
+        app.use(cors());
         if (config.allowedIpv6) {
             corsOptions.filter.push(config.allowedIpv6);
             app.use(ipFilter(corsOptions));
