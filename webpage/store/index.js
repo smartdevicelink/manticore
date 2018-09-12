@@ -23,14 +23,21 @@ export default  {
         }
         return true;
     },
-    createWebSocket(id, code) {
-        console.log(`Creating web socket with code ${code} for ${id}`);
-        const wsUrl = this.state.jobs[id].ip.replace('http', 'ws') + '/' + code;
+    createWebSocket(id, data) {
+        const {path, protocol, passcode, port, domain} = data;
+        console.log(`Creating web socket with code ${passcode} for ${id}`);
+
+        const baseUrl = this.state.jobs[id].ip.match(/[^\/]+/g)[1];
+        let wsUrl = `${protocol}://${domain}:${port}${path}${passcode}`;
+        if (!domain) {
+            wsUrl = `${protocol}://${baseUrl}${path}${passcode}`;
+        }
+
         const ws = new WebSocket(wsUrl);
         this.state.jobs[id].webSocket = ws;
 
         ws.onopen = function ()  {
-            console.log(`${id} connected to /api/v2/job/${code}`);
+            console.log(`${id} connected to /api/v2/job/${passcode}`);
             this.state.jobs[id].status = 'connected';
         }.bind(this);
 
