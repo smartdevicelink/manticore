@@ -34,7 +34,6 @@ const check = require('check-types');
 const jwt = require('koa-jwt');
 const websockify = require('koa-websocket');
 const Router = require('koa-router');
-const ipFilter = require('koa-ip-filter');
 const API_PREFIX = "/api/v2";
 const logic = require('./app');
 const config = require('./app/config.js');
