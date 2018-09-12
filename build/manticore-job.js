@@ -47,9 +47,8 @@ function buildManticoreJobFile () {
         "ELB_ENCRYPT_WS",
         "ELB_ENCRYPT_TCP",
         "SSL_CERTIFICATE_ARN",
-        "ELB_WS_PORT", 
+        "ELB_WS_PORT",
         "CORS",
-        "ALLOWED_IPV6",
         "HEALTH_CHECK_PERIOD",
 	]);
 	job.addService(groupName, taskName, serviceName);

@@ -34,7 +34,6 @@ const check = require('check-types');
 const jwt = require('koa-jwt');
 const websockify = require('koa-websocket');
 const Router = require('koa-router');
-const ipFilter = require('koa-ip-filter');
 const API_PREFIX = "/api/v2";
 const logic = require('./app');
 const config = require('./app/config.js');
@@ -46,20 +45,8 @@ module.exports = app => {
     /* MIDDLEWARE */
     const router = new Router();
 
-    const corsOptions = {
-        forbidden: '403: Forbidden',
-        filter: ['::ffff:127.0.0.1']
-    }
-
-    if (config.cors){
+    if (config.cors || !config.webpageDisabled){
         app.use(cors());
-        if (config.allowedIpv6) {
-            corsOptions.filter.push(config.allowedIpv6);
-            app.use(ipFilter(corsOptions));
-        }
-    } else {
-        // disallow all incoming traffic
-        app.use(ipFilter(corsOptions));
     }
 
     //all routes under /api/v2 are eligible for identification via JWT if enabled
