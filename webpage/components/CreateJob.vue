@@ -58,7 +58,7 @@ export default {
                     this.manticoreResponse = response.data;
                     this.responseTime = new Date().toTimeString();
                     this.$root.$data.createJob(job.id, response.data.passcode, response.request.responseURL);
-                    this.$root.$data.createWebSocket(job.id, response.data.passcode);
+                    this.$root.$data.createWebSocket(job.id, response.data);
                 })
                 .catch((error) => {
                     this.errorMessage = error.response.data;
