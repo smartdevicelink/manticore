@@ -209,6 +209,20 @@ AwsHandler.prototype.setElbTimeout = async function (timeout) {
     await promisify(elb.modifyLoadBalancerAttributes.bind(elb))(params);
 }
 
+/*
+ * Sets the haproxy port to forward to for the Manticore ELB
+ */
+AwsHandler.prototype.setElbHealth = async function () {
+    //get the info first to find out what data not to change. all the parameters are required when updating
+    const healthInfo = (await describeLoadBalancer()).LoadBalancerDescriptions[0].HealthCheck;
+    healthInfo.Target = `HTTP:${config.haproxyPort}/haproxy`;
+    const params = {
+        HealthCheck: healthInfo, 
+        LoadBalancerName: config.elbName
+    };
+    await promisify(elb.configureHealthCheck.bind(elb))(params);
+}
+
 /**
  * @param {object} lbStatus - An AWS response object describing everything about the ELB
  */
