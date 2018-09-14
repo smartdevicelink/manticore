@@ -33,7 +33,7 @@ function generateJobFile (jobName, body) {
         job.addEnv(groupName, taskName, envName, info.envs[envName]);
     }
     job.addConstraint({
-        LTarget: "${meta.core}",
+        LTarget: "${meta.job}",
         Operand: "=",
         RTarget: "1"
     }, groupName);
