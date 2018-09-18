@@ -340,10 +340,12 @@ async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
 
 //determine if the services are healthy
 async function servicesHealthCheck (services) {
-    services.forEach(service => {
-        if (service === null || service.Status !== "passing") 
+    for (let i = 0; i < services.length; i++) {
+        const service = services[i];
+        if (service === null || service.Status !== "passing") {
             return false; //fail
-    });
+        }
+    }
     return true; //pass
 }
 
@@ -370,7 +372,7 @@ async function watchServicesToResolution (serviceName, endDate = 0, index) {
     }
 
     //all services found must be passing
-    if (!servicesHealthCheck(services)) { //start over and wait for more updates
+    if (!await servicesHealthCheck(services)) { //start over and wait for more updates
         return await watchServicesToResolution(serviceName, endDate, newIndex);
     }
     else { //a passing state is found. return the service info for further evaluation
