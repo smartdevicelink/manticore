@@ -14,11 +14,11 @@ function buildManticoreJobFile () {
 	var taskName = "manticore-task";
 	var serviceName = "manticore-service";
 	job.addGroup(groupName);
-	job.setType("batch"); //one Manticore per client agent with the "manticore" meta attribute being true
+	job.setType("system"); //one Manticore per client agent with the "manticore" meta attribute being true
 	//update one manticore at a time every 10 seconds
 	job.setUpdate(1, 10000000000);
-	job.setCount(groupName, 2);
-	delete job.getJob().Job.Update;
+	job.setCount(groupName, 1);
+	//delete job.getJob().Job.Update;
 	//restart manticore if it has failed up to 3 times within 30 seconds, with 5 seconds between restart attempts
 	job.setRestartPolicy(groupName, 30000000000, 3, 5000000000, "delay");
 	job.addTask(groupName, taskName);
