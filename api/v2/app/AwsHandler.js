@@ -86,6 +86,7 @@ AwsHandler.prototype.changeState = async function (waitingState) {
             }
         }
     }
+
     //determine which listeners need to be added and which need to be removed
     var listenerChanges = calculateListenerChanges(expectedListeners, actualListeners);
     //ALWAYS remove unneeded listeners before adding needed listeners
@@ -174,10 +175,10 @@ function comparelistenerStates (listener1, listener2) {
     }
     status.diff = listener1.LoadBalancerPort - listener2.LoadBalancerPort;
     //most common check is if the LB port numbers are equivalent, so check that first
-    if (listener1.LoadBalancerPort !== listener2.LoadBalancerPort
+    if (listener1.LoadBalancerPort != listener2.LoadBalancerPort //in case the port is a string
         || listener1.Protocol !== listener2.Protocol
         || listener1.InstanceProtocol !== listener2.InstanceProtocol
-        || listener1.InstancePort !== listener2.InstancePort
+        || listener1.InstancePort != listener2.InstancePort //in case the port is a string
         || listener1.SSLCertificateId !== listener2.SSLCertificateId) {
         status.equivalent = false;
     }
