@@ -87,7 +87,6 @@ async function autoHandleJob (ctx, jobName, jobFile, taskNames, healthTime = 100
 
     //get the evaluation after the allocation has come to a resolution, or else the data will be outdated
     const evals = await getEvals(jobName);
-
     if (evals.length === 0) { //no evaluations for the job found! this is an error
         logger.error(new Error("Evaluation not found for job " + jobName).stack);
         handleFailureType(ctx, FAILURE_TYPE_PERMANENT); //boot the user off the store
@@ -326,7 +325,7 @@ async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
         return arr.concat(serviceArray);
     }, []);
 
-    const servicesPassing = await servicesHealthCheck(flattenedServices);
+    const servicesPassing = await servicesHealthCheck(flattenedServices, serviceNames);
     if (!servicesPassing) { 
         logger.error(`Health checks failed for user ${ctx.currentRequest.id}!`);
         await logServicesError(serviceNames, flattenedServices); //log the error information
@@ -339,12 +338,25 @@ async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
 }
 
 //determine if the services are healthy
-async function servicesHealthCheck (services) {
+async function servicesHealthCheck (services, serviceNames) {
+    let requiredServicesMap = {};
+
+    //populate the services map
+    serviceNames.forEach(name => {
+        requiredServicesMap[name] = 1;
+    });
+
+    //check that all services are running
     for (let i = 0; i < services.length; i++) {
         const service = services[i];
-        if (service === null || service.Status !== "passing") {
-            return false; //fail
-        }
+        if (service === null || service.Status !== "passing") return false; //fail
+        requiredServicesMap[service.ServiceName]--;
+    }
+
+    //requiredServicesMap must have a 0 count in all elements by the time services are parsed
+    //if not, fail the health check
+    for (let serviceName in requiredServicesMap) {
+        if (requiredServicesMap[serviceName] !== 0) return false;
     }
     return true; //pass
 }
@@ -372,7 +384,7 @@ async function watchServicesToResolution (serviceName, endDate = 0, index) {
     }
 
     //all services found must be passing
-    if (!await servicesHealthCheck(services)) { //start over and wait for more updates
+    if (!await servicesHealthCheck(services, [serviceName])) { //start over and wait for more updates
         return await watchServicesToResolution(serviceName, endDate, newIndex);
     }
     else { //a passing state is found. return the service info for further evaluation
@@ -447,7 +459,6 @@ async function findServiceAddresses (serviceNames) {
     });
 
     await Promise.all(servicesPromises); //wait for the promises to build the address map
-
     return serviceToAddressMap;
 }
 
