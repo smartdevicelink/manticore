@@ -6,8 +6,10 @@ const config = require('./config.js')
 const logger = config.logger;
 const promisify = require('util').promisify;
 
+const handler = new AwsHandler();
+
 module.exports = function(){
-    return new AwsHandler();
+    return handler;
 }
 /**
 * Allows usage of the AWS SDK API
@@ -19,12 +21,45 @@ function AwsHandler () {
     }
 }
 
+//given a request to an HTTP API, will ping it until a quick response is received, to a limit
+//this is for the problematic AWS API which may hang random requests for a long time
+function multirequest (request, limit = 5, cb) {
+    if (limit === 0) {
+        return cb("AWS API not responsive!", null);
+    }
+    const connection = request((err, res) => {
+        if (err) {
+            if (err.code !== "RequestAbortedError") { //errors not relating to dropping the request
+                cb(err, null);
+            }
+            return;
+        }
+        clearTimer();
+        return cb(null, res);
+    });
+
+    //will get invoked if the request hangs for too long, dropping the original request
+    const timer = setTimeout(() => {
+        connection.abort();
+        multirequest(request, limit - 1, cb);
+    }, 300);
+
+    function clearTimer () {
+        clearTimeout(timer);
+    }
+}
+
+async function multirequestAsync (request, limit = 5) {
+    return promisify(multirequest)(request, limit);
+}
+
 //ELB CODE HERE
 AwsHandler.prototype.changeState = async function (waitingState) {
     if (!config.modes.elb) {
         return; //do nothing if ELB isn't enabled
     }
     //get the current state
+
     const lbStatus = (await describeLoadBalancer()).LoadBalancerDescriptions[0];
     //get listener information
     var actualListeners = [];
@@ -90,8 +125,8 @@ AwsHandler.prototype.changeState = async function (waitingState) {
     //determine which listeners need to be added and which need to be removed
     var listenerChanges = calculateListenerChanges(expectedListeners, actualListeners);
     //ALWAYS remove unneeded listeners before adding needed listeners
-    await promisify(removeListeners)(listenerChanges.toBeDeletedListeners);
-    await promisify(addListeners)(listenerChanges.toBeAddedListeners);
+    await removeListeners(listenerChanges.toBeDeletedListeners);
+    await addListeners(listenerChanges.toBeAddedListeners);
 }
 
 /**
@@ -188,11 +223,12 @@ function comparelistenerStates (listener1, listener2) {
 /**
 * Finds the current state of Listeners on the ELB
 */
-async function describeLoadBalancer () {
+async function describeLoadBalancer (limit = 5) {
     var params = {
         LoadBalancerNames: [config.elbName],
     }
-    return promisify(elb.describeLoadBalancers.bind(elb))(params);
+
+    return await multirequestAsync(elb.describeLoadBalancers.bind(elb, params), limit);
 }
 
 /*
@@ -219,44 +255,32 @@ AwsHandler.prototype.setElbTimeout = async function (timeout) {
 * Adds listeners to the ELB
 * @param {array} listeners - An array of Listener objects
 */
-function addListeners (listeners, callback) {
+
+async function addListeners (listeners, limit = 5) {
     var params = {
         Listeners: listeners,
         LoadBalancerName: config.elbName
     };
-    if (listeners.length > 0) { //only make a call if listeners has data
-        elb.createLoadBalancerListeners(params, (err, data) => {
-            if (err) {
-                logger.error(new Error(err).stack);
-            }
-            callback();
-        });
-    }
-    else {
-        callback();
-    }
+
+    if (listeners.length === 0) return;
+    
+    return await multirequestAsync(elb.createLoadBalancerListeners.bind(elb, params), limit);
 }
 
 /**
 * Removes listeners from the ELB
 * @param {array} lbPorts - An array of numbers that are port numbers
 */
-function removeListeners (lbPorts, callback) {
+
+async function removeListeners (lbPorts, limit = 5) {
     var params = {
         LoadBalancerPorts: lbPorts,
         LoadBalancerName: config.elbName
     };
-    if (lbPorts.length > 0) {
-        elb.deleteLoadBalancerListeners(params, (err, data) => {
-            if (err) {
-                logger.error(new Error(err).stack);
-            }
-            callback();
-        });
-    }
-    else {
-        callback();
-    }
+
+    if (lbPorts.length === 0) return;
+    
+    return await multirequestAsync(elb.deleteLoadBalancerListeners.bind(elb, params), limit);
 }
 
 /**
