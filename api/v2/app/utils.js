@@ -25,12 +25,22 @@ const FAILURE_TYPE_RESTART = "RESTART";
 
 //handles every part of a job submission and services check. returns whether the process was a success
 async function autoHandleAll (config) {
-    const {ctx, job, taskNames, allocationTime, services, healthTime, stateChangeValue, servicesKey} = config;
+    const {ctx, job, allocationTime, services, healthTime, stateChangeValue, servicesKey} = config;
     const jobName = job.Name;
     const id = ctx.currentRequest.id;
+    //parse the job file for group info, task info, and service info
+    const taskGroupNames = job.TaskGroups.map(tg => tg.Name);
+    const taskNames = job.TaskGroups.reduce((arr, taskGroup) => {
+        return arr.concat(taskGroup.Tasks.map(t => {
+            return {
+                name: t.Name,
+                count: taskGroup.Count
+            }
+        }));
+    }, []);
 
     //submit the job and wait for results. ctx may be modified
-    const successJob = await autoHandleJob(ctx, jobName, job, taskNames, allocationTime);
+    const successJob = await autoHandleJob(ctx, jobName, job, taskNames, taskGroupNames, allocationTime);
     if (!successJob) return false; //failed job submission. bail out
     logger.debug("Allocation successful for: " + id);
 
@@ -76,7 +86,7 @@ async function autoHandleAll (config) {
 //a well-rounded implementation of handling a job submission and dealing with possible errors
 //this modifies ctx so the caller function can see what the suggested action is
 //returns whether the job is submitted without errors
-async function autoHandleJob (ctx, jobName, jobFile, taskNames, healthTime = 10000) {
+async function autoHandleJob (ctx, jobName, jobFile, taskNames, taskGroupNames, healthTime = 10000) {
     //perform a job CAS
     const jobSetter = await casJob(jobName);
     const jobResult = await jobSetter.set(jobFile); //submit the job
@@ -87,7 +97,10 @@ async function autoHandleJob (ctx, jobName, jobFile, taskNames, healthTime = 100
 
     //get the evaluation after the allocation has come to a resolution, or else the data will be outdated
     const evals = await getEvals(jobName);
-    if (evals.length === 0) { //no evaluations for the job found! this is an error
+    //retrieve only the important evaluations
+    const recentEvals = await getRecentEvals(evals, taskGroupNames);
+
+    if (recentEvals.length === 0) { //no evaluations for the job found! this is an error
         logger.error(new Error("Evaluation not found for job " + jobName).stack);
         handleFailureType(ctx, FAILURE_TYPE_PERMANENT); //boot the user off the store
         return false;
@@ -96,9 +109,9 @@ async function autoHandleJob (ctx, jobName, jobFile, taskNames, healthTime = 100
     //the job has to be running at this point, or else this should be considered a failure
     if (!await allocationsHealthCheck(allocs, taskNames)) { 
         logger.error(`Allocation failed for user ${ctx.currentRequest.id}!`);
-        await logAllocationsError(allocs, evals); //log the error information
+        await logAllocationsError(allocs, recentEvals); //log the error information
 
-        const failureType = await determineAllocationsFailureType(allocs, evals);
+        const failureType = await determineAllocationsFailureType(allocs, recentEvals);
         handleFailureType(ctx, failureType); //manage the failure here
         return false;
     }
@@ -273,6 +286,20 @@ async function getEvals (jobName) {
     const parsedResult = await parseJson(result.body);
     if (parsedResult+'' === '{}') return []; //no evaluations
     return parsedResult;
+}
+
+async function getRecentEvals (evals, taskGroupNames) {
+    const sortedEvals = evals.sort((a, b) => b.ModifyIndex - a.ModifyIndex);
+    let recentEvals = [];
+    taskGroupNames.forEach(groupName => {
+        const usefulEval = sortedEvals.find(eval => {
+            return !!eval.QueuedAllocations && eval.QueuedAllocations[groupName] !== undefined;
+        });
+        if (usefulEval !== undefined) {
+            recentEvals.push(usefulEval);
+        }
+    });
+    return recentEvals;
 }
 
 async function setJob (key, opts) {
@@ -548,6 +575,7 @@ module.exports = {
     //getting and setting job info
     getJob: getJob,
     getEvals: getEvals,
+    getRecentEvals: getRecentEvals,
     setJob: setJob,
     casJob: casJob,
     stopJob: stopJob,
