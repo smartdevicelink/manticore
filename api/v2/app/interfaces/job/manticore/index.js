@@ -128,10 +128,6 @@ async function advance (ctx) {
         await utils.autoHandleAll({
             ctx: ctx,
             job: jobFile,
-            taskNames: [{
-                name: coreTaskName,
-                count: 1
-            }],
             allocationTime: CORE_ALLOCATION_TIME,
             services: imageInfo.services,
             healthTime: CORE_HEALTH_TIME,
@@ -143,12 +139,8 @@ async function advance (ctx) {
         cachedJobs[id] = job;
         return; //done
     }
-    if (currentRequest.state === "pending-1") { //this stage causes an hmi job to run
-        const brokerAddress = currentRequest.services.core[`core-broker-${id}-0`].internal;
-        const coreFileAddress = currentRequest.services.core[`core-file-${id}-0`].internal;
-
-        let fullBrokerAddress = `ws:\\/\\/${brokerAddress}`; //internal address
-
+    //this stage generates external core address values for haproxy mode and stores them for future use
+    if (currentRequest.state === "pending-1") {
         //if haproxy is configured, generate the external addresses
         if (config.modes.haproxy) {
             //ensure that the tcp port numbers generated haven't been used before
@@ -156,8 +148,7 @@ async function advance (ctx) {
             const usedTcpPorts = getUsedTcpPorts(waitingState);
             const coreTcpPort = await generateTcpPort(config.tcpPortStart, config.tcpPortEnd, usedTcpPorts);
 
-            const externalBrokerAddress = randomString(PATTERN, 16);
-            currentRequest.services.core[`core-broker-${id}-0`].external = externalBrokerAddress;
+            currentRequest.services.core[`core-broker-${id}-0`].external = randomString(PATTERN, 16);
             currentRequest.services.core[`core-broker-${id}-0`].isHttp = true;
 
             currentRequest.services.core[`core-file-${id}-0`].external = randomString(PATTERN, 16);
@@ -168,8 +159,24 @@ async function advance (ctx) {
 
             currentRequest.services.core[`core-tcp-${id}-0`].external = coreTcpPort;
             currentRequest.services.core[`core-tcp-${id}-0`].isHttp = false;
-            
+            currentRequest.state = "pending-2";
+            ctx.updateStore = true;
+            ctx.removeUser = false;
+            return; //done. wait for the next cycle for the next phase
+        }
+        currentRequest.state = "pending-2";
+        //immediately proceed to the next phase, as nothing needs to be stored here
+    }
+    if (currentRequest.state === "pending-2") { //this stage causes an hmi job to run
+        const brokerAddress = currentRequest.services.core[`core-broker-${id}-0`].internal;
+        const coreFileAddress = currentRequest.services.core[`core-file-${id}-0`].internal;
+
+        let fullBrokerAddress = `ws:\\/\\/${brokerAddress}`; //internal address
+
+        //if haproxy is configured, generate the external addresses
+        if (config.modes.haproxy) {
             //domain addresses
+            const externalBrokerAddress = currentRequest.services.core[`core-broker-${id}-0`].external;
             const brokerDomainAddress = `${externalBrokerAddress}.${config.haproxyDomain}`;
 
             //external address (HAProxy)
@@ -181,7 +188,7 @@ async function advance (ctx) {
             
             if (config.modes.elbEncryptWs) { //secure external address (ELB)
                 fullBrokerAddress = `wss:\\/\\/${brokerDomainAddress}:${config.wsPort}`; 
-            }
+            }            
         }
 
         const envs = { //extract service addresses found from the previous stage
@@ -201,30 +208,38 @@ async function advance (ctx) {
         await utils.autoHandleAll({
             ctx: ctx,
             job: jobFile,
-            taskNames: [{
-                name: coreTaskName,
-                count: 1
-            },
-            {
-                name: hmiTaskName,
-                count: 1
-            }],
             allocationTime: HMI_ALLOCATION_TIME,
             services: imageInfo.services,
             healthTime: HMI_HEALTH_TIME,
-            stateChangeValue: "claimed", //final transition
+            stateChangeValue: "pending-3", 
             servicesKey: "hmi"
         });
 
+        return; //done
+    }
+    //this stage generates external hmi address values for haproxy mode and stores them for future use
+    if (currentRequest.state === "pending-3") {
         //if haproxy is configured, generate the external addresses
         if (config.modes.haproxy && currentRequest.services.hmi) {
             currentRequest.services.hmi[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
             currentRequest.services.hmi[`hmi-user-${id}-0`].isHttp = true;
+
+            currentRequest.state = "pending-4";
+            ctx.updateStore = true;
+            ctx.removeUser = false;
+            return; //done. wait for the next cycle for the next phase
         }
-
-        return; //done
+        currentRequest.state = "pending-4";
+        //immediately proceed to the next phase, as nothing needs to be stored here
     }
-
+    if (currentRequest.state === "pending-4") {
+        //all addresses have been finalized and the jobs are healthy. done
+        currentRequest.state = "claimed";
+        ctx.updateStore = true;
+        ctx.removeUser = false;
+        return;
+    }
+    
 }
 
 //given an id, return the full name of the job
