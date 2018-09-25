@@ -232,6 +232,8 @@ async function advance (ctx) {
         currentRequest.state = "pending-4";
         //immediately proceed to the next phase, as nothing needs to be stored here
     }
+    //this additional phase ensures that modules listening on "post-waiting-job-advance" have the correct info
+    //since it has been stored in the KV store
     if (currentRequest.state === "pending-4") {
         //all addresses have been finalized and the jobs are healthy. done
         currentRequest.state = "claimed";
@@ -239,7 +241,7 @@ async function advance (ctx) {
         ctx.removeUser = false;
         return;
     }
-    
+
 }
 
 //given an id, return the full name of the job
