@@ -249,21 +249,6 @@ async function idToJobName (id) {
     return `core-hmi-${id}`;
 }
 
-//given an id, return all the task names possible for the job
-async function idToTaskNames (id) {
-    const coreTaskName = `core-task-${id}`;
-    const hmiTaskName = `hmi-task-${id}`;
-    return [
-        {
-            name: coreTaskName,
-            count: 1
-        },
-        {
-            name: hmiTaskName,
-            count: 1
-        }
-    ];
-}
 
 //use the waiting state to find all used tcp ports
 function getUsedTcpPorts (waitingState) {
@@ -329,7 +314,6 @@ module.exports = {
     validate: validate,
     advance: advance,
     idToJobName: idToJobName,
-    idToTaskNames: idToTaskNames,
     formatAddresses: formatAddresses,
     exampleJobOption: exampleJobOption
 }
