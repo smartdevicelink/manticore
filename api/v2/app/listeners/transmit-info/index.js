@@ -120,15 +120,19 @@ function getInfo (id, property) {
     return cachedInfo[id][property];
 }
 
-//remove entries that aren't in the waiting state or are but are not in the claimed state
+//remove parts of the cache depending on the waiting state found
 function clearCache (waitingState) {
     for (let id in cachedInfo) {
-        if (!waitingState[id] || waitingState[id].state !== "claimed") {
-            clearInfo(id);
+        if (!waitingState[id]) {
+            clearInfo(id, "position");
+            clearInfo(id, "services");
+        }
+        else if (waitingState[id].state !== "claimed") {
+            clearInfo(id, "services");
         }
     }
 }
 
-function clearInfo (id) {
-    delete cachedInfo[id];
+function clearInfo (id, property) {
+    delete cachedInfo[id][property];
 }
