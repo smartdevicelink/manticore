@@ -123,16 +123,14 @@ async function advance (ctx) {
     if (currentRequest.state === "waiting") { //this stage causes a core job to run
         const job = coreSettings.generateJobFile(jobName, currentRequest);
         const jobFile = job.getJob().Job;
-        const imageInfo = coreSettings.configurationToImageInfo(coreVersion, build, id);
 
         await utils.autoHandleAll({
             ctx: ctx,
             job: jobFile,
             allocationTime: CORE_ALLOCATION_TIME,
-            services: imageInfo.services,
             healthTime: CORE_HEALTH_TIME,
             stateChangeValue: "pending-1",
-            servicesKey: "core"
+            servicesKey: "manticore"
         });
 
         //cache the core job so it doesn't need to be generated again in future stages
@@ -148,17 +146,18 @@ async function advance (ctx) {
             const usedTcpPorts = getUsedTcpPorts(waitingState);
             const coreTcpPort = await generateTcpPort(config.tcpPortStart, config.tcpPortEnd, usedTcpPorts);
 
-            currentRequest.services.core[`core-broker-${id}-0`].external = randomString(PATTERN, 16);
-            currentRequest.services.core[`core-broker-${id}-0`].isHttp = true;
+            currentRequest.services.manticore[`core-broker-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.manticore[`core-broker-${id}-0`].isHttp = true;
 
-            currentRequest.services.core[`core-file-${id}-0`].external = randomString(PATTERN, 16);
-            currentRequest.services.core[`core-file-${id}-0`].isHttp = true;
+            currentRequest.services.manticore[`core-file-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.manticore[`core-file-${id}-0`].isHttp = true;
 
-            currentRequest.services.core[`core-log-${id}-0`].external = randomString(PATTERN, 16);
-            currentRequest.services.core[`core-log-${id}-0`].isHttp = true;
+            currentRequest.services.manticore[`core-log-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.manticore[`core-log-${id}-0`].isHttp = true;
 
-            currentRequest.services.core[`core-tcp-${id}-0`].external = coreTcpPort;
-            currentRequest.services.core[`core-tcp-${id}-0`].isHttp = false;
+            currentRequest.services.manticore[`core-tcp-${id}-0`].external = coreTcpPort;
+            currentRequest.services.manticore[`core-tcp-${id}-0`].isHttp = false;
+
             currentRequest.state = "pending-2";
             ctx.updateStore = true;
             ctx.removeUser = false;
@@ -168,15 +167,15 @@ async function advance (ctx) {
         //immediately proceed to the next phase, as nothing needs to be stored here
     }
     if (currentRequest.state === "pending-2") { //this stage causes an hmi job to run
-        const brokerAddress = currentRequest.services.core[`core-broker-${id}-0`].internal;
-        const coreFileAddress = currentRequest.services.core[`core-file-${id}-0`].internal;
+        const brokerAddress = currentRequest.services.manticore[`core-broker-${id}-0`].internal;
+        const coreFileAddress = currentRequest.services.manticore[`core-file-${id}-0`].internal;
 
         let fullBrokerAddress = `ws:\\/\\/${brokerAddress}`; //internal address
 
         //if haproxy is configured, generate the external addresses
         if (config.modes.haproxy) {
             //domain addresses
-            const externalBrokerAddress = currentRequest.services.core[`core-broker-${id}-0`].external;
+            const externalBrokerAddress = currentRequest.services.manticore[`core-broker-${id}-0`].external;
             const brokerDomainAddress = `${externalBrokerAddress}.${config.haproxyDomain}`;
 
             //external address (HAProxy)
@@ -203,16 +202,14 @@ async function advance (ctx) {
         const job = hmiSettings.generateJobFile(cachedJobs[id], currentRequest, envs);
 
         const jobFile = job.getJob().Job;
-        const imageInfo = hmiSettings.configurationToImageInfo(hmiVersion, type, id, envs);
 
         await utils.autoHandleAll({
             ctx: ctx,
             job: jobFile,
             allocationTime: HMI_ALLOCATION_TIME,
-            services: imageInfo.services,
             healthTime: HMI_HEALTH_TIME,
             stateChangeValue: "pending-3", 
-            servicesKey: "hmi"
+            servicesKey: "manticore"
         });
 
         return; //done
@@ -220,9 +217,9 @@ async function advance (ctx) {
     //this stage generates external hmi address values for haproxy mode and stores them for future use
     if (currentRequest.state === "pending-3") {
         //if haproxy is configured, generate the external addresses
-        if (config.modes.haproxy && currentRequest.services.hmi) {
-            currentRequest.services.hmi[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
-            currentRequest.services.hmi[`hmi-user-${id}-0`].isHttp = true;
+        if (config.modes.haproxy && currentRequest.services.manticore) {
+            currentRequest.services.manticore[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.manticore[`hmi-user-${id}-0`].isHttp = true;
 
             currentRequest.state = "pending-4";
             ctx.updateStore = true;
@@ -255,10 +252,10 @@ function getUsedTcpPorts (waitingState) {
     let usedPorts = [];
     for (let id in waitingState) {
         const cond1 = waitingState[id].services !== undefined;
-        const cond2 = cond1 && waitingState[id].services.core !== undefined;
-        const cond3 = cond2 && waitingState[id].services.core[`core-tcp-${id}-0`].external !== undefined;
+        const cond2 = cond1 && waitingState[id].services.manticore !== undefined;
+        const cond3 = cond2 && waitingState[id].services.manticore[`core-tcp-${id}-0`].external !== undefined;
         if (cond3) {
-            usedPorts.push(waitingState[id].services.core[`core-tcp-${id}-0`].external);
+            usedPorts.push(waitingState[id].services.manticore[`core-tcp-${id}-0`].external);
         }
     }
     return usedPorts;
@@ -287,11 +284,11 @@ async function generateTcpPort (min, max, blacklistedPorts) {
 //given a services object, formats the addresses in some friendly manner and returns them for a client
 function formatAddresses (id, services) {
     return {
-        "core-broker": utils.formatWsAddress(services.core[`core-broker-${id}-0`]),
-        "core-tcp": utils.formatTcpAddress(services.core[`core-tcp-${id}-0`]),
-        "core-file": utils.formatHttpAddress(services.core[`core-file-${id}-0`]),
-        "core-log": utils.formatWsAddress(services.core[`core-log-${id}-0`]),
-        "hmi-user": utils.formatHttpAddress(services.hmi[`hmi-user-${id}-0`]),
+        "core-broker": utils.formatWsAddress(services.manticore[`core-broker-${id}-0`]),
+        "core-tcp": utils.formatTcpAddress(services.manticore[`core-tcp-${id}-0`]),
+        "core-file": utils.formatHttpAddress(services.manticore[`core-file-${id}-0`]),
+        "core-log": utils.formatWsAddress(services.manticore[`core-log-${id}-0`]),
+        "hmi-user": utils.formatHttpAddress(services.manticore[`hmi-user-${id}-0`]),
     };
 }
 

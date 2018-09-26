@@ -102,12 +102,14 @@ AwsHandler.prototype.changeState = async function (waitingState) {
         if(waitingState[id].state == 'claimed'){
             for(var service in waitingState[id].services){
                 for(var addressObj in waitingState[id].services[service]){
-                    if(!waitingState[id].services[service][addressObj].isHttp){
+                    const addressInfo = waitingState[id].services[service][addressObj];
+                    //not all services have external addresses
+                    if(!addressInfo.isHttp && addressInfo.external) {
                         const listener = new Listener({
                             Protocol: "TCP",
-                            LoadBalancerPort: waitingState[id].services[service][addressObj].external,
+                            LoadBalancerPort: addressInfo.external,
                             InstanceProtocol: "TCP",
-                            InstancePort: waitingState[id].services[service][addressObj].external
+                            InstancePort: addressInfo.external
                         })
 
                         if (config.modes.elbEncryptTcp) {

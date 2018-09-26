@@ -25,12 +25,12 @@ const FAILURE_TYPE_RESTART = "RESTART";
 
 //handles every part of a job submission and services check. returns whether the process was a success
 async function autoHandleAll (config) {
-    const {ctx, job, allocationTime, services, healthTime, stateChangeValue, servicesKey} = config;
+    const {ctx, job, allocationTime, healthTime, stateChangeValue, servicesKey} = config;
     const jobName = job.Name;
     const id = ctx.currentRequest.id;
     //parse the job file for group info, task info, and service info
     const taskGroupNames = job.TaskGroups.map(tg => tg.Name);
-    const taskNames = job.TaskGroups.reduce((arr, taskGroup) => {
+    const taskChecks = job.TaskGroups.reduce((arr, taskGroup) => {
         return arr.concat(taskGroup.Tasks.map(t => {
             return {
                 name: t.Name,
@@ -40,19 +40,24 @@ async function autoHandleAll (config) {
     }, []);
 
     //submit the job and wait for results. ctx may be modified
-    const successJob = await autoHandleJob(ctx, jobName, job, taskNames, taskGroupNames, allocationTime);
+    const successJob = await autoHandleJob(ctx, jobName, job, taskChecks, taskGroupNames, allocationTime);
     if (!successJob) return false; //failed job submission. bail out
     logger.debug("Allocation successful for: " + id);
-
     //the job is running at this point. do a health check on all the services attached to the job. ctx may be modified
-    //ignore all services with no checks property for checkedServiceNames
-    const getNameFunc = elem => elem.name;
-    const allServiceNames = services.map(getNameFunc);
-    const checkedServiceNames = services.filter(service => {
-        return service.checks && service.checks.length > 0;
-    }).map(getNameFunc);
+    //ignore all services with an empty array for the Checks property
+    const serviceChecks = job.TaskGroups.reduce((arr, taskGroup) => {
+        return arr.concat(taskGroup.Tasks.reduce((arr, tasks) => {
+            return arr.concat(tasks.Services.map(s => {
+                return {
+                    name: s.Name,
+                    count: taskGroup.Count,
+                    check: s.Checks.length > 0
+                }
+            }));
+        }, []));
+    }, []);
 
-    const successServices = await autoHandleServices(ctx, checkedServiceNames, healthTime);
+    const successServices = await autoHandleServices(ctx, serviceChecks, healthTime);
     if (!successServices) return false; //failed service check. bail out
 
     //get a map of all service names to real addresses to the services. store them in the store
@@ -60,6 +65,7 @@ async function autoHandleAll (config) {
     let serviceInfo;
 
     try { //could get an error regarding the address lookup failing
+        const allServiceNames = serviceChecks.map(s => s.name);
         serviceInfo = await findServiceAddresses(allServiceNames);
     }
     catch (err) { //fail out
@@ -73,8 +79,17 @@ async function autoHandleAll (config) {
     if (!ctx.currentRequest.services) {
         ctx.currentRequest.services = {};
     }
+    if (!ctx.currentRequest.services[servicesKey]) {
+        ctx.currentRequest.services[servicesKey] = {};
+    }
+
     //use servicesKey to attach address info in a property of the request's services object
-    ctx.currentRequest.services[servicesKey] = serviceInfo;
+    for (let serviceName in serviceInfo) {
+        const obj = ctx.currentRequest.services[servicesKey];
+        if (!obj[serviceName]) { //do not overwrite existing properties in the ctx services object
+            obj[serviceName] = serviceInfo[serviceName];
+        }
+    }
 
     //services are healthy. update the store's remote state
     ctx.updateStore = true;
@@ -86,14 +101,14 @@ async function autoHandleAll (config) {
 //a well-rounded implementation of handling a job submission and dealing with possible errors
 //this modifies ctx so the caller function can see what the suggested action is
 //returns whether the job is submitted without errors
-async function autoHandleJob (ctx, jobName, jobFile, taskNames, taskGroupNames, healthTime = 10000) {
+async function autoHandleJob (ctx, jobName, jobFile, taskChecks, taskGroupNames, healthTime = 10000) {
     //perform a job CAS
     const jobSetter = await casJob(jobName);
     const jobResult = await jobSetter.set(jobFile); //submit the job
     const parsedResult = await parseJson(jobResult.body);
 
     //retrieve the allocation information of the job. force a result by healthTime milliseconds
-    const allocs = await watchAllocationsToResolution(jobName, taskNames, Date.now() + healthTime);
+    const allocs = await watchAllocationsToResolution(jobName, taskChecks, Date.now() + healthTime);
 
     //get the evaluation after the allocation has come to a resolution, or else the data will be outdated
     const evals = await getEvals(jobName);
@@ -107,7 +122,7 @@ async function autoHandleJob (ctx, jobName, jobFile, taskNames, taskGroupNames, 
     }
 
     //the job has to be running at this point, or else this should be considered a failure
-    if (!await allocationsHealthCheck(allocs, taskNames)) { 
+    if (!await allocationsHealthCheck(allocs, taskChecks)) { 
         logger.error(`Allocation failed for user ${ctx.currentRequest.id}!`);
         await logAllocationsError(allocs, recentEvals); //log the error information
 
@@ -119,7 +134,7 @@ async function autoHandleJob (ctx, jobName, jobFile, taskNames, taskGroupNames, 
 }
 
 //continuously hit the allocations endpoint until either the end date is passed or until the status is running
-async function watchAllocationsToResolution (jobName, taskNames, endDate, index) {
+async function watchAllocationsToResolution (jobName, taskChecks, endDate, index) {
     let baseUrl = `http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${jobName}/allocations?`;
     if (index !== undefined) {
         baseUrl = `${baseUrl}index=${index}&`; //long poll for any updates
@@ -142,9 +157,9 @@ async function watchAllocationsToResolution (jobName, taskNames, endDate, index)
         return filteredAllocs;
     }
 
-    if (!await allocationsHealthCheck(filteredAllocs, taskNames)) {
+    if (!await allocationsHealthCheck(filteredAllocs, taskChecks)) {
         //start over and wait for more updates
-        return await watchAllocationsToResolution(jobName, taskNames, endDate, newIndex);
+        return await watchAllocationsToResolution(jobName, taskChecks, endDate, newIndex);
     }
     else { //a running state is found. return the allocations for further evaluation
         return filteredAllocs;
@@ -152,7 +167,7 @@ async function watchAllocationsToResolution (jobName, taskNames, endDate, index)
 }
 
 //continuously hit the allocations endpoint until the job is out of the running state
-async function watchAllocationsToEnd (jobName, taskNames, index) {
+async function watchAllocationsToEnd (jobName, taskChecks, index) {
     let baseUrl = `http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${jobName}/allocations?`;
     if (index !== undefined) {
         baseUrl = `${baseUrl}index=${index}&`; //long poll for any updates
@@ -164,11 +179,11 @@ async function watchAllocationsToEnd (jobName, taskNames, index) {
 
     const filteredAllocs = await getLatestAllocations(allocs);
 
-    if (!await allocationsHealthCheck(filteredAllocs, taskNames)) { //health check failed
+    if (!await allocationsHealthCheck(filteredAllocs, taskChecks)) { //health check failed
         return filteredAllocs;
     }
     else { //start over and wait for more updates
-        return await watchAllocationsToEnd(jobName, taskNames, newIndex);
+        return await watchAllocationsToEnd(jobName, taskChecks, newIndex);
     }
 }
 
@@ -197,10 +212,10 @@ async function getLatestAllocations (allocs) {
 
 //determine if the job is healthy by inspecting the allocations and running tasks
 //use getLatestAllocations before passing allocations here
-async function allocationsHealthCheck (allocs, taskNames) {
+async function allocationsHealthCheck (allocs, taskChecks) {
     let requiredTasksMap = {};
     //populate the task map
-    taskNames.forEach(task => {
+    taskChecks.forEach(task => {
         requiredTasksMap[task.name] = task.count;
     });
 
@@ -339,10 +354,10 @@ async function casJob (key) {
 //a well-rounded implementation of handling service health checks and dealing with possible errors
 //this modifies ctx so the caller function can see what the suggested action is
 //returns whether the services are running without errors
-async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
-    const serviceWatches = serviceNames.map(name => {
+async function autoHandleServices (ctx, serviceChecks, healthTime = 10000) {
+    const serviceWatches = serviceChecks.map(serviceCheck => {
         //run synchronously to prevent blocking. force a result by healthTime milliseconds
-        return watchServicesToResolution(name, Date.now() + healthTime); 
+        return watchServicesToResolution(serviceCheck, Date.now() + healthTime); 
     });
     const services = await Promise.all(serviceWatches); //wait for resolution on all watches
 
@@ -352,10 +367,10 @@ async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
         return arr.concat(serviceArray);
     }, []);
 
-    const servicesPassing = await servicesHealthCheck(flattenedServices, serviceNames);
+    const servicesPassing = await servicesHealthCheck(flattenedServices, serviceChecks);
     if (!servicesPassing) { 
         logger.error(`Health checks failed for user ${ctx.currentRequest.id}!`);
-        await logServicesError(serviceNames, flattenedServices); //log the error information
+        await logServicesError(serviceChecks, flattenedServices); //log the error information
 
         const failureType = await determineServicesFailureType(flattenedServices);
         handleFailureType(ctx, failureType); //manage the failure here
@@ -365,12 +380,13 @@ async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
 }
 
 //determine if the services are healthy
-async function servicesHealthCheck (services, serviceNames) {
+async function servicesHealthCheck (services, serviceChecks) {
     let requiredServicesMap = {};
-
     //populate the services map
-    serviceNames.forEach(name => {
-        requiredServicesMap[name] = 1;
+    serviceChecks.forEach(serviceCheck => {
+        if (serviceCheck.check) { 
+            requiredServicesMap[serviceCheck.name] = serviceCheck.count;
+        }
     });
 
     //check that all services are running
@@ -389,7 +405,8 @@ async function servicesHealthCheck (services, serviceNames) {
 }
 
 //continuously hit the health checks endpoint until either the end date is passed or until the status is passing
-async function watchServicesToResolution (serviceName, endDate = 0, index) {
+async function watchServicesToResolution (serviceCheck, endDate = 0, index) {
+    const serviceName = serviceCheck.name;
     let baseUrl = `http://${config.clientAgentIp}:${config.consulAgentPort}/v1/health/checks/${serviceName}?`;
     if (index !== undefined) {
         baseUrl = `${baseUrl}index=${index}&`;
@@ -411,8 +428,8 @@ async function watchServicesToResolution (serviceName, endDate = 0, index) {
     }
 
     //all services found must be passing
-    if (!await servicesHealthCheck(services, [serviceName])) { //start over and wait for more updates
-        return await watchServicesToResolution(serviceName, endDate, newIndex);
+    if (!await servicesHealthCheck(services, [serviceCheck])) { //start over and wait for more updates
+        return await watchServicesToResolution(serviceCheck, endDate, newIndex);
     }
     else { //a passing state is found. return the service info for further evaluation
         return services;
@@ -420,7 +437,8 @@ async function watchServicesToResolution (serviceName, endDate = 0, index) {
 }
 
 //continuously hit the health checks endpoint until the service no longer passes or isn't checkable
-async function watchServiceToEnd (serviceName, index) {
+async function watchServiceToEnd (serviceCheck, index) {
+    const serviceName = serviceCheck.name;
     let baseUrl = `http://${config.clientAgentIp}:${config.consulAgentPort}/v1/health/checks/${serviceName}?`;
     if (index !== undefined) {
         baseUrl = `${baseUrl}index=${index}&`;
@@ -437,7 +455,7 @@ async function watchServiceToEnd (serviceName, index) {
         return service;
     }
     else { //passing state. start over and wait for more updates
-        return await watchServiceToEnd(serviceName, newIndex);
+        return await watchServiceToEnd(serviceCheck, newIndex);
     }
 }
 
@@ -446,7 +464,8 @@ async function determineServicesFailureType (services) {
     return FAILURE_TYPE_PERMANENT;
 }
 
-async function logServicesError (serviceNames, services) {
+async function logServicesError (serviceChecks, services) {
+    const serviceNames = serviceChecks.map(s => s.name);
     logger.error(`Services report:`);
     logger.error(`Services watched: ${serviceNames}`);
     services.forEach(service => {
