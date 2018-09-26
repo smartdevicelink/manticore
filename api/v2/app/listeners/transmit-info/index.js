@@ -42,8 +42,8 @@ module.exports = {
             }
         }
 
-        //clear out the cache, since the cache is being completely remade
-        clearCache();
+        //clear out the cache of request data that doesn't exist anymore
+        clearCache(ctx.waitingState);
 
         await manageNonClaimedRequests(nonClaimedRequests);
 
@@ -74,7 +74,7 @@ async function manageNonClaimedRequests (requests) {
     //parse through all non-claimed requests and send the following:
     //the position in the queue they are in
     //whether they need to wait in the queue (is the user in a waiting state?)
-    requests.forEach(async (request, index) => {
+    requests.forEach((request, index) => {
         const id = request.id;
         const positionInfo = {
             type: "position",
@@ -83,31 +83,36 @@ async function manageNonClaimedRequests (requests) {
                 wait: request.state === "waiting"
             }
         };
-        storeInfo(id, "position", positionInfo); //cache position info
-        await websocket.send(id, JSON.stringify(positionInfo));
+        const sameInfo = storeInfo(id, "position", positionInfo); //cache position info
+        if (sameInfo) return; //don't sent redundant info
+        websocket.send(id, JSON.stringify(positionInfo));
     });
 }
 
 async function manageClaimedRequests (requests) {
     //parse through all claimed requests and send the address information to the clients
-    requests.forEach(async request => {
+    requests.forEach(request => {
         const id = request.id;
         const serviceInfo = {
             type: "services",
             data: request.services
         };
-        storeInfo(id, "services", serviceInfo); //cache service info
-        await websocket.send(id, JSON.stringify(job.formatAddresses(id, serviceInfo.data)));
+        const sameInfo = storeInfo(id, "services", serviceInfo); //cache service info
+        if (sameInfo) return; //don't sent redundant info
+        websocket.send(id, JSON.stringify(job.formatAddresses(id, serviceInfo.data)));
     });
 }
 
 //cache-related functions
 
+//returns whether the stored information is the same
 function storeInfo (id, property, value) {
     if (!cachedInfo[id]) {
         cachedInfo[id] = {};
     }
+    const sameInfo = JSON.stringify(value) === JSON.stringify(getInfo(id, property));
     cachedInfo[id][property] = value;
+    return sameInfo;
 }
 
 function getInfo (id, property) {
@@ -115,10 +120,19 @@ function getInfo (id, property) {
     return cachedInfo[id][property];
 }
 
-function clearCache () {
-    cachedInfo = {};
+//remove parts of the cache depending on the waiting state found
+function clearCache (waitingState) {
+    for (let id in cachedInfo) {
+        if (!waitingState[id]) {
+            clearInfo(id, "position");
+            clearInfo(id, "services");
+        }
+        else if (waitingState[id].state !== "claimed") {
+            clearInfo(id, "services");
+        }
+    }
 }
 
-function clearInfo (id) {
-    delete cachedInfo[id];
+function clearInfo (id, property) {
+    delete cachedInfo[id][property];
 }

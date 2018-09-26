@@ -25,24 +25,39 @@ const FAILURE_TYPE_RESTART = "RESTART";
 
 //handles every part of a job submission and services check. returns whether the process was a success
 async function autoHandleAll (config) {
-    const {ctx, job, taskNames, allocationTime, services, healthTime, stateChangeValue, servicesKey} = config;
+    const {ctx, job, allocationTime, healthTime, stateChangeValue, servicesKey} = config;
     const jobName = job.Name;
     const id = ctx.currentRequest.id;
+    //parse the job file for group info, task info, and service info
+    const taskGroupNames = job.TaskGroups.map(tg => tg.Name);
+    const taskChecks = job.TaskGroups.reduce((arr, taskGroup) => {
+        return arr.concat(taskGroup.Tasks.map(t => {
+            return {
+                name: t.Name,
+                count: taskGroup.Count
+            }
+        }));
+    }, []);
 
     //submit the job and wait for results. ctx may be modified
-    const successJob = await autoHandleJob(ctx, jobName, job, taskNames, allocationTime);
+    const successJob = await autoHandleJob(ctx, jobName, job, taskChecks, taskGroupNames, allocationTime);
     if (!successJob) return false; //failed job submission. bail out
     logger.debug("Allocation successful for: " + id);
-
     //the job is running at this point. do a health check on all the services attached to the job. ctx may be modified
-    //ignore all services with no checks property for checkedServiceNames
-    const getNameFunc = elem => elem.name;
-    const allServiceNames = services.map(getNameFunc);
-    const checkedServiceNames = services.filter(service => {
-        return service.checks && service.checks.length > 0;
-    }).map(getNameFunc);
+    //ignore all services with an empty array for the Checks property
+    const serviceChecks = job.TaskGroups.reduce((arr, taskGroup) => {
+        return arr.concat(taskGroup.Tasks.reduce((arr, tasks) => {
+            return arr.concat(tasks.Services.map(s => {
+                return {
+                    name: s.Name,
+                    count: taskGroup.Count,
+                    check: s.Checks.length > 0
+                }
+            }));
+        }, []));
+    }, []);
 
-    const successServices = await autoHandleServices(ctx, checkedServiceNames, healthTime);
+    const successServices = await autoHandleServices(ctx, serviceChecks, healthTime);
     if (!successServices) return false; //failed service check. bail out
 
     //get a map of all service names to real addresses to the services. store them in the store
@@ -50,6 +65,7 @@ async function autoHandleAll (config) {
     let serviceInfo;
 
     try { //could get an error regarding the address lookup failing
+        const allServiceNames = serviceChecks.map(s => s.name);
         serviceInfo = await findServiceAddresses(allServiceNames);
     }
     catch (err) { //fail out
@@ -63,8 +79,17 @@ async function autoHandleAll (config) {
     if (!ctx.currentRequest.services) {
         ctx.currentRequest.services = {};
     }
+    if (!ctx.currentRequest.services[servicesKey]) {
+        ctx.currentRequest.services[servicesKey] = {};
+    }
+
     //use servicesKey to attach address info in a property of the request's services object
-    ctx.currentRequest.services[servicesKey] = serviceInfo;
+    for (let serviceName in serviceInfo) {
+        const obj = ctx.currentRequest.services[servicesKey];
+        if (!obj[serviceName]) { //do not overwrite existing properties in the ctx services object
+            obj[serviceName] = serviceInfo[serviceName];
+        }
+    }
 
     //services are healthy. update the store's remote state
     ctx.updateStore = true;
@@ -76,32 +101,32 @@ async function autoHandleAll (config) {
 //a well-rounded implementation of handling a job submission and dealing with possible errors
 //this modifies ctx so the caller function can see what the suggested action is
 //returns whether the job is submitted without errors
-async function autoHandleJob (ctx, jobName, jobFile, taskNames, healthTime = 10000) {
+async function autoHandleJob (ctx, jobName, jobFile, taskChecks, taskGroupNames, healthTime = 10000) {
     //perform a job CAS
     const jobSetter = await casJob(jobName);
     const jobResult = await jobSetter.set(jobFile); //submit the job
     const parsedResult = await parseJson(jobResult.body);
 
-    if (parsedResult == '{}') { //jobResult.body is an error message
-        logger.error(new Error(jobResult.body).stack);
-        handleFailureType(ctx, FAILURE_TYPE_PERMANENT); //invalid job submission. boot the user off the store
+    //retrieve the allocation information of the job. force a result by healthTime milliseconds
+    const allocs = await watchAllocationsToResolution(jobName, taskChecks, Date.now() + healthTime);
+
+    //get the evaluation after the allocation has come to a resolution, or else the data will be outdated
+    const evals = await getEvals(jobName);
+    //retrieve only the important evaluations
+    const recentEvals = await getRecentEvals(evals, taskGroupNames);
+
+    if (recentEvals.length === 0) { //no evaluations for the job found! this is an error
+        logger.error(new Error("Evaluation not found for job " + jobName).stack);
+        handleFailureType(ctx, FAILURE_TYPE_PERMANENT); //boot the user off the store
         return false;
     }
 
-    //retrieve the allocation information of the job. force a result by healthTime milliseconds
-    const allocs = await watchAllocationsToResolution(jobName, taskNames, Date.now() + healthTime);
-
-    //get the evaluation after the allocation has come to a resolution, or else the data will be outdated
-    const evalId = parsedResult.EvalID;
-    const eval = await getEval(evalId);
-    const parsedEval = await parseJson(eval.body);
-
     //the job has to be running at this point, or else this should be considered a failure
-    if (!await allocationsHealthCheck(allocs, taskNames)) { 
+    if (!await allocationsHealthCheck(allocs, taskChecks)) { 
         logger.error(`Allocation failed for user ${ctx.currentRequest.id}!`);
-        await logAllocationsError(allocs, parsedEval); //log the error information
+        await logAllocationsError(allocs, recentEvals); //log the error information
 
-        const failureType = await determineAllocationsFailureType(allocs, parsedEval);
+        const failureType = await determineAllocationsFailureType(allocs, recentEvals);
         handleFailureType(ctx, failureType); //manage the failure here
         return false;
     }
@@ -109,7 +134,7 @@ async function autoHandleJob (ctx, jobName, jobFile, taskNames, healthTime = 100
 }
 
 //continuously hit the allocations endpoint until either the end date is passed or until the status is running
-async function watchAllocationsToResolution (jobName, taskNames, endDate, index) {
+async function watchAllocationsToResolution (jobName, taskChecks, endDate, index) {
     let baseUrl = `http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${jobName}/allocations?`;
     if (index !== undefined) {
         baseUrl = `${baseUrl}index=${index}&`; //long poll for any updates
@@ -132,9 +157,9 @@ async function watchAllocationsToResolution (jobName, taskNames, endDate, index)
         return filteredAllocs;
     }
 
-    if (!await allocationsHealthCheck(filteredAllocs, taskNames)) {
+    if (!await allocationsHealthCheck(filteredAllocs, taskChecks)) {
         //start over and wait for more updates
-        return await watchAllocationsToResolution(jobName, taskNames, endDate, newIndex);
+        return await watchAllocationsToResolution(jobName, taskChecks, endDate, newIndex);
     }
     else { //a running state is found. return the allocations for further evaluation
         return filteredAllocs;
@@ -142,7 +167,7 @@ async function watchAllocationsToResolution (jobName, taskNames, endDate, index)
 }
 
 //continuously hit the allocations endpoint until the job is out of the running state
-async function watchAllocationsToEnd (jobName, taskNames, index) {
+async function watchAllocationsToEnd (jobName, taskChecks, index) {
     let baseUrl = `http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${jobName}/allocations?`;
     if (index !== undefined) {
         baseUrl = `${baseUrl}index=${index}&`; //long poll for any updates
@@ -154,11 +179,11 @@ async function watchAllocationsToEnd (jobName, taskNames, index) {
 
     const filteredAllocs = await getLatestAllocations(allocs);
 
-    if (!await allocationsHealthCheck(filteredAllocs, taskNames)) { //health check failed
+    if (!await allocationsHealthCheck(filteredAllocs, taskChecks)) { //health check failed
         return filteredAllocs;
     }
     else { //start over and wait for more updates
-        return await watchAllocationsToEnd(jobName, taskNames, newIndex);
+        return await watchAllocationsToEnd(jobName, taskChecks, newIndex);
     }
 }
 
@@ -187,10 +212,10 @@ async function getLatestAllocations (allocs) {
 
 //determine if the job is healthy by inspecting the allocations and running tasks
 //use getLatestAllocations before passing allocations here
-async function allocationsHealthCheck (allocs, taskNames) {
+async function allocationsHealthCheck (allocs, taskChecks) {
     let requiredTasksMap = {};
     //populate the task map
-    taskNames.forEach(task => {
+    taskChecks.forEach(task => {
         requiredTasksMap[task.name] = task.count;
     });
 
@@ -214,7 +239,7 @@ async function allocationsHealthCheck (allocs, taskNames) {
 }
 
 //diagnostics function. use getLatestAllocations before passing allocations here
-async function logAllocationsError (allocations, eval) {
+async function logAllocationsError (allocations, evals) {
     logger.error(`Allocation error report. Number of allocations: ${allocations.length}`);
     for (let i = 0; i < allocations.length; i++) {
         const allocation = allocations[i];
@@ -227,19 +252,21 @@ async function logAllocationsError (allocations, eval) {
             });
         }
     }
-    if (eval.FailedTGAllocs) {
-        for (let groupName in eval.FailedTGAllocs) {
-            logger.error(`Evaluation error report for task group ${groupName}:`);
-            const groupInfo = eval.FailedTGAllocs[groupName];
-            logger.error(`Constraint Filters: ${JSON.stringify(groupInfo.ConstraintFiltered)}`);
-            const {NodesEvaluated, NodesFiltered, NodesExhausted} = groupInfo;
-            logger.error(`Nodes Evaluated/Filtered/Exhausted: ${NodesEvaluated}/${NodesFiltered}/${NodesExhausted}`);
+    evals.forEach(eval => {
+        if (eval.FailedTGAllocs) {
+            for (let groupName in eval.FailedTGAllocs) {
+                logger.error(`Evaluation error report for task group ${groupName}:`);
+                const groupInfo = eval.FailedTGAllocs[groupName];
+                logger.error(`Constraint Filters: ${JSON.stringify(groupInfo.ConstraintFiltered)}`);
+                const {NodesEvaluated, NodesFiltered, NodesExhausted} = groupInfo;
+                logger.error(`Nodes Evaluated/Filtered/Exhausted: ${NodesEvaluated}/${NodesFiltered}/${NodesExhausted}`);
 
-            for (let dimension in groupInfo.DimensionExhausted) {
-                logger.error(`${dimension} has been exhausted!`);
+                for (let dimension in groupInfo.DimensionExhausted) {
+                    logger.error(`${dimension} has been exhausted!`);
+                }
             }
-        }
-    }
+        }        
+    });
 }
 
 /*
@@ -252,11 +279,14 @@ async function logAllocationsError (allocations, eval) {
     (ex. possible infinite loop for a Restart Failure, possible deadlock for a Pending Failure)
     returns one of the following strings: "PERMANENT", "PENDING", "RESTART"
 */
-async function determineAllocationsFailureType (allocations, eval) {
+async function determineAllocationsFailureType (allocations, evals) {
     if (allocations.length === 0) { 
         //no allocations were placed. check the evaluation details instead for information
-        if (eval.FailedTGAllocs !== null && eval.FailedTGAllocs !== undefined ) { 
-            return FAILURE_TYPE_PENDING; //some lack of resource has caused the allocation to be unplacable
+        for (let i = 0; i < evals.length; i++) {
+            const eval = evals[i];
+            if (eval.FailedTGAllocs !== null && eval.FailedTGAllocs !== undefined ) { 
+                return FAILURE_TYPE_PENDING; //some lack of resource has caused the allocation to be unplacable
+            }    
         }
     }
     return FAILURE_TYPE_PERMANENT;
@@ -266,8 +296,25 @@ async function getJob (key) {
     return await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${key}`);
 }
 
-async function getEval (id) {
-    return await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/evaluation/${id}`);
+async function getEvals (jobName) {
+    const result = await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${jobName}/evaluations`);
+    const parsedResult = await parseJson(result.body);
+    if (parsedResult+'' === '{}') return []; //no evaluations
+    return parsedResult;
+}
+
+async function getRecentEvals (evals, taskGroupNames) {
+    const sortedEvals = evals.sort((a, b) => b.ModifyIndex - a.ModifyIndex);
+    let recentEvals = [];
+    taskGroupNames.forEach(groupName => {
+        const usefulEval = sortedEvals.find(eval => {
+            return !!eval.QueuedAllocations && eval.QueuedAllocations[groupName] !== undefined;
+        });
+        if (usefulEval !== undefined) {
+            recentEvals.push(usefulEval);
+        }
+    });
+    return recentEvals;
 }
 
 async function setJob (key, opts) {
@@ -307,10 +354,10 @@ async function casJob (key) {
 //a well-rounded implementation of handling service health checks and dealing with possible errors
 //this modifies ctx so the caller function can see what the suggested action is
 //returns whether the services are running without errors
-async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
-    const serviceWatches = serviceNames.map(name => {
+async function autoHandleServices (ctx, serviceChecks, healthTime = 10000) {
+    const serviceWatches = serviceChecks.map(serviceCheck => {
         //run synchronously to prevent blocking. force a result by healthTime milliseconds
-        return watchServicesToResolution(name, Date.now() + healthTime); 
+        return watchServicesToResolution(serviceCheck, Date.now() + healthTime); 
     });
     const services = await Promise.all(serviceWatches); //wait for resolution on all watches
 
@@ -320,10 +367,10 @@ async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
         return arr.concat(serviceArray);
     }, []);
 
-    const servicesPassing = await servicesHealthCheck(flattenedServices);
+    const servicesPassing = await servicesHealthCheck(flattenedServices, serviceChecks);
     if (!servicesPassing) { 
         logger.error(`Health checks failed for user ${ctx.currentRequest.id}!`);
-        await logServicesError(serviceNames, flattenedServices); //log the error information
+        await logServicesError(serviceChecks, flattenedServices); //log the error information
 
         const failureType = await determineServicesFailureType(flattenedServices);
         handleFailureType(ctx, failureType); //manage the failure here
@@ -333,16 +380,33 @@ async function autoHandleServices (ctx, serviceNames, healthTime = 10000) {
 }
 
 //determine if the services are healthy
-async function servicesHealthCheck (services) {
-    services.forEach(service => {
-        if (service === null || service.Status !== "passing") 
-            return false; //fail
+async function servicesHealthCheck (services, serviceChecks) {
+    let requiredServicesMap = {};
+    //populate the services map
+    serviceChecks.forEach(serviceCheck => {
+        if (serviceCheck.check) { 
+            requiredServicesMap[serviceCheck.name] = serviceCheck.count;
+        }
     });
+
+    //check that all services are running
+    for (let i = 0; i < services.length; i++) {
+        const service = services[i];
+        if (service === null || service.Status !== "passing") return false; //fail
+        requiredServicesMap[service.ServiceName]--;
+    }
+
+    //requiredServicesMap must have a 0 count in all elements by the time services are parsed
+    //if not, fail the health check
+    for (let serviceName in requiredServicesMap) {
+        if (requiredServicesMap[serviceName] !== 0) return false;
+    }
     return true; //pass
 }
 
 //continuously hit the health checks endpoint until either the end date is passed or until the status is passing
-async function watchServicesToResolution (serviceName, endDate = 0, index) {
+async function watchServicesToResolution (serviceCheck, endDate = 0, index) {
+    const serviceName = serviceCheck.name;
     let baseUrl = `http://${config.clientAgentIp}:${config.consulAgentPort}/v1/health/checks/${serviceName}?`;
     if (index !== undefined) {
         baseUrl = `${baseUrl}index=${index}&`;
@@ -364,8 +428,8 @@ async function watchServicesToResolution (serviceName, endDate = 0, index) {
     }
 
     //all services found must be passing
-    if (!servicesHealthCheck(services)) { //start over and wait for more updates
-        return await watchServicesToResolution(serviceName, endDate, newIndex);
+    if (!await servicesHealthCheck(services, [serviceCheck])) { //start over and wait for more updates
+        return await watchServicesToResolution(serviceCheck, endDate, newIndex);
     }
     else { //a passing state is found. return the service info for further evaluation
         return services;
@@ -373,7 +437,8 @@ async function watchServicesToResolution (serviceName, endDate = 0, index) {
 }
 
 //continuously hit the health checks endpoint until the service no longer passes or isn't checkable
-async function watchServiceToEnd (serviceName, index) {
+async function watchServiceToEnd (serviceCheck, index) {
+    const serviceName = serviceCheck.name;
     let baseUrl = `http://${config.clientAgentIp}:${config.consulAgentPort}/v1/health/checks/${serviceName}?`;
     if (index !== undefined) {
         baseUrl = `${baseUrl}index=${index}&`;
@@ -390,7 +455,7 @@ async function watchServiceToEnd (serviceName, index) {
         return service;
     }
     else { //passing state. start over and wait for more updates
-        return await watchServiceToEnd(serviceName, newIndex);
+        return await watchServiceToEnd(serviceCheck, newIndex);
     }
 }
 
@@ -399,7 +464,8 @@ async function determineServicesFailureType (services) {
     return FAILURE_TYPE_PERMANENT;
 }
 
-async function logServicesError (serviceNames, services) {
+async function logServicesError (serviceChecks, services) {
+    const serviceNames = serviceChecks.map(s => s.name);
     logger.error(`Services report:`);
     logger.error(`Services watched: ${serviceNames}`);
     services.forEach(service => {
@@ -439,7 +505,6 @@ async function findServiceAddresses (serviceNames) {
     });
 
     await Promise.all(servicesPromises); //wait for the promises to build the address map
-
     return serviceToAddressMap;
 }
 
@@ -528,7 +593,8 @@ module.exports = {
     determineAllocationsFailureType: determineAllocationsFailureType,
     //getting and setting job info
     getJob: getJob,
-    getEval: getEval,
+    getEvals: getEvals,
+    getRecentEvals: getRecentEvals,
     setJob: setJob,
     casJob: casJob,
     stopJob: stopJob,

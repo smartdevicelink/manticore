@@ -145,6 +145,9 @@ if (config.cors === "true") {
 if (config.httpPort !== undefined) {
     config.httpPort = Number(config.httpPort);
 }
+if (config.haproxyPort !== undefined) {
+    config.haproxyPort = Number(config.haproxyPort);
+}
 if (config.nomadAgentPort !== undefined) {
     config.nomadAgentPort = Number(config.nomadAgentPort);
 }

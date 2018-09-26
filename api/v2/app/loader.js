@@ -37,7 +37,10 @@ module.exports = {
                 if (!listenerHash[name]) {
                     listenerHash[name] = []; //default to empty
                 }
+
                 listenerHash[name].push(listeners[name]);
+                // const newFunc = executionTime(folder, name, listeners[name])
+                // listenerHash[name].push(newFunc);
             }
         });
 
@@ -56,4 +59,17 @@ module.exports = {
         });
         return listenerStore;
     }
+}
+
+//experimental helper function that logs execution time of a single middleware function
+function executionTime (moduleName, eventName, f) {
+    return async (ctx, next) => {
+        const start = Date.now();
+        logger.debug(`Started ${moduleName}:${eventName}...`);
+        await f(ctx, () => {
+            const timeMs = Date.now() - start;
+            logger.debug(`Time -> ${moduleName}:${eventName}: ${timeMs} ms`);
+            next();
+        });
+    }    
 }
