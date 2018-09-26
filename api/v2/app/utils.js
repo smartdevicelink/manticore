@@ -558,10 +558,10 @@ function formatWsAddress (serviceObj) {
         //external address (HAProxy)
         address = `ws://${domainAddress}:${config.haproxyPort}`;
         if (config.modes.elb) { //external address (ELB)
-            address = `ws://${domainAddress}`;
+            address = `ws://${domainAddress}:${config.wsPort}`;
         }
         if (config.modes.elbEncryptWs) { //secure external address (ELB)
-            address = `wss://${domainAddress}`;
+            address = `wss://${domainAddress}:${config.wsPort}`;
         }
     }
     return address;

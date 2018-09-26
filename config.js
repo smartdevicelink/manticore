@@ -77,9 +77,8 @@ const config = {
     namespace: process.env.CLOUD_WATCH_NAMESPACE,
 
     cors: process.env.CORS,
-    allowedIpv6: process.env.ALLOWED_IPV6, //the address which is allowed to make requests to manticore
     //the amount of time in seconds between health evaluations
-    healthCheckPeriod: process.env.HEALTH_CHECK_PERIOD, 
+    healthCheckPeriod: process.env.HEALTH_CHECK_PERIOD,
 
     //RESERVED PROPERTIES FOR MANTICORE'S USE
 
