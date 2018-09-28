@@ -51,6 +51,10 @@ function buildManticoreJobFile () {
         "ELB_WS_PORT",
         "CORS",
         "HEALTH_CHECK_PERIOD",
+        "MODULE_STORE",
+		"MODULE_JOB",
+		"MODULE_LOGGER",
+		"MODULE_WEBSOCKET",
 	]);
 	job.addService(groupName, taskName, serviceName);
 	job.setPortLabel(groupName, taskName, serviceName, "http");
