@@ -92,6 +92,7 @@ async function afterUsageDuration (id) {
     const warnObj = {
         type: "activity",
         data: {
+            inactivityTime: usageDuration,
             remainingTime: warningDuration
         }
     };
