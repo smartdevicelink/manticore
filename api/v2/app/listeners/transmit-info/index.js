@@ -9,7 +9,7 @@ let cachedInfo = {};
 module.exports = {
     //clears cached info of removed users
     "removed-request": async (ctx, next) => {
-        clearInfo(ctx.id);
+        clearUser(ctx.id);
         next();
     },
     //for transmitting position information ASAP to non-claimed users
@@ -136,4 +136,8 @@ function clearCache (waitingState) {
 
 function clearInfo (id, property) {
     delete cachedInfo[id][property];
+}
+
+function clearUser (id) {
+    delete cachedInfo[id];
 }
