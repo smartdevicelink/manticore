@@ -99,7 +99,8 @@ async function manageClaimedRequests (requests) {
         };
         const sameInfo = storeInfo(id, "services", serviceInfo); //cache service info
         if (sameInfo) return; //don't sent redundant info
-        websocket.send(id, JSON.stringify(job.formatAddresses(id, serviceInfo.data)));
+        serviceInfo.data = job.formatAddresses(id, serviceInfo.data);
+        websocket.send(id, JSON.stringify(serviceInfo));
     });
 }
 
