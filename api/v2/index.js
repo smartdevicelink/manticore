@@ -91,7 +91,7 @@ module.exports = app => {
         logger.debug(`POST ${API_PREFIX}/job\n` + JSON.stringify(ctx.request.body));
         //user id check
         const ID = ctx.request.body.id;
-        if (!check.string(ID)) return handle400(ctx, "Invalid or missing id");
+        if (!validateId(ID)) return handle400(ctx, "Invalid or missing id");
         //validate the input
         const result = await logic.validateJob(ctx.request.body)
             .catch(err => logger.error(new Error(err).stack));
@@ -127,7 +127,7 @@ module.exports = app => {
         logger.debug(`DELETE ${API_PREFIX}/job`);
         //user id check
         const ID = ctx.request.body.id;
-        if (!check.string(ID)) return handle400(ctx, "Invalid or missing id");
+        if (!validateId(ID)) return handle400(ctx, "Invalid or missing id");
         //attempt to delete the user request
         await logic.deleteRequest(ID)
             .catch(err => logger.error(new Error(err).stack));
@@ -184,4 +184,14 @@ function handle400 (ctx, msg) {
     ctx.response.body = {
         error: msg
     }
+}
+
+//ID validation function
+function validateId (id) {
+    if (!check.string(ID)) return false;
+    //must contain only alphanumeric characters or dash
+    const set = /[A-Za-z0-9-]+/g;
+    const matches = id.match(set);
+    if (!matches || !matches[0] || matches[0] !== id) return false;
+    return true;
 }
