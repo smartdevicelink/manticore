@@ -59,7 +59,9 @@ module.exports = {
             await websocket.send(ctx.id, JSON.stringify(positionInfo));
         }
         if (serviceInfo) {
-            await websocket.send(ctx.id, JSON.stringify(job.formatAddresses(ctx.id, serviceInfo.data)));
+            const serviceInfoCopy = JSON.parse(JSON.stringify(serviceInfo));
+            serviceInfoCopy.data = job.formatAddresses(ctx.id, serviceInfoCopy.data);
+            await websocket.send(ctx.id, JSON.stringify(serviceInfoCopy));
         }
         next();
     }
@@ -99,8 +101,9 @@ async function manageClaimedRequests (requests) {
         };
         const sameInfo = storeInfo(id, "services", serviceInfo); //cache service info
         if (sameInfo) return; //don't sent redundant info
-        serviceInfo.data = job.formatAddresses(id, serviceInfo.data);
-        websocket.send(id, JSON.stringify(serviceInfo));
+        const serviceInfoCopy = JSON.parse(JSON.stringify(serviceInfo));
+        serviceInfoCopy.data = job.formatAddresses(id, serviceInfoCopy.data);
+        websocket.send(id, JSON.stringify(serviceInfoCopy));
     });
 }
 
