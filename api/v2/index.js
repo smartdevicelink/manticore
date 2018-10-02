@@ -188,7 +188,7 @@ function handle400 (ctx, msg) {
 
 //ID validation function
 function validateId (id) {
-    if (!check.string(ID)) return false;
+    if (!check.string(id)) return false;
     //must contain only alphanumeric characters or dash
     const set = /[A-Za-z0-9-]+/g;
     const matches = id.match(set);
