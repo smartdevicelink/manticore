@@ -103,8 +103,6 @@ function createErrorResponse (message) {
     }
 }
 
-//for caching jobs for future reference, using the id as the key
-let cachedJobs = {};
 
 //responsible for advancing the state of the job for a request
 //can modify the context object passed in from manticore
@@ -133,8 +131,6 @@ async function advance (ctx) {
             servicesKey: "manticore"
         });
 
-        //cache the core job so it doesn't need to be generated again in future stages
-        cachedJobs[id] = job;
         return; //done
     }
     //this stage generates external core address values for haproxy mode and stores them for future use
@@ -195,11 +191,9 @@ async function advance (ctx) {
             coreFileAddress: coreFileAddress,
         };
 
-        //build off the cached core job if it exists
-        if (!cachedJobs[id]) {
-            cachedJobs[id] = coreSettings.generateJobFile(jobName, currentRequest);
-        }
-        const job = hmiSettings.generateJobFile(cachedJobs[id], currentRequest, envs);
+        let job = coreSettings.generateJobFile(jobName, currentRequest);
+        //add the hmi task group
+        job = hmiSettings.generateJobFile(job, currentRequest, envs);
 
         const jobFile = job.getJob().Job;
 
