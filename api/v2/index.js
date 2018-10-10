@@ -124,9 +124,9 @@ module.exports = app => {
 
     //stops a job for a user
     router.delete(`${API_PREFIX}/job`, async (ctx, next) => {
-        logger.debug(`DELETE ${API_PREFIX}/job`);
         //user id check
         const ID = ctx.request.body.id;
+        logger.debug(`DELETE ${API_PREFIX}/job: ${ID}`);
         if (!validateId(ID)) return handle400(ctx, "Invalid or missing id");
         //attempt to delete the user request
         await logic.deleteRequest(ID)

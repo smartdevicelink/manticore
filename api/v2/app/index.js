@@ -34,11 +34,17 @@ const config = require('./config.js');
 const {store, job, logger, websocket} = config;
 const check = require('check-types');
 const loader = require('./loader.js');
+const BatchTimer = require('./BatchTimer.js');
 
 const REQUESTS_KEY = "manticore/requests";
 const WAITING_KEY = "manticore/waiting";
 
 let listeners = {}; //to be loaded later
+
+//setup batch timer for added and removed requests
+let requestBatch = new BatchTimer();
+requestBatch.setDelay(800); //update the waiting state after this much time without updates
+requestBatch.setFunction(batchFunction);
 
 module.exports = {
     getJobInfo: async () => {
@@ -51,17 +57,23 @@ module.exports = {
     storeRequest: async (id, body) => { 
         const setter = await store.cas(REQUESTS_KEY);
         const requestState = await parseJson(setter.value);
-        if (requestState[id]) return await websocket.getPasscode(id); //request already exists. do not update the store
-        requestState[id] = body; //store the result of the job validation
-        await setter.set(JSON.stringify(requestState)); //submit the new entry to the store
+        
+        requestBatch.add({
+            id: id,
+            type: "add",
+            body: body
+        });
+
         return await websocket.getPasscode(id); //passcode for the user to use when connecting via websockets
     },
     deleteRequest: async id => {
         const setter = await store.cas(REQUESTS_KEY);
         const requestState = await parseJson(setter.value);
-        if (!requestState[id]) return; //the id doesn't exist in the first place. prevent redundant update
-        delete requestState[id]; //bye
-        await setter.set(JSON.stringify(requestState)); //submit the new entry to the store 
+
+        requestBatch.add({
+            id: id,
+            type: "delete"
+        });
     },
     onConnection: async (id, websocket) => { //client connected over websockets
         const ctx = {
@@ -214,5 +226,41 @@ async function parseJson (string) {
             logger.error(new Error("Invalid JSON string: " + string).stack);
         }
         return {};
+    }
+}
+
+//bundles requests into one submission to the store
+async function batchFunction (data) {
+    //get the current request state
+    const setter = await store.cas(REQUESTS_KEY);
+    const requestState = await parseJson(setter.value);
+    
+    //process the array of requests for a single update to the store
+    const removedObjs = [];
+    //preserve the order of data when handling it! use shift and unshift instead of push and pop
+    //pop items off the data array until it's empty
+    let updatedState = false;
+
+    while (data.length > 0) {
+        const obj = data.shift();
+        removedObjs.unshift(obj);
+        if (obj.type === "add" && !requestState[obj.id]) { //add if it doesn't already exist
+            updatedState = true;
+            requestState[obj.id] = obj.body; //store the result of the job validation
+        }
+        if (obj.type === "delete" && requestState[obj.id]) { //delete if it exists
+            updatedState = true;
+            delete requestState[obj.id]; //bye
+        }
+    }
+
+    if (!updatedState) return; //no updates happened. avoid redundant update
+
+    const success = await setter.set(JSON.stringify(requestState)); //submit the new entry to the store   
+    //if the write failed, then the data needs to be resubmitted
+    if (!success) {
+        while (removedObjs.length > 0) {
+            data.unshift(removedObjs.shift());
+        }
     }
 }
