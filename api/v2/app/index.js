@@ -98,10 +98,7 @@ module.exports = {
         await listeners['ws-disconnect'](ctx);
     },
     getHealth: async () => { //retrieve health information of the Manticore system
-        const ctx = {
-            isHealthy: true,
-            stuckWaiting: false
-        }
+        const ctx = {}; //freeform
         await listeners['health'](ctx);
         return ctx;
     }
