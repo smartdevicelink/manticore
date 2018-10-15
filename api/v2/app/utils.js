@@ -247,9 +247,11 @@ async function logAllocationsError (allocations, evals) {
         logger.error(`Final status: ${allocation.ClientStatus}`);
         for (let taskName in allocation.TaskStates) {
             logger.error(`Task history for ${taskName}:`);
-            allocation.TaskStates[taskName].Events.forEach(event => {
-                logger.error(event.DisplayMessage);
-            });
+            if (allocation.TaskStates[taskName].Events) {
+                allocation.TaskStates[taskName].Events.forEach(event => {
+                    logger.error(event.DisplayMessage);
+                });                
+            }
         }
     }
     evals.forEach(eval => {
@@ -389,11 +391,12 @@ async function servicesHealthCheck (services, serviceChecks) {
         }
     });
 
-    //check that all services are running
+    //check that all services are running. ignore failed services
     for (let i = 0; i < services.length; i++) {
         const service = services[i];
-        if (service === null || service.Status !== "passing") return false; //fail
-        requiredServicesMap[service.ServiceName]--;
+        if (service !== null && service.Status === "passing") {
+            requiredServicesMap[service.ServiceName]--;
+        }
     }
 
     //requiredServicesMap must have a 0 count in all elements by the time services are parsed
