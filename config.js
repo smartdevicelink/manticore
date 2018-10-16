@@ -80,6 +80,11 @@ const config = {
     //the amount of time in seconds between health evaluations
     healthCheckPeriod: process.env.HEALTH_CHECK_PERIOD,
 
+    //the minimum milliseconds to wait between received requests before sending it in one batch
+    minDelayBuffer: process.env.MIN_DELAY_BUFFER || 800,
+    //the maximum milliseconds to wait between received requests before sending it in one batch
+    maxDelayBuffer: process.env.MAX_DELAY_BUFFER || 2000,
+
     //RESERVED PROPERTIES FOR MANTICORE'S USE
 
     //manticore interface modules
@@ -166,6 +171,13 @@ if (config.wsPort !== undefined) {
 if (config.healthCheckPeriod !== undefined) {
     config.healthCheckPeriod = Number(config.healthCheckPeriod);
 }
+if (config.minDelayBuffer !== undefined) {
+    config.minDelayBuffer = Number(config.minDelayBuffer);
+}
+if (config.maxDelayBuffer !== undefined) {
+    config.maxDelayBuffer = Number(config.maxDelayBuffer);
+}
+
 
 //provide properties to easily determine whether certain modes of manticore are enabled
 

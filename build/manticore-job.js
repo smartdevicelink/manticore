@@ -51,6 +51,8 @@ function buildManticoreJobFile () {
         "ELB_WS_PORT",
         "CORS",
         "HEALTH_CHECK_PERIOD",
+		"MIN_DELAY_BUFFER",
+		"MAX_DELAY_BUFFER",
         "MODULE_STORE",
 		"MODULE_JOB",
 		"MODULE_LOGGER",

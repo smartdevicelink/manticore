@@ -43,7 +43,7 @@ let listeners = {}; //to be loaded later
 
 //setup batch timer for added and removed requests
 let requestBatch = new BatchTimer();
-requestBatch.setDelay(800); //update the waiting state after this much time without updates
+requestBatch.setDelay(config.minDelayBuffer); //update the waiting state after this much time without updates
 requestBatch.setFunction(batchFunction);
 
 module.exports = {
@@ -62,7 +62,7 @@ module.exports = {
             id: id,
             type: "add",
             body: body
-        });
+        }, Date.now() + config.maxDelayBuffer); //force an action to happen after this time if there are no other active dates
 
         return await websocket.getPasscode(id); //passcode for the user to use when connecting via websockets
     },
@@ -73,7 +73,7 @@ module.exports = {
         requestBatch.add({
             id: id,
             type: "delete"
-        });
+        }, Date.now() + config.maxDelayBuffer); //force an action to happen after this time if there are no other active dates
     },
     onConnection: async (id, websocket) => { //client connected over websockets
         const ctx = {
