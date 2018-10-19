@@ -73,9 +73,6 @@ const config = {
     sslCertificateArn: process.env.SSL_CERTIFICATE_ARN, //SSL certificate attached to the AWS ELB
     wsPort: process.env.ELB_WS_PORT, //WS port for TCP connections
 
-    //TODO: UNUSED
-    namespace: process.env.CLOUD_WATCH_NAMESPACE,
-
     cors: process.env.CORS,
     //the amount of time in seconds between health evaluations
     healthCheckPeriod: process.env.HEALTH_CHECK_PERIOD,
