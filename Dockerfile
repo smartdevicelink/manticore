@@ -7,6 +7,8 @@ ADD . /app
 
 RUN npm install
 
+RUN npm run build-webpage
+
 EXPOSE 4000
 
 CMD ["npm", "start"]
