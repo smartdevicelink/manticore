@@ -81,9 +81,9 @@ const config = {
     healthCheckPeriod: process.env.HEALTH_CHECK_PERIOD,
 
     //the minimum milliseconds to wait between received requests before sending it in one batch
-    minDelayBuffer: process.env.MIN_DELAY_BUFFER || 800,
+    minDelayBuffer: process.env.MIN_DELAY_BUFFER || 500,
     //the maximum milliseconds to wait between received requests before sending it in one batch
-    maxDelayBuffer: process.env.MAX_DELAY_BUFFER || 2000,
+    maxDelayBuffer: process.env.MAX_DELAY_BUFFER || 1500,
 
     //RESERVED PROPERTIES FOR MANTICORE'S USE
 
