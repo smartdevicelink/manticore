@@ -10,6 +10,12 @@ const AwsHandler = require('../../AwsHandler.js')();
 let activityTimers = {}; //a hash of timers, where the key is the id
 
 module.exports = {
+    //stops timeouts of removed users
+    "removed-request": async (ctx, next) => {
+        const id = ctx.id;
+        removeTimer(id);
+        next();
+    },
     //finds claimed requests and attaches timers to those requests
     //therefore, timers only start when a job is fulfilled
     "post-waiting-job-advance": async (ctx, next) => {
