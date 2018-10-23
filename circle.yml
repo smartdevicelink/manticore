@@ -1,6 +1,0 @@
-general:
-    build_dir: server
-
-test:
-    override:
-        - ./node_modules/mocha/bin/mocha --use_strict test/test-core.js

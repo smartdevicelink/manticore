@@ -1,21 +1,14 @@
-FROM node:6.3.1
+# Copyright (c) 2018, Livio, Inc.
+FROM node:8
 
-MAINTAINER Christopher Rokita version:1.0
+WORKDIR /app
 
-# Create app directory and go to it
-RUN mkdir -p /usr/app/server
-RUN mkdir -p /usr/app/client
-WORKDIR /usr/app
+ADD . /app
 
-# Bundle app source code
-COPY server server
-COPY client client
-
-# Install dependencies
-WORKDIR /usr/app/server
 RUN npm install
+
+RUN npm run build-webpage
 
 EXPOSE 4000
 
-# Start the node server
 CMD ["npm", "start"]

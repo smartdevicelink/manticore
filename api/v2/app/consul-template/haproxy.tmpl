@@ -1,0 +1,72 @@
+# Copyright (c) 2018, Livio, Inc.
+global
+    log 127.0.0.1 local2
+    chroot /var/lib/haproxy
+    pidfile /var/run/haproxy.pid
+    maxconn 4000
+    user haproxy
+    group haproxy
+    daemon
+    stats socket /var/lib/haproxy/stats
+
+
+defaults
+    mode http
+    log global
+    option httplog
+    option dontlognull
+    option http-server-close
+    option forwardfor except 127.0.0.0/8
+    option redispatch
+    retries 3
+    timeout http-request 20s
+    timeout queue {{ keyOrDefault "timeoutDuration" "3600" }}s
+    timeout connect 20s
+    timeout client {{ keyOrDefault "timeoutDuration" "3600" }}s
+    timeout server {{ keyOrDefault "timeoutDuration" "3600" }}s
+    timeout http-keep-alive 20s
+    timeout check 20s
+    maxconn 3000
+
+{{ with $td := keyOrDefault "templateData" "{\"users\":[]}" | parseJSON }}
+    frontend main
+        bind *:{{key "haproxy/mainPort"}}
+        mode http
+        {{range $userIndex, $userObj := $td.users}}
+            {{range $httpIndex, $httpObj := $userObj.http}}
+                acl http-front-{{$userIndex}}-{{$httpIndex}} hdr_dom(host) {{$httpObj.subdomain}}
+                use_backend http-back-{{$userIndex}}-{{$httpIndex}} if http-front-{{$userIndex}}-{{$httpIndex}}
+            {{end}}
+        {{end}}
+
+        monitor-uri /haproxy
+        acl web-app hdr_beg(host) {{key "haproxy/domainName"}}
+        use_backend app if web-app
+
+    backend app
+        balance source
+        mode http
+
+        {{ range service "manticore-service" }}
+            server {{ .Name }} {{ .Address }}:{{ .Port }} {{ end }}
+
+        {{range $userIndex, $userObj := $td.users}}
+            {{range $httpIndex, $httpObj := $userObj.http}}
+                backend http-back-{{$userIndex}}-{{$httpIndex}}
+                    mode http
+                    server http-server-{{$userIndex}}-{{$httpIndex}} {{$httpObj.address}}
+            {{end}}
+        {{end}}
+
+
+    {{range $userIndex, $userObj := $td.users}}
+        {{range $tcpIndex, $tcpObj := $userObj.tcp}}
+            listen tcp-{{$userIndex}}-{{$tcpIndex}}
+                bind *:{{$tcpObj.port}}
+                mode tcp
+                option tcplog
+                server tcp-server-{{$userIndex}} {{$tcpObj.address}}
+        {{ end }}
+    {{end}}
+
+{{ end }}

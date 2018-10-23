@@ -1,0 +1,7 @@
+.*
+build
+node_modules
+CONTRIBUTING.md
+LICENSE.md
+manticore_logs.log
+README.md
