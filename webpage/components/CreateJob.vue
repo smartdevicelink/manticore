@@ -24,12 +24,12 @@ export default {
             genericJob: {
                 id: '1',
                 core: {
-                    version: '4.5.1',
+                    version: '5.0.0',
                     build: 'default'
                 },
                 hmi: {
                     type: 'generic',
-                    version: 'minimal'
+                    version: 'minimal-5.0.0'
                 }
             },
             jobText: '',
