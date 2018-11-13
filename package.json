@@ -1,6 +1,6 @@
 {
   "name": "manticore",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "async-request": "^1.2.0",
     "aws-sdk": "^2.319.0",
     "axios": "^0.18.0",
     "check-types": "^7.4.0",
@@ -27,6 +26,8 @@
     "koa-websocket": "^5.0.1",
     "nomad-helper": "^3.6.1",
     "randomatic": "^3.0.0",
+    "request": "^2.88.0",
+    "request-promise-native": "^1.0.5",
     "vue": "^2.5.17",
     "vue-router": "^3.0.1",
     "winston": "^3.0.0",

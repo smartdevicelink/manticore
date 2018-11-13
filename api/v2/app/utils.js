@@ -2,7 +2,7 @@
 //utility module for easy interfacing with Nomad and Consul and for other functions
 const config = require('./config.js');
 const logger = config.logger;
-const http = require('async-request');
+const httpReq = require('request');
 
 //failure types
 const FAILURE_TYPE_PERMANENT = "PERMANENT";
@@ -322,7 +322,7 @@ async function getRecentEvals (evals, taskGroupNames) {
 async function setJob (key, opts) {
     return await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${key}`, {
         method: 'POST',
-        data: JSON.stringify(opts)
+        body: JSON.stringify(opts)
     });
 }
 
@@ -581,6 +581,17 @@ function formatTcpAddress (serviceObj) {
         address = `${domainAddress}`;
     }
     return address;
+}
+
+//wraps the request function into something promise-aware
+async function http (url, options = {}) {
+    return new Promise((resolve, reject) => {
+        options.uri = url;
+        httpReq(options, function (err, res) {
+            if (err) return reject(err);
+            return resolve(res);
+        });
+    });
 }
 
 module.exports = {

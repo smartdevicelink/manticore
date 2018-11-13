@@ -1,6 +1,5 @@
 // Copyright (c) 2018, Livio, Inc.
 const builder = require('nomad-helper');
-const http = require('async-request');
 const config = require('./config');
 const coreSettings = require('./core-image-settings');
 const hmiSettings = require('./hmi-image-settings');
