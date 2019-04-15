@@ -19,12 +19,12 @@ const HMI_HEALTH_TIME = 8000;
 
 const jobInfo = {
     core: {
-        versions: ["5.0.1"], //ex. 5.0.1, master, develop
+        versions: ["5.1.0"], //ex. 5.0.1, master, develop
         builds: ["default"]
     }, 
     hmis: [{
         type: "generic",
-        versions: ["minimal-0.5.1"] //ex. master, minimal-0.5.1
+        versions: ["minimal-0.5.2"] //ex. master, minimal-0.5.1
     }]
 };
 
@@ -149,6 +149,9 @@ async function advance (ctx) {
 
             currentRequest.services.manticore[`core-log-${id}-0`].external = randomString(PATTERN, 16);
             currentRequest.services.manticore[`core-log-${id}-0`].isHttp = true;
+
+            currentRequest.services.manticore[`core-policy-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.manticore[`core-policy-${id}-0`].isHttp = true;
 
             currentRequest.services.manticore[`core-tcp-${id}-0`].external = coreTcpPort;
             currentRequest.services.manticore[`core-tcp-${id}-0`].isHttp = false;
@@ -281,6 +284,7 @@ function formatAddresses (id, services) {
         "core-tcp": utils.formatTcpAddress(services.manticore[`core-tcp-${id}-0`]),
         "core-file": utils.formatHttpAddress(services.manticore[`core-file-${id}-0`]),
         "core-log": utils.formatWsAddress(services.manticore[`core-log-${id}-0`]),
+        "core-policy": utils.formatHttpAddress(services.manticore[`core-policy-${id}-0`]),
         "hmi-user": utils.formatHttpAddress(services.manticore[`hmi-user-${id}-0`]),
     };
 }
@@ -289,12 +293,12 @@ function formatAddresses (id, services) {
 function exampleJobOption () {
     return {
         core: {
-            version: "5.0.1",
+            version: "5.1.0",
             build: "default"
         },
         hmi: {
             type: "generic",
-            version: "minimal-0.5.1"
+            version: "minimal-0.5.2"
         }
     };
 }
