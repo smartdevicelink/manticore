@@ -24,7 +24,7 @@ export default {
             genericJob: {
                 id: '1',
                 core: {
-                    version: '5.1.0',
+                    version: '5.1.1',
                     build: 'default'
                 },
                 hmi: {
