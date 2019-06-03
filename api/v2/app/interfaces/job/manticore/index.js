@@ -24,7 +24,7 @@ const jobInfo = {
     }, 
     hmis: [{
         type: "generic",
-        versions: ["minimal-0.5.2"] //ex. master, minimal-0.5.1
+        versions: ["minimal-0.6.0"] //ex. master, minimal-0.5.1
     }]
 };
 
@@ -298,7 +298,7 @@ function exampleJobOption () {
         },
         hmi: {
             type: "generic",
-            version: "minimal-0.5.2"
+            version: "minimal-0.6.0"
         }
     };
 }
