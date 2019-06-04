@@ -29,7 +29,7 @@ export default {
                 },
                 hmi: {
                     type: 'generic',
-                    version: 'minimal-0.6.0'
+                    version: 'minimal-0.6.1'
                 }
             },
             jobText: '',
