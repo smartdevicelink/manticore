@@ -82,7 +82,8 @@ function configurationToImageInfo (coreVersion, coreBuild, id) {
             broker: 9000,
             tcp: 12345,
             file: 3001,
-            log: 8888
+            log: 8888,
+            policy: 9898
         },
         services: [
             {
@@ -122,6 +123,19 @@ function configurationToImageInfo (coreVersion, coreBuild, id) {
                         Interval: 3000000000, //3 seconds
                         Timeout: 1000000000, //1 second
                         Protocol: "ws"
+                    }
+                ]
+            },
+            {
+                name: `core-policy-${id}`,
+                port: "policy",
+                checks: [
+                    {
+                        Type: "http",
+                        Interval: 3000000000, //3 seconds
+                        Timeout: 1000000000, //1 second
+                        Path: "/",
+                        Protocol: "http"
                     }
                 ]
             }
