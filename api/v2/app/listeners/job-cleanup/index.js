@@ -16,6 +16,8 @@ module.exports = {
             data: {}
         };
         await websocket.send(id, JSON.stringify(msgObj));
+        //delete the passcode for this user
+        await websocket.deletePasscode(id);
         next();
     }
 }
