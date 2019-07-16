@@ -161,8 +161,6 @@ module.exports = app => {
         });
 
         ctx.websocket.on('close', async () => {
-            //reset the passcode for this user
-            await websocket.deletePasscode(id);
             logic.onDisconnection(id, ctx.websocket);
         });
 
