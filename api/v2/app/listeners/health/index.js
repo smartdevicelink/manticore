@@ -39,7 +39,7 @@ const {store, job, logger, websocket} = config;
 const INTERNAL_JOB_NAME = "internal-health-check"; //the id of this module's request
 let requestHistory = [];
 let timer = null; //the health update timer
-//A group ids in a hash that are not expected to get a healthy job back, preventing an unhealthy report
+//A group of ids in a hash that are not expected to get a healthy job back
 const pardonedIds = {}; 
 
 //do not listen to events if healthCheck is disabled
