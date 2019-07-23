@@ -1,25 +1,11 @@
-<!-- Copyright (c) 2018, Livio, Inc. -->
-<template>
-    <div class="action-container">
-        <h2 class="action-title">Create Job</h2>
-        <div v-if="errorMessage != null" class="error-container">
-            <p class="action-text">Error: {{ errorMessage }}</p>
-        </div>
-        <label class="action-label">Job Object: </label>
-        <textarea v-model="jobText" class="action-text-area"></textarea>
-        <button v-on:click="submitJob" class="action-button">Create</button>
-        <div v-if="manticoreResponse != null" class="response-container">
-            <p class="action-text">Response [{{ responseTime }}] : {{ manticoreResponse }}</p>
-        </div>
-    </div>
-</template>
-
-<script>
-import axios from 'axios';
+// Copyright (c) 2019, Livio, Inc.
 
 export default {
-    name: 'CreateJob',
-    data() {
+    props: {
+        createJob: Function,
+        createWebSocket: Function,
+    },
+    data: function () {
         return {
             genericJob: {
                 id: '1',
@@ -35,15 +21,15 @@ export default {
             jobText: '',
             manticoreResponse: null,
             responseTime: '',
-            errorMessage: null
+            errorMessage: null            
         }
     },
-    created() {
+    created: function () {
         this.jobText = JSON.stringify(this.genericJob, null, 2);
     },
     methods: {
-        submitJob() {
-            var job;
+        submitJob: function () {
+            let job;
             try {
                 job = JSON.parse(this.jobText);
                 this.errorMessage = null;
@@ -57,15 +43,28 @@ export default {
                 .then((response) => {
                     this.manticoreResponse = response.data;
                     this.responseTime = new Date().toTimeString();
-                    this.$root.$data.createJob(job.id, response.data.passcode, response.request.responseURL);
-                    this.$root.$data.createWebSocket(job.id, response.data);
+                    this.createJob(job.id, response.data.passcode, response.request.responseURL);
+                    this.createWebSocket(job.id, response.data);
                 })
                 .catch((error) => {
+                    console.log(error);
                     this.errorMessage = error.response.data;
                     this.manticoreResponse = null;
-                    console.log(error);
                 });
         }
-    }
-}
-</script>
+    },
+    template: `
+    <div class="action-container">
+        <h2 class="action-title">Create Job</h2>
+        <div v-if="errorMessage != null" class="error-container">
+            <p class="action-text">Error: {{ errorMessage }}</p>
+        </div>
+        <label class="action-label">Job Object: </label>
+        <textarea v-model="jobText" class="action-text-area"></textarea>
+        <button v-on:click="submitJob" class="action-button">Create</button>
+        <div v-if="manticoreResponse != null" class="response-container">
+            <p class="action-text">Response [{{ responseTime }}] : {{ manticoreResponse }}</p>
+        </div>
+    </div>
+    `,
+};
