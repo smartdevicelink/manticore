@@ -10,12 +10,12 @@ export default {
             genericJob: {
                 id: '1',
                 core: {
-                    version: '5.1.3',
+                    version: '0.0.0',
                     build: 'default'
                 },
                 hmi: {
                     type: 'generic',
-                    version: 'minimal-0.6.1'
+                    version: 'minimal-0.0.0'
                 }
             },
             jobText: '',
@@ -26,6 +26,16 @@ export default {
     },
     created: function () {
         this.jobText = JSON.stringify(this.genericJob, null, 2);
+        const data = this;
+        axios.get('/api/v2/job')
+            .then(response => {
+                const jobData = response.data;
+                data.genericJob.core.version = jobData.core.versions[0];
+                data.genericJob.core.build = jobData.core.builds[0];
+                data.genericJob.hmi.type = jobData.hmis[0].type;
+                data.genericJob.hmi.version = jobData.hmis[0].versions[0];
+                data.jobText = JSON.stringify(this.genericJob, null, 2);
+            })
     },
     methods: {
         submitJob: function () {

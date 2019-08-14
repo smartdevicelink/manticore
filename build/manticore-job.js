@@ -77,7 +77,7 @@ function buildManticoreJobFile () {
 	job.addConstraint({
 		LTarget: "${meta.manticore}",
 		Operand: "=",
-		RTarget: "1"
+		RTarget: "true"
 	}, groupName);
 	job.submitJob(nomadAddress, function (result) {
 		console.log("Job submitted");

@@ -1,4 +1,4 @@
-// Copyright (c) 2018, Livio, Inc.
+// Copyright (c) 2019, Livio, Inc.
 const builder = require('nomad-helper');
 
 //a template for constructing hmi job files easily
@@ -32,7 +32,7 @@ function generateJobFile (job, body, envs) {
     job.addConstraint({
         LTarget: "${meta.job}",
         Operand: "=",
-        RTarget: "1"
+        RTarget: "true"
     }, groupName);
     //set resource limitations
     job.setCPU(groupName, taskName, resources.cpu);
