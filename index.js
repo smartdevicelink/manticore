@@ -16,7 +16,10 @@ if (!config.webpageDisabled) {
 }
 
 //setup all koa middleware under the selected version in /api
-require(`./api/${config.apiVersion}`)(app);
+const loadedApi = require(`./api/${config.apiVersion}`)
+loadedApi.start(app);
+
+
 
 //uncaught error handler
 app.use(async (ctx, next) => {
@@ -28,4 +31,4 @@ app.use(async (ctx, next) => {
     }
 });
 
-app.listen(config.httpPort);
+const server = app.listen(config.httpPort);

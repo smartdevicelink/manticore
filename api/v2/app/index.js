@@ -40,6 +40,8 @@ const REQUESTS_KEY = "manticore/requests";
 const WAITING_KEY = "manticore/waiting";
 
 let listeners = {}; //to be loaded later
+let requestWatcher; //watches for changes in the request KV store
+let waitingWatcher; //watches for changes in the waiting KV store
 
 //setup batch timer for added and removed requests
 let requestBatch = new BatchTimer();
@@ -47,6 +49,14 @@ requestBatch.setDelay(config.minDelayBuffer); //update the waiting state after t
 requestBatch.setFunction(batchFunction);
 
 module.exports = {
+    stop: async () => {
+        if (requestWatcher) {
+            requestWatcher.end()
+        }
+        if (waitingWatcher) {
+            waitingWatcher.end()
+        }
+    },
     getJobInfo: async () => {
         return await job.jobOptions();
     },
@@ -120,8 +130,8 @@ async function startWatches () {
     //invoke startup listeners. watches to the store will not happen until this phase completes
     await listeners['startup']({});
     //watch for KV store changes
-    const w1 = await store.watch(REQUESTS_KEY, requestTrigger);
-    const w2 = await store.watch(WAITING_KEY, waitingTrigger);
+    requestWatcher = await store.watch(REQUESTS_KEY, requestTrigger);
+    waitingWatcher = await store.watch(WAITING_KEY, waitingTrigger);
     await listeners['post-startup']({});
 }
 
