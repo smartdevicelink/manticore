@@ -36,38 +36,9 @@ const expect = require('chai').expect;
 const faker = require('faker');
 const request = require('request');
 
-//set environment variables to be able to test locally
-process.env.HTTP_PORT = 4000;
-delete process.env.JWT_SECRET;
-delete process.env.HAPROXY_HTTP_PORT;
-delete process.env.HEALTH_CHECK_PERIOD;
-delete process.env.USAGE_DURATION;
-
 const Koa = require('koa');
 const serve = require('koa-static');
 const bodyParser = require('koa-bodyparser'); //for parsing JSON
-const app = new Koa();
-const config = require('../config');
-
-//add ability to parse JSON from posts
-app.use(bodyParser());
-
-//setup all koa middleware under the selected version in /api
-const loadedApi = require(`../api/${config.apiVersion}`);
-loadedApi.start(app);
-
-//uncaught error handler
-app.use(async (ctx, next) => {
-    try {
-        await next();
-    }
-    catch (err) {
-        console.error(err);
-    }
-});
-
-const SERVER_URL = `localhost:${config.httpPort}`;
-const SERVER_HTTP_JOB = `http://${SERVER_URL}/api/v2/job`;
 
 async function http (url, options = {}) {
     return new Promise((resolve, reject) => {
@@ -85,13 +56,54 @@ function asyncTimeout (ms) {
     });
 }
 
-const server = app.listen(config.httpPort, function () {
-    // the server has started. begin tests
-    beforeEach(function () {
-        
+let server;
+let loadedApi;
+let SERVER_URL;
+let SERVER_HTTP_JOB;
+
+
+describe('e2e testing', function () {
+
+    beforeEach(function (done) {
+        //set environment variables to be able to test locally
+        process.env.HTTP_PORT = 4000;
+        delete process.env.JWT_SECRET;
+        delete process.env.HAPROXY_HTTP_PORT;
+        delete process.env.HEALTH_CHECK_PERIOD;
+        delete process.env.USAGE_DURATION;
+
+        const app = new Koa();
+        delete require.cache[require.resolve('../config')]; //clear the require cache
+        const config = require('../config');
+
+        SERVER_URL = `localhost:${config.httpPort}`;
+        SERVER_HTTP_JOB = `http://${SERVER_URL}/api/v2/job`;
+
+        //add ability to parse JSON from posts
+        app.use(bodyParser());
+
+        //setup all koa middleware under the selected version in /api
+        delete require.cache[`../api/${config.apiVersion}`]; //clear the require cache
+        delete require.cache[`../api/${config.apiVersion}/app`]; //clear the require cache
+        loadedApi = require(`../api/${config.apiVersion}`);
+        loadedApi.start(app);
+
+        //uncaught error handler
+        app.use(async (ctx, next) => {
+            try {
+                await next();
+            }
+            catch (err) {
+                console.error(err);
+            }
+        });
+
+        server = app.listen(config.httpPort, done); // the server is running after this
     });
 
     describe('healthiness', function () {
+        this.slow(200);
+
         it('should return a 200 on startup, with advanced health checking disabled (/)', async function () {
             const result = await http("http://" + SERVER_URL + "/");
             const body = JSON.parse(result.body);
@@ -108,6 +120,8 @@ const server = app.listen(config.httpPort, function () {
     });
 
     describe('job retrieval', function () {
+        this.slow(200);
+
         it('should return a sample job object configuration for submission', async function () {
             const result = await http(SERVER_HTTP_JOB);
             const body = JSON.parse(result.body);
@@ -121,6 +135,7 @@ const server = app.listen(config.httpPort, function () {
     });
 
     describe('job creation', function () {
+        this.slow(20000);
         this.timeout(30000) // 30 seconds
 
         it('should submit a sample job and return websocket connection info for retreiving instance urls', async function () {
@@ -142,6 +157,7 @@ const server = app.listen(config.httpPort, function () {
     });
 
     describe('mass job creation', function () {
+        this.slow(100000);
         this.timeout(150000) // 150 seconds
 
         it('should submit many jobs and have all of them be handled eventually, given enough resources', async function () {
@@ -165,14 +181,10 @@ const server = app.listen(config.httpPort, function () {
         });
     });
 
-    afterEach(function () {
-        
-    });
-
-    //done running tests. tear down server and watchers
-    after(function () {
+    //tear down server and watchers
+    afterEach(async function () {
         server.close();
         loadedApi.stop();
     });
-});
 
+});

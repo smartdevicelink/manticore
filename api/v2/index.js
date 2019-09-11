@@ -43,6 +43,8 @@ const cors = require('koa-cors');
 
 module.exports = {
     start: app => {
+        logic.start(); //start watches
+
         /* MIDDLEWARE */
         const router = new Router();
 

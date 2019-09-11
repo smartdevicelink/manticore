@@ -49,6 +49,10 @@ requestBatch.setDelay(config.minDelayBuffer); //update the waiting state after t
 requestBatch.setFunction(batchFunction);
 
 module.exports = {
+    start: async () => {
+        //initialize watches to the KV store
+        startWatches().catch(err => logger.error(new Error(err).stack));
+    },
     stop: async () => {
         if (requestWatcher) {
             requestWatcher.end()
@@ -119,9 +123,6 @@ for (let name in config.modes) {
     const enabledString = config.modes[name] ? "enabled" : "disabled";
     logger.info(`Mode ${name} is ${enabledString}`);
 }
-
-//initialize watches to the KV store
-startWatches().catch(err => logger.error(new Error(err).stack));
 
 async function startWatches () {
     //load up the listeners to the listener store
