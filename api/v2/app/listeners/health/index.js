@@ -128,6 +128,11 @@ module.exports = {
             delete pardonedIds[id]
         });
         next();
+    },
+    "shutdown": async (ctx, next) => {
+        //stop the running timer
+        clearTimeout(timer);
+        next();
     }
 }
 

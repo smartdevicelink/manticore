@@ -54,6 +54,7 @@ module.exports = {
         startWatches().catch(err => logger.error(new Error(err).stack));
     },
     stop: async () => {
+        await listeners['shutdown']({}); //inform all listeners so that they may teardown too
         if (requestWatcher) {
             requestWatcher.end()
         }

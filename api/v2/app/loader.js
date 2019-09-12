@@ -22,6 +22,7 @@ const listenerOptions = [
     { name: "waiting-job-advance", isMainHook: true},
     { name: "post-waiting-job-advance", isMainHook: false},
     { name: "health", isMainHook: true},
+    { name: "shutdown", isMainHook: false},
 ];
 
 module.exports = {

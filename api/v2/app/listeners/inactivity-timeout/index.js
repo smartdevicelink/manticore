@@ -48,7 +48,6 @@ module.exports = {
         restartTimer(id);
         next();
     },
-
     "startup": async (ctx, next) => {
         if (!config.modes.inactivityTimer) return await next();
 
@@ -67,6 +66,12 @@ module.exports = {
         await AwsHandler.setElbTimeout(timeoutDuration).catch(err => logger.error(new Error(err).stack));
 
         next();
+    },
+    "shutdown": async (ctx, next) => {
+        //stop all running timers
+        for (let id in activityTimers) {
+            removeTimer(id);
+        }
     }
 }
 
