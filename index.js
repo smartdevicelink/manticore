@@ -10,7 +10,6 @@ const config = require('./config');
 app.use(bodyParser());
 
 //serve Manticore webpage if enabled
-//Must build it first by running 'npm run build-webpage'
 if (!config.webpageDisabled) {
     app.use(serve(__dirname + '/webpage'));
 }
