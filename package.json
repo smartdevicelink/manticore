@@ -1,11 +1,10 @@
 {
   "name": "manticore",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build-webpage": "./node_modules/webpack/bin/webpack.js",
     "start": "node index.js"
   },
   "author": "",
@@ -31,19 +30,5 @@
     "vue-router": "^3.0.1",
     "winston": "^3.0.0",
     "ws": "^6.0.0"
-  },
-  "devDependencies": {
-    "babel-core": "^6.26.3",
-    "babel-loader": "^7.1.5",
-    "babel-preset-env": "^1.7.0",
-    "babel-preset-stage-3": "^6.24.1",
-    "css-loader": "^1.0.0",
-    "file-loader": "^1.1.11",
-    "style-loader": "^0.22.0",
-    "vue-loader": "^15.2.7",
-    "vue-style-loader": "^4.1.1",
-    "vue-template-compiler": "^2.5.17",
-    "webpack": "^4.16.5",
-    "webpack-cli": "^3.1.0"
   }
 }

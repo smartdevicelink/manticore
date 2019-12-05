@@ -10,9 +10,8 @@ const config = require('./config');
 app.use(bodyParser());
 
 //serve Manticore webpage if enabled
-//Must build it first by running 'npm run build-webpage'
 if (!config.webpageDisabled) {
-    app.use(serve(__dirname + '/dist'));
+    app.use(serve(__dirname + '/webpage'));
 }
 
 //setup all koa middleware under the selected version in /api

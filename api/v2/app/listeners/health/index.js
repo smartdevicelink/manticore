@@ -39,6 +39,8 @@ const {store, job, logger, websocket} = config;
 const INTERNAL_JOB_NAME = "internal-health-check"; //the id of this module's request
 let requestHistory = [];
 let timer = null; //the health update timer
+//A group of ids in a hash that are not expected to get a healthy job back
+const pardonedIds = {}; 
 
 //do not listen to events if healthCheck is disabled
 if (!config.modes.healthCheck) return module.exports = {};
@@ -60,9 +62,11 @@ module.exports = {
         let resolved = false;
 
         if (ctx.removeUser) { //an error happened with the request
+            //if the id is in the pardonedIds group, then this does not count as a failure
+            const success = pardonedIds[ctx.currentRequest.id] === true
             requestHistory.push({
                 id: ctx.currentRequest.id,
-                success: false,
+                success: success,
                 stuckWaiting: false,
                 date: Date.now()
             });
@@ -109,6 +113,20 @@ module.exports = {
             ctx.isHealthy = recentStatus.success;
             ctx.stuckWaiting = recentStatus.stuckWaiting;            
         }
+        next();
+    },
+    "removed-request": async (ctx, next) => {
+        pardonedIds[ctx.id] = true; //add the id to the pardoned group
+        next();
+    },
+    "pre-request": async (ctx, next) => {
+        //all newly added requests' ids are to be removed from the pardoned group
+        const { waitingState, requestState } = ctx;
+        const waitingIds = Object.keys(waitingState)
+        const newIds = Object.keys(requestState).filter(id => waitingIds.indexOf(id) === -1)
+        newIds.forEach(id => {
+            delete pardonedIds[id]
+        });
         next();
     }
 }
