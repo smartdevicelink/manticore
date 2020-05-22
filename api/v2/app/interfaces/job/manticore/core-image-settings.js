@@ -83,7 +83,8 @@ function configurationToImageInfo (coreVersion, coreBuild, id) {
             tcp: 12345,
             file: 3001,
             log: 8888,
-            policy: 9898
+            policy: 9898,
+            wsServer: 2020
         },
         services: [
             {
@@ -138,7 +139,19 @@ function configurationToImageInfo (coreVersion, coreBuild, id) {
                         Protocol: "http"
                     }
                 ]
-            }
+            },
+            {
+                name: `core-ws-server-${id}`,
+                port: "wsServer",
+                checks: [
+                    {
+                        Type: "tcp",
+                        Interval: 3000000000, //3 seconds
+                        Timeout: 1000000000, //1 second
+                        Protocol: "ws"
+                    }
+                ]
+            },
         ],
         envs: {},
         resources: resourceSettings[coreBuild]
