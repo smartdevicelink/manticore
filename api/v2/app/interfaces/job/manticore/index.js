@@ -184,7 +184,9 @@ async function advance (ctx) {
         if (config.modes.haproxy) {
             //domain addresses
             const externalBrokerAddress = currentRequest.services.manticore[`core-broker-${id}-0`].external;
+            const externalPythonAddress = currentRequest.services.manticore[`core-python-${id}-0`].external;
             const brokerDomainAddress = `${externalBrokerAddress}.${config.haproxyDomain}`;
+            const pythonDomainAddress = `${externalPythonAddress}.${config.haproxyDomain}`;
 
             //external address (HAProxy)
             fullBrokerAddress = `ws:\\/\\/${brokerDomainAddress}:${config.haproxyPort}`; 
