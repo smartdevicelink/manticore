@@ -302,9 +302,9 @@ function formatAddresses (id, services) {
         "core-file": utils.formatHttpAddress(services.manticore[`core-file-${id}-0`]),
         "core-log": utils.formatWsAddress(services.manticore[`core-log-${id}-0`]),
         "core-policy": utils.formatHttpAddress(services.manticore[`core-policy-${id}-0`]),
-        "core-ws-server": utils.formatHttpAddress(services.manticore[`core-ws-server-${id}-0`]),
+        "core-ws-server": utils.formatWsAddress(services.manticore[`core-ws-server-${id}-0`]),
         "core-store": utils.formatHttpAddress(services.manticore[`core-store-${id}-0`]),
-        "core-python": utils.formatHttpAddress(services.manticore[`core-python-${id}-0`]),
+        "core-python": utils.formatWsAddress(services.manticore[`core-python-${id}-0`]),
         "hmi-user": utils.formatHttpAddress(services.manticore[`hmi-user-${id}-0`]),
     };
 }
