@@ -158,6 +158,12 @@ async function advance (ctx) {
             currentRequest.services.manticore[`core-ws-server-${id}-0`].external = randomString(PATTERN, 16);
             currentRequest.services.manticore[`core-ws-server-${id}-0`].isHttp = true;
 
+            currentRequest.services.manticore[`core-store-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.manticore[`core-store-${id}-0`].isHttp = true;
+
+            currentRequest.services.manticore[`core-python-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.manticore[`core-python-${id}-0`].isHttp = true;
+
             currentRequest.state = "pending-2";
             ctx.updateStore = true;
             ctx.removeUser = false;
@@ -169,71 +175,7 @@ async function advance (ctx) {
     if (currentRequest.state === "pending-2") { //this stage causes an hmi job to run
         const brokerAddress = currentRequest.services.manticore[`core-broker-${id}-0`].internal;
         const coreFileAddress = currentRequest.services.manticore[`core-file-${id}-0`].internal;
-
-        let fullBrokerAddress = `ws:\\/\\/${brokerAddress}`; //internal address
-
-        //if haproxy is configured, generate the external addresses
-        if (config.modes.haproxy) {
-            //domain addresses
-            const externalBrokerAddress = currentRequest.services.manticore[`core-broker-${id}-0`].external;
-            const brokerDomainAddress = `${externalBrokerAddress}.${config.haproxyDomain}`;
-
-            //external address (HAProxy)
-            fullBrokerAddress = `ws:\\/\\/${brokerDomainAddress}:${config.haproxyPort}`; 
-
-            if (config.modes.elb) { //external address (ELB)
-                fullBrokerAddress = `ws:\\/\\/${brokerDomainAddress}:${config.wsPort}`;
-            }
-            
-            if (config.modes.elbEncryptWs) { //secure external address (ELB)
-                fullBrokerAddress = `wss:\\/\\/${brokerDomainAddress}:${config.wsPort}`; 
-            }            
-        }
-
-        const envs = { //extract service addresses found from the previous stage
-            brokerAddress: fullBrokerAddress,
-            coreFileAddress: coreFileAddress,
-        };
-
-        let job = coreSettings.generateJobFile(jobName, currentRequest);
-        //add the hmi task group
-        job = hmiSettings.generateJobFile(job, currentRequest, envs);
-
-        const jobFile = job.getJob().Job;
-
-        await utils.autoHandleAll({
-            ctx: ctx,
-            job: jobFile,
-            allocationTime: HMI_ALLOCATION_TIME,
-            healthTime: HMI_HEALTH_TIME,
-            stateChangeValue: "pending-3", 
-            servicesKey: "manticore"
-        });
-
-        return; //done
-    }
-    //this stage generates external hmi address values for haproxy mode and stores them for future use
-    if (currentRequest.state === "pending-3") {
-        //if haproxy is configured, generate the external addresses
-        if (config.modes.haproxy && currentRequest.services.manticore) {
-            currentRequest.services.manticore[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
-            currentRequest.services.manticore[`hmi-user-${id}-0`].isHttp = true;
-
-            currentRequest.services.manticore[`hmi-python-${id}-0`].external = randomString(PATTERN, 16);
-            currentRequest.services.manticore[`hmi-python-${id}-0`].isHttp = true;
-
-            currentRequest.state = "pending-4";
-            ctx.updateStore = true;
-            ctx.removeUser = false;
-            return; //done. wait for the next cycle for the next phase
-        }
-        currentRequest.state = "pending-4";
-        //immediately proceed to the next phase, as nothing needs to be stored here
-    }
-    if (currentRequest.state === "pending-4") { // passing in the hmi's python server location to the hmi necessitates another job submission
-        const brokerAddress = currentRequest.services.manticore[`core-broker-${id}-0`].internal;
-        const coreFileAddress = currentRequest.services.manticore[`core-file-${id}-0`].internal;
-        const pythonAddress = currentRequest.services.manticore[`hmi-python-${id}-0`].internal;
+        const pythonAddress = currentRequest.services.manticore[`core-python-${id}-0`].internal;
 
         let fullBrokerAddress = `ws:\\/\\/${brokerAddress}`; //internal address
         let fullPythonAddress = `ws:\\/\\/${pythonAddress}`; //internal address
@@ -243,8 +185,6 @@ async function advance (ctx) {
             //domain addresses
             const externalBrokerAddress = currentRequest.services.manticore[`core-broker-${id}-0`].external;
             const brokerDomainAddress = `${externalBrokerAddress}.${config.haproxyDomain}`;
-            const externaPythonAddress = currentRequest.services.manticore[`hmi-python-${id}-0`].external;
-            const pythonDomainAddress = `${externaPythonAddress}.${config.haproxyDomain}`;
 
             //external address (HAProxy)
             fullBrokerAddress = `ws:\\/\\/${brokerDomainAddress}:${config.haproxyPort}`; 
@@ -278,22 +218,37 @@ async function advance (ctx) {
             job: jobFile,
             allocationTime: HMI_ALLOCATION_TIME,
             healthTime: HMI_HEALTH_TIME,
-            stateChangeValue: "pending-5", 
+            stateChangeValue: "pending-3", 
             servicesKey: "manticore"
         });
 
         return; //done
     }
+    //this stage generates external hmi address values for haproxy mode and stores them for future use
+    if (currentRequest.state === "pending-3") {
+        //if haproxy is configured, generate the external addresses
+        if (config.modes.haproxy && currentRequest.services.manticore) {
+            currentRequest.services.manticore[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.manticore[`hmi-user-${id}-0`].isHttp = true;
+
+            currentRequest.services.manticore[`core-python-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.manticore[`core-python-${id}-0`].isHttp = true;
+
+            currentRequest.state = "pending-4";
+            ctx.updateStore = true;
+            ctx.removeUser = false;
+            return; //done. wait for the next cycle for the next phase
+        }
+        currentRequest.state = "pending-4";
+        //immediately proceed to the next phase, as nothing needs to be stored here
+    }
     //this additional phase ensures that modules listening on "post-waiting-job-advance" have the correct info
     //since it has been stored in the KV store
-    if (currentRequest.state === "pending-5") {
+    if (currentRequest.state === "pending-4") {
         //all addresses have been finalized and the jobs are healthy. done
         currentRequest.state = "claimed";
         ctx.updateStore = true;
         ctx.removeUser = false;
-
-        console.log("CHECKING NETWORK");
-        console.log(currentRequest.services.manticore)
         return;
     }
 
@@ -347,9 +302,10 @@ function formatAddresses (id, services) {
         "core-file": utils.formatHttpAddress(services.manticore[`core-file-${id}-0`]),
         "core-log": utils.formatWsAddress(services.manticore[`core-log-${id}-0`]),
         "core-policy": utils.formatHttpAddress(services.manticore[`core-policy-${id}-0`]),
-        "hmi-user": utils.formatHttpAddress(services.manticore[`hmi-user-${id}-0`]),
         "core-ws-server": utils.formatHttpAddress(services.manticore[`core-ws-server-${id}-0`]),
-        "hmi-python": utils.formatHttpAddress(services.manticore[`hmi-python-${id}-0`]),
+        "core-store": utils.formatHttpAddress(services.manticore[`core-store-${id}-0`]),
+        "core-python": utils.formatHttpAddress(services.manticore[`core-python-${id}-0`]),
+        "hmi-user": utils.formatHttpAddress(services.manticore[`hmi-user-${id}-0`]),
     };
 }
 

@@ -73,8 +73,7 @@ function configurationToImageInfo (version, type, id, envs) {
     return {
         imageName: imageName,
         portMaps: {
-            user: 8080,
-            python: 8081
+            user: 8080
         },
         services: [
             {
@@ -89,19 +88,7 @@ function configurationToImageInfo (version, type, id, envs) {
                         Protocol: "http"
                     }
                 ]
-            },
-            {
-                name: `hmi-python-${id}`,
-                port: "python",
-                checks: [
-                    {
-                        Type: "tcp",
-                        Interval: 3000000000, //3 seconds
-                        Timeout: 1000000000, //1 second
-                        Protocol: "ws"
-                    }
-                ]
-            },
+            }
         ],
         envs: {
             BROKER_ADDR: envs.brokerAddress,

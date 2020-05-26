@@ -63,10 +63,10 @@ function generateJobFile (jobName, body) {
 //resource settings depending on the core build type
 const resourceSettings = {
     default: { //default build resource requirements
-        cpu: 100,
-        memory: 200,
+        cpu: 120,
+        memory: 250,
         mbits: 2,
-        disk: 500,
+        disk: 1000,
         logFiles: 2,
         logSize: 20
     }
@@ -84,7 +84,9 @@ function configurationToImageInfo (coreVersion, coreBuild, id) {
             file: 3001,
             log: 8888,
             policy: 9898,
-            wsServer: 2020
+            wsServer: 2020,
+            store: 3000,
+            python: 8081
         },
         services: [
             {
@@ -147,6 +149,31 @@ function configurationToImageInfo (coreVersion, coreBuild, id) {
                     {
                         Type: "tcp",
                         Interval: 3000000000, //3 seconds
+                        Timeout: 1000000000, //1 second
+                        Protocol: "ws"
+                    }
+                ]
+            },
+            {
+                name: `core-store-${id}`,
+                port: "store",
+                checks: [
+                    {
+                        Type: "http",
+                        Interval: 3000000000, //3 seconds
+                        Timeout: 1000000000, //1 second
+                        Path: "/",
+                        Protocol: "http"
+                    }
+                ]
+            },
+            {
+                name: `core-python-${id}`,
+                port: "python",
+                checks: [
+                    {
+                        Type: "tcp",
+                        Interval: 3000000000, //3 seconds 
                         Timeout: 1000000000, //1 second
                         Protocol: "ws"
                     }
