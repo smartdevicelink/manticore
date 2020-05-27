@@ -155,7 +155,8 @@ async function advance (ctx) {
             currentRequest.services.manticore[`core-tcp-${id}-0`].external = coreTcpPort;
             currentRequest.services.manticore[`core-tcp-${id}-0`].isHttp = false;
 
-            currentRequest.services.manticore[`core-ws-server-${id}-0`].external = randomString(PATTERN, 16);
+            // shorten this URL to make it easier to type
+            currentRequest.services.manticore[`core-ws-server-${id}-0`].external = randomString(PATTERN, 6);
             currentRequest.services.manticore[`core-ws-server-${id}-0`].isHttp = true;
 
             currentRequest.services.manticore[`core-store-${id}-0`].external = randomString(PATTERN, 16);
