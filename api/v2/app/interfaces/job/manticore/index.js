@@ -234,9 +234,6 @@ async function advance (ctx) {
             currentRequest.services.manticore[`hmi-user-${id}-0`].external = randomString(PATTERN, 16);
             currentRequest.services.manticore[`hmi-user-${id}-0`].isHttp = true;
 
-            currentRequest.services.manticore[`core-python-${id}-0`].external = randomString(PATTERN, 16);
-            currentRequest.services.manticore[`core-python-${id}-0`].isHttp = true;
-
             currentRequest.state = "pending-4";
             ctx.updateStore = true;
             ctx.removeUser = false;
