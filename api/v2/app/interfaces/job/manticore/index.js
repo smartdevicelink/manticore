@@ -16,15 +16,14 @@ const CORE_HEALTH_TIME = 8000;
 const HMI_ALLOCATION_TIME = 5000;
 const HMI_HEALTH_TIME = 8000;
 
-
 const jobInfo = {
     core: {
-        versions: ["6.0.1"], //ex. 5.0.1, master, develop
+        versions: ["6.1.1"], //ex. 5.0.1, master, develop
         builds: ["default"]
     }, 
     hmis: [{
         type: "generic",
-        versions: ["minimal-0.7.2"] //ex. master, minimal-0.5.1
+        versions: ["minimal-0.8.1"] //ex. master, minimal-0.5.1
     }]
 };
 
@@ -156,6 +155,16 @@ async function advance (ctx) {
             currentRequest.services.manticore[`core-tcp-${id}-0`].external = coreTcpPort;
             currentRequest.services.manticore[`core-tcp-${id}-0`].isHttp = false;
 
+            // shorten this URL to make it easier to type
+            currentRequest.services.manticore[`core-ws-server-${id}-0`].external = randomString(PATTERN, 6);
+            currentRequest.services.manticore[`core-ws-server-${id}-0`].isHttp = true;
+
+            currentRequest.services.manticore[`core-store-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.manticore[`core-store-${id}-0`].isHttp = true;
+
+            currentRequest.services.manticore[`core-python-${id}-0`].external = randomString(PATTERN, 16);
+            currentRequest.services.manticore[`core-python-${id}-0`].isHttp = true;
+
             currentRequest.state = "pending-2";
             ctx.updateStore = true;
             ctx.removeUser = false;
@@ -167,30 +176,38 @@ async function advance (ctx) {
     if (currentRequest.state === "pending-2") { //this stage causes an hmi job to run
         const brokerAddress = currentRequest.services.manticore[`core-broker-${id}-0`].internal;
         const coreFileAddress = currentRequest.services.manticore[`core-file-${id}-0`].internal;
+        const pythonAddress = currentRequest.services.manticore[`core-python-${id}-0`].internal;
 
         let fullBrokerAddress = `ws:\\/\\/${brokerAddress}`; //internal address
+        let fullPythonAddress = `ws:\\/\\/${pythonAddress}`; //internal address
 
         //if haproxy is configured, generate the external addresses
         if (config.modes.haproxy) {
             //domain addresses
             const externalBrokerAddress = currentRequest.services.manticore[`core-broker-${id}-0`].external;
+            const externalPythonAddress = currentRequest.services.manticore[`core-python-${id}-0`].external;
             const brokerDomainAddress = `${externalBrokerAddress}.${config.haproxyDomain}`;
+            const pythonDomainAddress = `${externalPythonAddress}.${config.haproxyDomain}`;
 
             //external address (HAProxy)
             fullBrokerAddress = `ws:\\/\\/${brokerDomainAddress}:${config.haproxyPort}`; 
+            fullPythonAddress = `ws:\\/\\/${pythonDomainAddress}:${config.haproxyPort}`; 
 
             if (config.modes.elb) { //external address (ELB)
                 fullBrokerAddress = `ws:\\/\\/${brokerDomainAddress}:${config.wsPort}`;
+                fullPythonAddress = `ws:\\/\\/${pythonDomainAddress}:${config.wsPort}`;
             }
             
             if (config.modes.elbEncryptWs) { //secure external address (ELB)
                 fullBrokerAddress = `wss:\\/\\/${brokerDomainAddress}:${config.wsPort}`; 
+                fullPythonAddress = `wss:\\/\\/${pythonDomainAddress}:${config.wsPort}`; 
             }            
         }
 
         const envs = { //extract service addresses found from the previous stage
             brokerAddress: fullBrokerAddress,
             coreFileAddress: coreFileAddress,
+            pythonAddress: fullPythonAddress,
         };
 
         let job = coreSettings.generateJobFile(jobName, currentRequest);
@@ -285,6 +302,9 @@ function formatAddresses (id, services) {
         "core-file": utils.formatHttpAddress(services.manticore[`core-file-${id}-0`]),
         "core-log": utils.formatWsAddress(services.manticore[`core-log-${id}-0`]),
         "core-policy": utils.formatHttpAddress(services.manticore[`core-policy-${id}-0`]),
+        "core-ws-server": utils.formatWsAddress(services.manticore[`core-ws-server-${id}-0`]),
+        "core-store": utils.formatHttpAddress(services.manticore[`core-store-${id}-0`]),
+        "core-python": utils.formatWsAddress(services.manticore[`core-python-${id}-0`]),
         "hmi-user": utils.formatHttpAddress(services.manticore[`hmi-user-${id}-0`]),
     };
 }
@@ -293,12 +313,12 @@ function formatAddresses (id, services) {
 function exampleJobOption () {
     return {
         core: {
-            version: "6.0.1",
+            version: "6.1.1",
             build: "default"
         },
         hmi: {
             type: "generic",
-            version: "minimal-0.7.2"
+            version: "minimal-0.8.1"
         }
     };
 }
