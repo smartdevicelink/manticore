@@ -88,11 +88,12 @@ function configurationToImageInfo (version, type, id, envs) {
                         Protocol: "http"
                     }
                 ]
-            },
+            }
         ],
         envs: {
             BROKER_ADDR: envs.brokerAddress,
             CORE_FILE_ADDR: envs.coreFileAddress,
+            PYTHON_ADDRESS: envs.pythonAddress,
         },
         resources: resourceSettings[type]
     }
