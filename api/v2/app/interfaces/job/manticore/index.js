@@ -18,12 +18,12 @@ const HMI_HEALTH_TIME = 8000;
 
 const jobInfo = {
     core: {
-        versions: ["6.1.1"], //ex. 5.0.1, master, develop
+        versions: ["7.0.0"], //ex. 5.0.1, master, develop
         builds: ["default"]
     }, 
     hmis: [{
         type: "generic",
-        versions: ["minimal-0.8.1"] //ex. master, minimal-0.5.1
+        versions: ["minimal-0.9.0"] //ex. master, minimal-0.5.1
     }]
 };
 
@@ -313,12 +313,12 @@ function formatAddresses (id, services) {
 function exampleJobOption () {
     return {
         core: {
-            version: "6.1.1",
+            version: "7.0.0",
             build: "default"
         },
         hmi: {
             type: "generic",
-            version: "minimal-0.8.1"
+            version: "minimal-0.9.0"
         }
     };
 }
