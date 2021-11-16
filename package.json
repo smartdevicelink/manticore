@@ -11,7 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.319.0",
-    "axios": "^0.21.1",
+    "axios": "^0.21.4",
     "check-types": "^7.4.0",
     "consul": "^0.33.1",
     "dotenv": "^6.0.0",
@@ -22,13 +22,13 @@
     "koa-jwt": "^3.3.2",
     "koa-router": "^10.0.0",
     "koa-static": "^5.0.0",
-    "koa-websocket": "^5.0.1",
+    "koa-websocket": "^6.0.0",
     "nomad-helper": "^3.6.1",
     "randomatic": "^3.0.0",
     "request": "^2.88.0",
     "vue": "^2.5.17",
     "vue-router": "^3.0.1",
     "winston": "^3.0.0",
-    "ws": "^6.0.0"
+    "ws": "^6.2.2"
   }
 }
