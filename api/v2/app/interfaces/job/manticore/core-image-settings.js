@@ -103,15 +103,7 @@ function configurationToImageInfo (coreVersion, coreBuild, id) {
             },
             {
                 name: `core-tcp-${id}`,
-                port: "tcp",
-                checks: [
-                    {
-                        Type: "tcp",
-                        Interval: 3000000000, //3 seconds
-                        Timeout: 1000000000, //1 second
-                        Protocol: "tcp"
-                    }
-                ]
+                port: "tcp"
             },
             {
                 name: `core-file-${id}`,
