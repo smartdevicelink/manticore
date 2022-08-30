@@ -71,6 +71,18 @@ module.exports = app => {
         ctx.response.body = status;
         ctx.response.status = 200;
     });
+    
+    //return manticore address information
+    router.get(`${API_PREFIX}/info`, async (ctx, next) => {
+        logger.debug(`GET ${API_PREFIX}/info`);
+        const wsAddress = await websocket.getPasscode();
+        ctx.response.status = 200;
+        ctx.response.body = {
+            path: `${API_PREFIX}/info/`,
+            protocol: 'ws',
+            passcode: wsAddress,
+        };
+    });
 
     //return all viable job types
     router.get(`${API_PREFIX}/job`, async (ctx, next) => {
