@@ -26,6 +26,13 @@ async function deletePasscode (id) {
     delete idHash[id];
 }
 
+//Verify the id's existence and return true if it does
+async function isIdExist (id) {
+    if (idHash[id] && idHash[id].websocket)
+    	return true;
+    return false;
+}
+
 //attach the websocket to the id whose code matches
 //returns the id associated with the passcode
 async function validate (code, websocket) {
@@ -53,5 +60,6 @@ module.exports = {
     getPasscode: getPasscode,
     deletePasscode: deletePasscode,
     validate: validate,
-    send: send
+    send: send,
+    isIdExist: isIdExist
 }
