@@ -71,18 +71,6 @@ module.exports = app => {
         ctx.response.body = status;
         ctx.response.status = 200;
     });
-    
-    //return manticore address information
-    router.get(`${API_PREFIX}/info`, async (ctx, next) => {
-        logger.debug(`GET ${API_PREFIX}/info`);
-        const wsAddress = await websocket.getPasscode();
-        ctx.response.status = 200;
-        ctx.response.body = {
-            path: `${API_PREFIX}/info/`,
-            protocol: 'ws',
-            passcode: wsAddress,
-        };
-    });
 
     //return all viable job types
     router.get(`${API_PREFIX}/job`, async (ctx, next) => {
@@ -91,6 +79,38 @@ module.exports = app => {
             .catch(err => logger.error(new Error(err).stack));
     });
 
+    //return manticore address information
+    router.post(`${API_PREFIX}/info`, async (ctx, next) => {
+        logger.debug(`POST ${API_PREFIX}/info`);
+        //user id check
+        let ID;
+        if (config.modes.jwt && ctx.state.user) {
+            ID = ctx.request.body.id;
+         } else {
+            ID = ctx.state.user.user_id;
+        }
+        if (!websocket.isIdExist(ID)) return handle400(ctx, "Invalid or missing id");
+        //validate the input
+       const result = await logic.validateJob(ctx.request.body)
+            .catch(err => logger.error(new Error(err).stack));
+        if (!result.isValid) return handle400(ctx, result.errorMessage);
+        ctx.response.status = 200;
+        
+        //get wsAddress
+        let wsAddress = await websocket.getPasscode(ID);
+            
+         //return address information to use for connection
+        //these values change depending on the modes enabled
+        ctx.response.body = {
+            path: `${API_PREFIX}/job/`,
+            protocol: 'ws',
+            passcode: wsAddress,
+        };
+
+        if (config.modes.haproxy) 
+            ctx.response = UpdateCTXRespone(ctx.response);
+    });
+    
     //submit a job for a user
     router.post(`${API_PREFIX}/job`, async (ctx, next) => {
         logger.debug(`POST ${API_PREFIX}/job\n` + JSON.stringify(ctx.request.body));
@@ -114,17 +134,8 @@ module.exports = app => {
             passcode: wsAddress,
         };
 
-        if (config.modes.haproxy) {
-            ctx.response.body.port = config.haproxyPort;
-            ctx.response.body.domain = config.haproxyDomain;
-
-            if (config.modes.elb) { //ws addresses (ELB)
-                ctx.response.body.port = config.wsPort;
-            }
-            if (config.modes.elbEncryptWs) { //secure ws addresses (ELB)
-                ctx.response.body.protocol = 'wss';
-            }
-        }
+        if (config.modes.haproxy) 
+            ctx.response = UpdateCTXRespone(ctx.response);
     });
 
     //stops a job for a user
@@ -197,4 +208,19 @@ function validateId (id) {
     const matches = id.match(set);
     if (!matches || !matches[0] || matches[0] !== id) return false;
     return true;
+}
+
+//Update ctx.response if it is haproxy
+function UpdateCTXRespone (response)
+{
+    response.body.port = config.haproxyPort;
+    response.body.domain = config.haproxyDomain;
+
+    if (config.modes.elb) { //ws addresses (ELB)
+       response.body.port = config.wsPort;
+    }
+    if (config.modes.elbEncryptWs) { //secure ws addresses (ELB)
+       response.body.protocol = 'wss';
+    }
+    return response;
 }
