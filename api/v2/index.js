@@ -84,7 +84,9 @@ module.exports = app => {
         const ID = ctx.request.body.id;
         logger.debug(`POST ${API_PREFIX}/info: ${ID}`);
 
-        if (!websocket.isIdExist(ID)) return handle400(ctx, "Invalid or missing id");
+        if (!websocket.isIdExist(ID)) {
+            return handle400(ctx, "Invalid or missing id");
+        }
 
         ctx.response.status = 200;
         
@@ -100,7 +102,7 @@ module.exports = app => {
         };
 
         if (config.modes.haproxy) {
-            ctx.response = UpdateCTXRespone(ctx.response);
+            ctx.response = updateCtxRespone(ctx.response);
         }
     });
     
