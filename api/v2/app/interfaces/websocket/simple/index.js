@@ -27,10 +27,8 @@ async function deletePasscode (id) {
 }
 
 //Verify the id's existence and return true if it does
-async function isIdExist (id) {
-    if (idHash[id] && idHash[id].websocket)
-    	return true;
-    return false;
+function isIdExist (id) {
+    return idHash[id] && idHash[id].websocket;
 }
 
 //attach the websocket to the id whose code matches

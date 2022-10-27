@@ -81,25 +81,17 @@ module.exports = app => {
 
     //return manticore address information
     router.post(`${API_PREFIX}/info`, async (ctx, next) => {
-        logger.debug(`POST ${API_PREFIX}/info`);
-        //user id check
-        let ID;
-        if (config.modes.jwt && ctx.state.user) {
-            ID = ctx.request.body.id;
-         } else {
-            ID = ctx.state.user.user_id;
-        }
+        const ID = ctx.request.body.id;
+        logger.debug(`POST ${API_PREFIX}/info: ${ID}`);
+
         if (!websocket.isIdExist(ID)) return handle400(ctx, "Invalid or missing id");
-        //validate the input
-       const result = await logic.validateJob(ctx.request.body)
-            .catch(err => logger.error(new Error(err).stack));
-        if (!result.isValid) return handle400(ctx, result.errorMessage);
+
         ctx.response.status = 200;
         
         //get wsAddress
         let wsAddress = await websocket.getPasscode(ID);
             
-         //return address information to use for connection
+        //return address information to use for connection
         //these values change depending on the modes enabled
         ctx.response.body = {
             path: `${API_PREFIX}/job/`,
@@ -107,8 +99,9 @@ module.exports = app => {
             passcode: wsAddress,
         };
 
-        if (config.modes.haproxy) 
+        if (config.modes.haproxy) {
             ctx.response = UpdateCTXRespone(ctx.response);
+        }
     });
     
     //submit a job for a user
@@ -135,7 +128,7 @@ module.exports = app => {
         };
 
         if (config.modes.haproxy) 
-            ctx.response = UpdateCTXRespone(ctx.response);
+            ctx.response = updateCtxRespone(ctx.response);
     });
 
     //stops a job for a user
@@ -211,7 +204,7 @@ function validateId (id) {
 }
 
 //Update ctx.response if it is haproxy
-function UpdateCTXRespone (response)
+function updateCtxRespone (response)
 {
     response.body.port = config.haproxyPort;
     response.body.domain = config.haproxyDomain;
