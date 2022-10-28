@@ -79,6 +79,33 @@ module.exports = app => {
             .catch(err => logger.error(new Error(err).stack));
     });
 
+    //return manticore address information
+    router.post(`${API_PREFIX}/info`, async (ctx, next) => {
+        const ID = ctx.request.body.id;
+        logger.debug(`POST ${API_PREFIX}/info: ${ID}`);
+
+        if (!websocket.isIdExist(ID)) {
+            return handle400(ctx, "Invalid or missing id");
+        }
+
+        ctx.response.status = 200;
+        
+        //get wsAddress
+        let wsAddress = await websocket.getPasscode(ID);
+            
+        //return address information to use for connection
+        //these values change depending on the modes enabled
+        ctx.response.body = {
+            path: `${API_PREFIX}/job/`,
+            protocol: 'ws',
+            passcode: wsAddress,
+        };
+
+        if (config.modes.haproxy) {
+            ctx.response = updateCtxRespone(ctx.response);
+        }
+    });
+    
     //submit a job for a user
     router.post(`${API_PREFIX}/job`, async (ctx, next) => {
         logger.debug(`POST ${API_PREFIX}/job\n` + JSON.stringify(ctx.request.body));
@@ -103,15 +130,7 @@ module.exports = app => {
         };
 
         if (config.modes.haproxy) {
-            ctx.response.body.port = config.haproxyPort;
-            ctx.response.body.domain = config.haproxyDomain;
-
-            if (config.modes.elb) { //ws addresses (ELB)
-                ctx.response.body.port = config.wsPort;
-            }
-            if (config.modes.elbEncryptWs) { //secure ws addresses (ELB)
-                ctx.response.body.protocol = 'wss';
-            }
+            ctx.response = updateCtxRespone(ctx.response);
         }
     });
 
@@ -185,4 +204,19 @@ function validateId (id) {
     const matches = id.match(set);
     if (!matches || !matches[0] || matches[0] !== id) return false;
     return true;
+}
+
+//Update ctx.response if it is haproxy
+function updateCtxRespone (response)
+{
+    response.body.port = config.haproxyPort;
+    response.body.domain = config.haproxyDomain;
+
+    if (config.modes.elb) { //ws addresses (ELB)
+       response.body.port = config.wsPort;
+    }
+    if (config.modes.elbEncryptWs) { //secure ws addresses (ELB)
+       response.body.protocol = 'wss';
+    }
+    return response;
 }
