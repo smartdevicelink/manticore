@@ -129,8 +129,9 @@ module.exports = app => {
             passcode: wsAddress,
         };
 
-        if (config.modes.haproxy) 
+        if (config.modes.haproxy) {
             ctx.response = updateCtxRespone(ctx.response);
+        }
     });
 
     //stops a job for a user
