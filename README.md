@@ -10,7 +10,7 @@ SmartDeviceLink (SDL) is a standard set of protocols and messages that connect a
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=AzdQdSCS24M" target="_blank"><img src="http://i.imgur.com/nm8UujD.png?1" alt="SmartDeviceLink" border="10" /></a>
 
 ## Manticore
-Manticore is used to dynamically provision SDL Core and SDL HMI instances in the cloud.
+Manticore is used to dynamically provision SDL Core and Generic HMI instances in the cloud.
 
 
 # Getting Started
