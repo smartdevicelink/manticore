@@ -19,7 +19,7 @@
     "koa-bodyparser": "^4.2.1",
     "koa-compose": "^4.1.0",
     "koa-cors": "0.0.16",
-    "koa-jwt": "^3.3.2",
+    "koa-jwt": "^4.0.4",
     "koa-router": "^10.0.0",
     "koa-static": "^5.0.0",
     "koa-websocket": "^6.0.0",
