@@ -586,7 +586,7 @@ function formatTcpAddress (serviceObj) {
 //wraps the http request into something promise-aware
 async function httpRequest (url, options = {}) {
     return new Promise((resolve, reject) => {
-        http.request(url, options, function (response) {
+        const req = http.request(url, options, function (response) {
             let aggregateResponse = '';
             response.setEncoding('utf8');
             response.on('data', (chunk) => {
@@ -600,7 +600,11 @@ async function httpRequest (url, options = {}) {
             });
         }).on('error', (err) => {
             return reject(err);
-        }).end();
+        });
+        if (options.body) {
+            req.write(options.body);
+        }
+        req.end();
     });
 }
 
