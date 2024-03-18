@@ -18,7 +18,7 @@ const HMI_HEALTH_TIME = 8000;
 
 const jobInfo = {
     core: {
-        versions: ["8.2.0"], //ex. 5.0.1, master, develop
+        versions: ["8.2.0-ubuntu-update"], //ex. 5.0.1, master, develop
         builds: ["default"]
     }, 
     hmis: [{
@@ -313,7 +313,7 @@ function formatAddresses (id, services) {
 function exampleJobOption () {
     return {
         core: {
-            version: "8.2.0",
+            version: "8.2.0-ubuntu-update",
             build: "default"
         },
         hmi: {
