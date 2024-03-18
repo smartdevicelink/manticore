@@ -2,7 +2,7 @@
 //utility module for easy interfacing with Nomad and Consul and for other functions
 const config = require('./config.js');
 const logger = config.logger;
-const httpReq = require('request');
+const http = require('http');
 
 //failure types
 const FAILURE_TYPE_PERMANENT = "PERMANENT";
@@ -146,7 +146,7 @@ async function watchAllocationsToResolution (jobName, taskChecks, endDate, index
     
     baseUrl = `${baseUrl}wait=${waitTimeLeft}s`;
 
-    const response = await http(baseUrl); //get allocation info about the job
+    const response = await httpRequest(baseUrl); //get allocation info about the job
     const newIndex = response.headers["x-nomad-index"]; 
     const allocs = await parseJson(response.body);
 
@@ -173,7 +173,7 @@ async function watchAllocationsToEnd (jobName, taskChecks, index) {
         baseUrl = `${baseUrl}index=${index}&`; //long poll for any updates
     }
 
-    const response = await http(baseUrl); //get allocation info about the job
+    const response = await httpRequest(baseUrl); //get allocation info about the job
     const newIndex = response.headers["x-nomad-index"];
     const allocs = await parseJson(response.body);
 
@@ -295,11 +295,11 @@ async function determineAllocationsFailureType (allocations, evals) {
 }
 
 async function getJob (key) {
-    return await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${key}`);
+    return await httpRequest(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${key}`);
 }
 
 async function getEvals (jobName) {
-    const result = await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${jobName}/evaluations`);
+    const result = await httpRequest(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${jobName}/evaluations`);
     const parsedResult = await parseJson(result.body);
     if (parsedResult+'' === '{}') return []; //no evaluations
     return parsedResult;
@@ -320,14 +320,14 @@ async function getRecentEvals (evals, taskGroupNames) {
 }
 
 async function setJob (key, opts) {
-    return await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${key}`, {
+    return await httpRequest(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${key}`, {
         method: 'POST',
         body: JSON.stringify(opts)
     });
 }
 
 async function stopJob (key, purge = false) {
-    return await http(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${key}?purge=${purge}`, {
+    return await httpRequest(`http://${config.clientAgentIp}:${config.nomadAgentPort}/v1/job/${key}?purge=${purge}`, {
         method: 'DELETE'
     });
 }
@@ -421,7 +421,7 @@ async function watchServicesToResolution (serviceCheck, endDate = 0, index) {
 
     baseUrl = `${baseUrl}wait=${waitTimeLeft}s`;
 
-    const response = await http(baseUrl); //get info about all the health checks from this service
+    const response = await httpRequest(baseUrl); //get info about all the health checks from this service
     const newIndex = response.headers["x-consul-index"];
     const services = await parseJson(response.body);
     
@@ -447,7 +447,7 @@ async function watchServiceToEnd (serviceCheck, index) {
         baseUrl = `${baseUrl}index=${index}&`;
     }
 
-    const response = await http(baseUrl); //get info about all the health checks from this service
+    const response = await httpRequest(baseUrl); //get info about all the health checks from this service
     const newIndex = response.headers["x-consul-index"];
     const services = await parseJson(response.body);
 
@@ -514,7 +514,7 @@ async function findServiceAddresses (serviceNames) {
 //queries consul for all nodes that house the running service
 async function getService (name) {
     const baseUrl = `http://${config.clientAgentIp}:${config.consulAgentPort}/v1/catalog/service/${name}`;
-    return http(baseUrl); 
+    return httpRequest(baseUrl); 
 }
 
 //modifies ctx depending on what error string gets passed in
@@ -583,14 +583,28 @@ function formatTcpAddress (serviceObj) {
     return address;
 }
 
-//wraps the request function into something promise-aware
-async function http (url, options = {}) {
+//wraps the http request into something promise-aware
+async function httpRequest (url, options = {}) {
     return new Promise((resolve, reject) => {
-        options.uri = url;
-        httpReq(options, function (err, res) {
-            if (err) return reject(err);
-            return resolve(res);
+        const req = http.request(url, options, function (response) {
+            let aggregateResponse = '';
+            response.setEncoding('utf8');
+            response.on('data', (chunk) => {
+                aggregateResponse += chunk;
+            });
+            response.on('end', () => {
+                return resolve({
+                    body: aggregateResponse,
+                    headers: response.headers
+                });
+            });
+        }).on('error', (err) => {
+            return reject(err);
         });
+        if (options.body) {
+            req.write(options.body);
+        }
+        req.end();
     });
 }
 
